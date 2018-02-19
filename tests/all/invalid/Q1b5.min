@@ -1,0 +1,3 @@
+// Parsing Error: Invalid variable name
+
+var 0name: int = 0;

@@ -1,0 +1,5 @@
+// Parsing Error: unmatched parenthesis
+
+var value: int = 0;
+
+value = 3 * (2 - 5;

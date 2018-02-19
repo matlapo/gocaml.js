@@ -1,0 +1,3 @@
+// Lexical Error: Malformed float
+
+var number: float = 3.;

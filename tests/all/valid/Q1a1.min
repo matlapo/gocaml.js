@@ -1,0 +1,35 @@
+// #############
+// # Program 1 #
+// #############
+
+// Program computing a factorial for the user
+
+var number: int = -1;
+var answer: int = 1;
+var stop: boolean = FALSE;
+
+print "FACTORIAL CALCULATOR 0.0.1\n";
+print "This programs calculates factorials\n"; print "\n";
+
+print "What number do you want to know the factorial of?";
+read number;
+
+print "That's a really good number!\n";
+
+while !stop {
+	answer = answer * number;
+	number = number + -1;
+	if number == 0 {
+		stop = TRUE;
+	} else {
+		stop = FALSE;
+	}
+}
+
+if answer == 120 {
+	print "WOW! You did the factorial of 5!\n";
+}
+
+print "The answer is:";
+print answer;
+print "\n";
