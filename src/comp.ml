@@ -23,7 +23,7 @@ let tokens input =
   let lexer_buffer = Lexing.from_channel input in
   try
     let tokens = Parser.prog Lexer.read lexer_buffer in
-      print_string tokens;
+      print_string (tokens ^ "\n");
       exit 0;
   with
   | SyntaxError msg ->
