@@ -25,8 +25,6 @@ then
 fi
 
 # Invoke the compiler with the provided arguments: mode ($1) and file ($2)
-#
-# You MUST replace the following command with the command for invoking your compiler
 
 outfile=$(echo "$2" | cut -d. -f1)
 
