@@ -7,7 +7,7 @@ A GoLite compiler written in OCaml (ewww C)
 * `opam install menhir merlin ocamlbuild`
 # Run
 ## Compiler
-* `ocamlbuild comp.native -use-ocamlfind`
-* `./comp.native [mode] [filename]`
+* `./build.sh` 
+* `./run.sh [mode] [filename]`
 ## Tests
 * `python3 test.py`
