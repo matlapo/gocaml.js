@@ -1,5 +1,0 @@
-// Parsing Error: missing equal sign
-
-while 1=1 {
-	
-}

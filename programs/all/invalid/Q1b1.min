@@ -1,6 +1,0 @@
-// Parsing Error: there is a declaration after a statement
-
-var name: string = "Maxime";
-print name;
-var age: int = 21;
-print age;
