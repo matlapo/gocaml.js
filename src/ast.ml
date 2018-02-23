@@ -1,35 +1,96 @@
+type types =
+    | Int
+    | Float
+    | String 
+    | Bool
+    | Hex
+    | Octal
 
-type var_type =
-| Int
-| Float
-| String
-| Bool
+type binary =
+    | Plus 
+    | Minus
+    | Times
+    | Div
+    | Equals
+    | NotEquals
+    | And
+    | Or
+    | Smaller
+    | Greater
+    | SmallerEq
+    | GreaterEq
+    | DGreater
+    | DSmaller
+
+type unary = 
+    | Not
+    | Minus
 
 type exp =
-| Identifier of {position: Lexing.position; value: string}
-| Literal_int of {position: Lexing.position; value: int}
-| Literal_float of {position: Lexing.position; value: float}
-| Literal_string of {position: Lexing.position; value: string}
-| Literal_bool of {position: Lexing.position; value: bool}
-| Op_plus of {position: Lexing.position; value: (exp * exp)}
-| Op_minus of {position: Lexing.position; value: (exp * exp)}
-| Op_times of {position: Lexing.position; value: (exp * exp)}
-| Op_div of {position: Lexing.position; value: (exp * exp)}
-| Op_equals of {position: Lexing.position; value: (exp * exp)}
-| Op_notequals of {position: Lexing.position; value: (exp * exp)}
-| Op_and of {position: Lexing.position; value: (exp * exp)}
-| Op_or of {position: Lexing.position; value: (exp * exp)}
-| Op_not of {position: Lexing.position; value: exp}
-| Op_uminus of {position: Lexing.position; value: exp}
+    | Id of string 
+    | Int of int 
+    | Float of float 
+    | String of string 
+    | Bool of bool
+    | BinaryOp of binary * (exp * exp)
+    | Unaryexp of unary * exp
+
+type assign =
+    | Regular
+    | PlusEqual
+    | MinusEqual
+    | DivEqual
+    | TimesEqual
+    | AndEqual
+    | OrEqual
+    | HatEqual
+    | PercentEqual
+
+type for =
+    | While of exp * stmt list
+    | For of exp * exp * exp
 
 type stmt =
-| Print of {position: Lexing.position; value: exp}
-| Read of {position: Lexing.position; value: exp}
-| Assign of {position: Lexing.position; value: (string * exp)}
-| If of {position: Lexing.position;
-    value: (exp * stmt list * (stmt list) option)}
-| While of {position: Lexing.position; value: (exp * stmt list)}
+    | Print of exp 
+    | Println of exp
+    | Append of exp * exp
+    | Assign of assign * (string * exp)
+    | Declaration of (string * types * exp)
+    | If of exp * stmt list * (stmt list) option
+    | For of for
+    | LeftArrow of (string * string)
+    | DoublePlus of string
+    | DoubleMinus of string
+    | ColonEqual of (string * exp)
+    | Break
+    | Case of exp 
+    | Chan
+    | Const 
+    | Continue
+    | Default
+    | Defer
+    | Fallthrough
+    | Func
+    | Go 
+    | Goto
+    | Import
+    | Iface
+    | Map
+    | Range 
+    | Return 
+    | Select
+    | Struct
+    | Switch
+    | Type
 
-type decl = {position: Lexing.position; value: (string * var_type * exp)}
+type value =
+    | E of exp
+    | S of stmt
 
-type program = (decl list * stmt list)
+type node = 
+    {
+        position: Lexing.position;
+        value: value
+    }
+
+type program = node list 
