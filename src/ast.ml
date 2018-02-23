@@ -97,7 +97,7 @@ module type Ast =
         type decl =
             | Var of (string * types option * exp node option)
             | Type of (string * types)
-            | Fct of (string * argurment list * stmt node list)
+            | Fct of (string * argument list * stmt node list)
 
         type program = package * import list * decl list
     end
