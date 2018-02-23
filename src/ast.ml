@@ -46,18 +46,17 @@ type assign =
     | HatEqual
     | PercentEqual
 
-type for =
-    | While of exp * stmt list
+type loop =
+    | While of exp * node list
     | For of exp * exp * exp
-
-type stmt =
+and stmt =
     | Print of exp 
     | Println of exp
     | Append of exp * exp
     | Assign of assign * (string * exp)
     | Declaration of (string * types * exp)
-    | If of exp * stmt list * (stmt list) option
-    | For of for
+    | If of exp * node list * (node list) option
+    | Loop of loop
     | LeftArrow of (string * string)
     | DoublePlus of string
     | DoubleMinus of string
@@ -82,12 +81,10 @@ type stmt =
     | Struct
     | Switch
     | Type
-
-type value =
+and value =
     | E of exp
     | S of stmt
-
-type node = 
+and node = 
     {
         position: Lexing.position;
         value: value
