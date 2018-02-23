@@ -1,4 +1,5 @@
 %{
+  open Astwithposition
 %}
 %token TVAR
 %token TIF
@@ -65,124 +66,82 @@
 %token TCLOSINGSQUARE
 %token EOF
 %token TBREAK
-%token TCASE 
+%token TCASE
 %token TCHAN
 %token TCONST
 %token TCONTINUE
 %token TDEFAULT
-%token TDEFER 
-%token TFALL 
-%token TFOR 
-%token TFUNC 
-%token TGO 
-%token TGOTO 
-%token TIMPORT 
-%token TIFACE 
-%token TMAP 
-%token TPACKAGE 
-%token TRANGE 
-%token TRETURN 
-%token TSELECT 
-%token TSTRUCT 
-%token TSWITCH 
+%token TDEFER
+%token TFALL
+%token TFOR
+%token TFUNC
+%token TGO
+%token TGOTO
+%token TIMPORT
+%token TIFACE
+%token TMAP
+%token TPACKAGE
+%token TRANGE
+%token TRETURN
+%token TSELECT
+%token TSTRUCT
+%token TSWITCH
 %token TTYPE
 
-%start <string> prog
+%start <Astwithposition.program> prog
 %%
 
 prog:
-  | EOF         { "" }
-  | v = stmt    { v }
+  | p = package    { p * [] }
+  | p = package ds = decls { p * ds }
   ;
 
-stmt:
-  | v1 = value v2 = stmt  { v1 ^ "\n" ^ v2 }
-  | v = value EOF         { v }
+package:
+  | TPACKAGE id = TIDENTIFIER { id }
+  ;
 
-value:
-  | TPRINT            { "TPRINT" }
-  | TPRINTLN          { "TPRINTLN" }
-  | TAPPEND           { "TAPPEND" }
-  | TVAR              { "TVAR" }
-  | TIF               { "TIF" }
-  | TELSE             { "TELSE" }
-  | TBREAK            { "TBREAK" }
-  | TCASE             { "TCASE" }
-  | TCHAN             { "TCHAN" }
-  | TCONST            { "TCONST" }
-  | TCONTINUE         { "TCONTINUE" }
-  | TDEFAULT          { "TDEFAULT" }
-  | TDEFER            { "TDEFER" }
-  | TFALL             { "TFALL" }
-  | TFOR              { "TFOR" }
-  | TFUNC             { "TFUNC" }
-  | TGO               { "TGO" }
-  | TGOTO             { "TGOTO" }
-  | TIMPORT           { "TIMPORT" }
-  | TIFACE            { "TIFACE" }
-  | TMAP              { "TMAP" }
-  | TPACKAGE          { "TPACKAGE" }
-  | TRANGE            { "TRANGE" }
-  | TRETURN           { "TRETURN" }
-  | TSELECT           { "TSELECT" }
-  | TSTRUCT           { "TSTRUCT" }
-  | TSWITCH           { "TSWITCH" }
-  | TTYPE             { "TTYPE" }
-  | TTRUE             { "TTRUE" }
-  | TFALSE            { "TFALSE" }
-  | i = TINTVAL       { "TINTVAL(" ^ string_of_int i ^ ")"  }
-  | f = TFLOATVAL     { "TFLOATVAL(" ^ string_of_float f ^ ")" }
-  | s = TSTRINGVAL    { "TSTRINGVAL(" ^ s ^ ")" }
-  | h = THEXVAL       { "THEXVAL(" ^ h ^ ")" }
-  | o = TOCTOVAL      { "TOCTOVAL(" ^ string_of_int o ^ ")" }
-  | TPLUS             { "TPLUS" }
-  | TMINUS            { "TMINUS" }
-  | TTIMES            { "TTIMES" }
-  | TDIV              { "TDIV" }
-  | TNOT              { "TNOT" }
-  | TEQUALS           { "TEQUALS" }
-  | TASSIGN           { "TASSIGN" }
-  | TNOTEQUAL         { "TNOTEQUAL" }
-  | TAND              { "TAND" }
-  | TOR               { "TOR" }
-  | TBITAND           { "TBITAND" }
-  | TBITOR            { "TBITOR" }
-  | TPLUSEQUAL        { "TPLUSEQUAL" }
-  | TMINUSEQUAL       { "TMINUSEQUAL" }
-  | TMULTEQUAL        { "TMULTEQUAL" }
-  | TDIVEQUAL         { "TDIVEQUAL" }
-  | TANDEQUAL         { "TANDEQUAL" }
-  | TOREQUAL          { "TOREQUAL" }
-  | THATEQUAL         { "THATEQUAL" }
-  | TPERCENTEQUAL     { "TPERCENTEQUAL" }
-  | TGREATER          { "TGREATER" }
-  | TSMALLER          { "TSMALLER" }
-  | TGREATEREQ        { "TGREATEREQ" }
-  | TSMALLEREQ        { "TSMALLEREQ" }
-  | TDSMALLER         { "TDSMALLER" }
-  | TDGREATER         { "TDGREATER" }
-  | TLEFTARROW        { "TLEFTARROW" }
-  | TDGEQUAL          { "TDGEQUAL" }
-  | TDSEQUAL          { "TDSEQUAL" }
-  | TDPLUS            { "TDPLUS" }
-  | TDMINUS           { "TDMINUS" }
-  | TCOLEQUAL         { "TCOLEQUAL" }
-  | TANDHAT           { "TANDHAT" }
-  | TWTF              { "WTF" }
-  | TCOLON            { "TCOLON" }
-  | TSEMICOLON        { "TSEMICOLON" }
-  | TCOMMA            { "TCOMMA" }
-  | TPERIOD           { "TPERIOD" }
-  | TDOTS             { "TDOTS" }
-  | TOPENINGSQUARE    { "TOPENINGSQUARE" }
-  | TCLOSINGSQUARE    { "TCLOSINGSQUARE" }
-  | TOPENINGBRACE     { "TOPENINGBRACE" }
-  | TCLOSINGBRACE     { "TCLOSINGBRACE" }
-  | TOPENINGBRACKET   { "TOPENINGBRACKET" }
-  | TCLOSINGBRACKET   { "TCLOSINGBRACKET" }
-  | TINT              { "TINT" }
-  | TFLOAT            { "TFLOAT" }
-  | TSTRING           { "TSTRING" }
-  | TBOOLEAN          { "TBOOLEAN" }
-  | id = TIDENTIFIER  { "TIDENTIFIER(" ^ id ^ ")" }
+decls:
+  | d1 = dec d2 = decls { d1::d2 }
+  | d = dec             { [d] }
+  ;
+
+dec:
+  | vb = var_block { {position = $symbolstartpos; value = vb } }
+  ;
+
+var_block:
+  | TVAR TOPENINGBRACKET vars = var_list TCLOSINGBRACKET { Var vars }
+  ;
+
+var_list:
+  | v1 = var v2 = var_list { v1::v2 }
+  | v = var                { [v] }
+  ;
+
+var:
+  | ids = id_list t = types exps = exp_list
+    { (ids, Some t, None) }
+  | ids = id_list TASSIGN exps = exp_list
+    { (ids, None, Some { position = $symbolstartpos; value = exps }) }
+  | ids = id_list t = types exps = exp_list
+    { (ids, Some t, Some { position = $symbolstartpos; value = exps }) }
+  ;
+
+types:
+  | TOPENINGBRACKET t = types TCLOSINGBRACKET { t }
+  | t = TIDENTIFIER { t }
+  ;
+
+id_list:
+  | id = TIDENTIFIER TCOMMA ids = var_list { id::ids }
+  | id = TIDENTIFIER                       { [id] }
+  ;
+
+exp_list:
+  | e = exp TCOMMA l = exp_list { { position = $symbolstartpos; value = e::l } }
+  | e = exp                     { { position = $symbolstartpos; value = [e] } }
+  ;
+
+exp:
+  | TCONST { }
   ;
