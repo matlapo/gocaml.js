@@ -46,7 +46,6 @@ let struct    = "struct"
 let switch    = "switch"
 let type      = "type"
 
-
 (* identifiers *)
 let ident     = ['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''0'-'9''_']*
 

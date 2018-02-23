@@ -5,13 +5,13 @@ module type Ast =
         type types =
             | Int
             | Float
-            | String 
+            | String
             | Bool
             | Hex
             | Octal
 
         type binary =
-            | Plus 
+            | Plus
             | Minus
             | Times
             | Div
@@ -26,15 +26,15 @@ module type Ast =
             | DGreater
             | DSmaller
 
-        type unary = 
+        type unary =
             | Not
             | Minus
 
         type exp =
-            | Id of string 
-            | Int of int 
-            | Float of float 
-            | String of string 
+            | Id of string
+            | Int of int
+            | Float of float
+            | String of string
             | Bool of bool
             | BinaryOp of binary * (exp node * exp node)
             | Unaryexp of unary * exp node
@@ -50,9 +50,11 @@ module type Ast =
             | HatEqual
             | PercentEqual
 
-        type loop =
+        type case = exp node * stmt list
+        
+        and loop =
             | While of exp node * stmt list
-            | For of exp node * exp node * exp node
+            | For of exp node * exp node * exp node * stmt list
         and stmt =
             | Print of exp node
             | Println of exp node
@@ -66,25 +68,24 @@ module type Ast =
             | DoubleMinus of string
             | ColonEqual of (string * exp node)
             | Break
-            | Case of exp node
             | Chan
-            | Const 
+            | Const
             | Continue
             | Default
             | Defer
             | Fallthrough
             | Func
-            | Go 
+            | Go
             | Goto
             | Import
             | Iface
             | Map
-            | Range 
-            | Return 
+            | Range
+            | Return
             | Select
             | Struct
-            | Switch
+            | Switch of case list
             | Type
 
         type program = stmt list
-    end 
+    end
