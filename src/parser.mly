@@ -92,8 +92,8 @@
 %%
 
 prog:
-  | p = package    { p * [] }
-  | p = package ds = decls { p * ds }
+  | p = package    { p, [] }
+  | p = package ds = decls { p, ds }
   ;
 
 package:
@@ -106,7 +106,7 @@ decls:
   ;
 
 dec:
-  | vb = var_block { {position = $symbolstartpos; value = vb } }
+  | vb = var_block { { position = $symbolstartpos; value = vb } }
   ;
 
 var_block:
@@ -122,9 +122,9 @@ var:
   | ids = id_list t = types exps = exp_list
     { (ids, Some t, None) }
   | ids = id_list TASSIGN exps = exp_list
-    { (ids, None, Some { position = $symbolstartpos; value = exps }) }
+    { (ids, None, Some exps) }
   | ids = id_list t = types exps = exp_list
-    { (ids, Some t, Some { position = $symbolstartpos; value = exps }) }
+    { (ids, Some t, Some exps) }
   ;
 
 types:

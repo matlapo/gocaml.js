@@ -92,8 +92,8 @@ type package = string
 type argument = (string * types)
 
 type decl =
-    | Var of (string list * types option * (exp node) list option) list
+    | Var of (string list * string option * (exp node) list option) list
     | Type of (string * types)
     | Fct of (string * argument list * stmt node list)
 
-type program = package * decl list
+type program = package * decl node list
