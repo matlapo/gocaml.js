@@ -60,4 +60,3 @@ let () =
   else
     print_string "You must pass two argument: scan|tokens <source file path>\n";
     exit 1
-    
