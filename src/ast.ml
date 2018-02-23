@@ -38,6 +38,8 @@ module type Ast =
             | Float of float
             | String of string
             | Bool of bool
+            | Hex of string
+            | Octal of int
             | BinaryOp of binary * (exp node * exp node)
             | Unaryexp of unary * exp node
 
