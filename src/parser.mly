@@ -88,7 +88,7 @@
 %token TSWITCH
 %token TTYPE
 
-%start <Astwithposition.program> prog
+%start <program> prog
 %%
 
 prog:
@@ -138,10 +138,10 @@ id_list:
   ;
 
 exp_list:
-  | e = exp TCOMMA l = exp_list { { position = $symbolstartpos; value = e::l } }
-  | e = exp                     { { position = $symbolstartpos; value = [e] } }
+  | e = exp TCOMMA l = exp_list { e::l }
+  | e = exp                     { [e] }
   ;
 
 exp:
-  | TCONST { }
+  | TCONST { { position = $symbolstartpos; value = Id "test" } }
   ;

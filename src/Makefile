@@ -8,7 +8,7 @@
 # - using *.mll and *.mly are handled automatically
 
 # - we are using menhir, the modern replacement for OCamlYacc
-# OCB_FLAGS = -use-ocamlfind 
+# OCB_FLAGS = -use-ocamlfind
 .PHONY: 	all clean byte native profile debug sanity test
 
 OCB_FLAGS = -use-ocamlfind -use-menhir
@@ -20,6 +20,4 @@ clean:
 	$(OCB) -clean
 
 native:
-	$(OCB) comp.native 
-
-
+	$(OCB) comp.native
