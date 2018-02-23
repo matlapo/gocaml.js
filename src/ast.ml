@@ -62,8 +62,8 @@ module type Ast =
             | Println of exp node
             | Append of exp node * exp node
             | Assign of assign * (string * exp node)
-            | Declaration of (string * types * exp node)
-            | If of exp node * (stmt node) list * ((stmt node) list) option
+            | Declaration of (string * types * exp node option)
+            | If of exp node * (stmt node) list * (stmt node list) option
             | Loop of loop
             | LeftArrow of (string * string)
             | DoublePlus of string
@@ -83,19 +83,21 @@ module type Ast =
             | Iface
             | Map
             | Range
-            | Return
+            | Return of exp node
             | Select
             | Struct
             | Switch of case list
             | Type
 
-        type package_decl = string
+        type package = string
+        type import = string
 
-        type fct_arg = (string * types)
+        type argument = (string * types)
 
         type decl =
-            | VarDecl of (string * types option * exp option)
-            | TypeDecl of (string * types)
-            | FctDecl of (fct_arg list * stmt node list)
-        type program = stmt list
+            | Var of (string * types option * exp node option)
+            | Type of (string * types)
+            | Fct of (string * argurment list * stmt node list)
+
+        type program = package * import list * decl list
     end
