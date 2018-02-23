@@ -28,7 +28,7 @@ type binary =
 
 type unary =
     | Not
-    | Minus
+    | UMinus
 
 type exp =
     | Id of string

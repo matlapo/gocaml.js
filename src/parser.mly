@@ -134,7 +134,7 @@ types:
   ;
 
 id_list:
-  | id = TIDENTIFIER TCOMMA ids = var_list { id::ids }
+  | id = TIDENTIFIER TCOMMA ids = id_list { id::ids }
   | id = TIDENTIFIER                       { [id] }
   ;
 
@@ -152,35 +152,35 @@ exp:
   | h = THEXVAL { Hex h }
   | o = TOCTOVAL { Octal o }
   | e1 = exp TPLUS e2 = exp
-    { Plus * ({ position = $symbolstartpos; value = e1 } * { position = $symbolstartpos; value = e2 }) }
+    { Plus ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
   | e1 = exp TMINUS e2 = exp
-    { Minus * ({ position = $symbolstartpos; value = e1 } * { position = $symbolstartpos; value = e2 }) }
+    { Minus ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
   | e1 = exp TTIMES e2 = exp
-    { Times * ({ position = $symbolstartpos; value = e1 } * { position = $symbolstartpos; value = e2 }) }
+    { Times ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
   | e1 = exp TDIV e2 = exp
-    { Div * ({ position = $symbolstartpos; value = e1 } * { position = $symbolstartpos; value = e2 }) }
+    { Div ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
   | e1 = exp TEQUALS e2 = exp
-    { Equals * ({ position = $symbolstartpos; value = e1 } * { position = $symbolstartpos; value = e2 }) }
+    { Equals ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
   | e1 = exp TNOTEQUAL e2 = exp
-    { Equals * ({ position = $symbolstartpos; value = e1 } * { position = $symbolstartpos; value = e2 }) }
+    { Equals ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
   | e1 = exp TAND e2 = exp
-    { And * ({ position = $symbolstartpos; value = e1 } * { position = $symbolstartpos; value = e2 }) }
+    { And ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
   | e1 = exp TOR e2 = exp
-    { Or * ({ position = $symbolstartpos; value = e1 } * { position = $symbolstartpos; value = e2 }) }
+    { Or ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
   | e1 = exp TSMALLER e2 = exp
-    { Smaller * ({ position = $symbolstartpos; value = e1 } * { position = $symbolstartpos; value = e2 }) }
+    { Smaller ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
   | e1 = exp TGREATER e2 = exp
-    { Greater * ({ position = $symbolstartpos; value = e1 } * { position = $symbolstartpos; value = e2 }) }
+    { Greater ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
   | e1 = exp TSMALLEREQ e2 = exp
-    { SmallerEq * ({ position = $symbolstartpos; value = e1 } * { position = $symbolstartpos; value = e2 }) }
+    { SmallerEq ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
   | e1 = exp TGREATEREQ e2 = exp
-    { GreaterEq * ({ position = $symbolstartpos; value = e1 } * { position = $symbolstartpos; value = e2 }) }
+    { GreaterEq ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
   | e1 = exp TDSMALLER e2 = exp
-    { DSmaller * ({ position = $symbolstartpos; value = e1 } * { position = $symbolstartpos; value = e2 }) }
+    { DSmaller ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
   | e1 = exp TDGREATER e2 = exp
-    { DGreater * ({ position = $symbolstartpos; value = e1 } * { position = $symbolstartpos; value = e2 }) }
-  | TNOT e = exp { Not * { position = $symbolstartpos; value = e } }
-  | TMINUS e = exp { Minus * { position = $symbolstartpos; value = e } }
+    { DGreater ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
+  | TNOT e = exp { Unaryexp (Not, { position = $symbolstartpos; value = e }) }
+  | TMINUS e = exp { Unaryexp (UMinus, { position = $symbolstartpos; value = e }) }
   ;
 
 stm_list:
