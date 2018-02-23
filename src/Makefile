@@ -11,7 +11,7 @@
 # OCB_FLAGS = -use-ocamlfind             -I src -I lib # uses ocamlyacc
 .PHONY: 	all clean byte native profile debug sanity test
 
-OCB_FLAGS   = -use-ocamlfind -use-menhir
+OCB_FLAGS = -use-ocamlfind -use-menhir
 OCB = ocamlbuild $(OCB_FLAGS)
 
 all: native # profile debug

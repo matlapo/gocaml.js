@@ -1,5 +1,4 @@
 open Printf
-open Lexer
 open Lexing
 
 (* prints the error message msg with the associate lexer buffer *)
@@ -12,21 +11,36 @@ let print_error lb msg =
 let scan input =
   let lexer_buffer = Lexing.from_channel input in
   try
-    let _ = Parser.prog Lexer.read lexer_buffer in
+    let _ = Parsertokens.prog Lexertokens.read lexer_buffer in
       print_string "OK\n";
       exit 0;
-  with SyntaxError msg ->
+  with Lexertokens.SyntaxError msg ->
     print_error lexer_buffer ("Error: " ^ msg);
     exit 1
 
 let tokens input =
   let lexer_buffer = Lexing.from_channel input in
   try
-    let tokens = Parser.prog Lexer.read lexer_buffer in
+    let tokens = Parsertokens.prog Lexertokens.read lexer_buffer in
       print_string (tokens ^ "\n");
       exit 0;
   with
-  | SyntaxError msg ->
+  | Lexertokens.SyntaxError msg ->
+    print_error lexer_buffer ("Error: " ^ msg);
+    exit 1
+  | Parsertokens.Error ->
+    let token = Lexing.lexeme lexer_buffer in
+    print_error lexer_buffer ("Error: Unexpected " ^ token);
+    exit 1
+
+let parse input =
+  let lexer_buffer = Lexing.from_channel input in
+  try
+    let _ = Parser.prog Lexer.read lexer_buffer in
+      print_string "OK\n";
+      exit 0;
+  with
+  | Lexer.SyntaxError msg ->
     print_error lexer_buffer ("Error: " ^ msg);
     exit 1
   | Parser.Error ->
