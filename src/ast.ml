@@ -9,6 +9,8 @@ module type Ast =
             | Bool
             | Hex
             | Octal
+            | Struct of struct_item list
+        and struct_item = (string * types)
 
         type binary =
             | Plus
@@ -87,5 +89,13 @@ module type Ast =
             | Switch of case list
             | Type
 
+        type package_decl = string
+
+        type fct_arg = (string * types)
+
+        type decl =
+            | VarDecl of (string * types option * exp option)
+            | TypeDecl of (string * types)
+            | FctDecl of (fct_arg list * stmt node list)
         type program = stmt list
     end
