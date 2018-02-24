@@ -11,7 +11,7 @@ var (
   y = 01237
 )
 
-func main(x, y int, x float, y int, x,y,t string) {
+func main(x, y int, x float64, y int, x,y,t string) {
 
   var x, y string = 4, 6 - 5 + 6 * 8 / 7
   var x1, x2 = 5 && 7, 6 || "hello" , 7
