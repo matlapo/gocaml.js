@@ -17,6 +17,7 @@
 %token <int> TINTVAL
 %token <float> TFLOATVAL
 %token <string> TSTRINGVAL
+%token <string> TRAWSTRVAL
 %token <bool> TBOOLVAL
 %token <int> TOCTOVAL
 %token <string> THEXVAL

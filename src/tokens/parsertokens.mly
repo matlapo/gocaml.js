@@ -16,6 +16,7 @@
 %token <int> TINTVAL
 %token <float> TFLOATVAL
 %token <string> TSTRINGVAL
+%token <string> TRAWSTRVAL
 %token <int> TOCTOVAL
 %token <string> THEXVAL
 %token TPLUS
@@ -65,26 +66,26 @@
 %token TCLOSINGSQUARE
 %token EOF
 %token TBREAK
-%token TCASE 
+%token TCASE
 %token TCHAN
 %token TCONST
 %token TCONTINUE
 %token TDEFAULT
-%token TDEFER 
-%token TFALL 
-%token TFOR 
-%token TFUNC 
-%token TGO 
-%token TGOTO 
-%token TIMPORT 
-%token TIFACE 
-%token TMAP 
-%token TPACKAGE 
-%token TRANGE 
-%token TRETURN 
-%token TSELECT 
-%token TSTRUCT 
-%token TSWITCH 
+%token TDEFER
+%token TFALL
+%token TFOR
+%token TFUNC
+%token TGO
+%token TGOTO
+%token TIMPORT
+%token TIFACE
+%token TMAP
+%token TPACKAGE
+%token TRANGE
+%token TRETURN
+%token TSELECT
+%token TSTRUCT
+%token TSWITCH
 %token TTYPE
 
 %start <string> prog
@@ -133,6 +134,7 @@ value:
   | i = TINTVAL       { "TINTVAL(" ^ string_of_int i ^ ")"  }
   | f = TFLOATVAL     { "TFLOATVAL(" ^ string_of_float f ^ ")" }
   | s = TSTRINGVAL    { "TSTRINGVAL(" ^ s ^ ")" }
+  | s = TRAWSTRVAL    { "TRAWSTRVAL(" ^ s ^ ")" }
   | h = THEXVAL       { "THEXVAL(" ^ h ^ ")" }
   | o = TOCTOVAL      { "TOCTOVAL(" ^ string_of_int o ^ ")" }
   | TPLUS             { "TPLUS" }

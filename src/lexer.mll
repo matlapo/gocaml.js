@@ -66,6 +66,7 @@ let octoval      = '0' digit*
 let hexval       = '0''x' (digit | ['a'-'f'])*
 let floatval     = intval '.' digit+ | '.' digit+ | digit+ '.'
 let stringval    = '"' (ws | ['a'-'z''A'-'Z''0'-'9''~''@''#''$''%''^''&''*''-''+''/''\'''`''<''>''=''|''\'''.'','';'':''!''?''{''}''['']''('')'] | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | "\\'" | "\\\"" | "\\\\" )* '"'
+let rawstrval    = ''' [^'\'']* '''
 let btrue        = "true"
 let bfalse       = "false"
 
@@ -163,6 +164,7 @@ rule read =
   | intval    { TINTVAL (int_of_string (Lexing.lexeme lexbuf)) }
   | floatval  { TFLOATVAL (float_of_string (Lexing.lexeme lexbuf)) }
   | stringval { TSTRINGVAL (Lexing.lexeme lexbuf) }
+  | rawstrval { TRAWSTRVAL (Lexing.lexeme lexbuf) }
   | hexval    { THEXVAL (Lexing.lexeme lexbuf) }
   | octoval   { TOCTOVAL (int_of_string (Lexing.lexeme lexbuf)) }
   | plus      { TPLUS }
