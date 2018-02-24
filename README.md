@@ -3,8 +3,9 @@ A GoLite compiler written in OCaml (ewww C)
 
 # Setup
 ## Tools
-* Install the VSCode extension `ReasonML`
+* Install OPAM
 * `opam install menhir merlin ocamlbuild`
+* For IDE integration, install the VSCode extension `ReasonML`
 # Run
 ## Compiler
 * `./build.sh` 
