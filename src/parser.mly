@@ -145,8 +145,8 @@ var_list:
   ;
 
 exp_list:
-  | e = exp TCOMMA l = exp_list { { position = $symbolstartpos; value = e }::l }
-  | e = exp { [{ position = $symbolstartpos; value = e }] }
+  | e = exp TCOMMA l = exp_list { e::l }
+  | e = exp { [e] }
   ;
 
 fct_args:
@@ -162,8 +162,8 @@ args_list:
   ;
 
 stm_list:
-  | s = stm l = stm_list { { position = $symbolstartpos; value = s }::l }
-  | s = stm { [{ position = $symbolstartpos; value = s }] }
+  | s = stm l = stm_list { s::l }
+  | s = stm { [s] }
   | { [] }
   ;
 
@@ -179,10 +179,10 @@ stm_list:
   | ColonEqual of (string * exp node) */
 
 stm:
-  | TPRINT TOPENINGBRACKET e = exp TCLOSINGBRACKET { Print { position = $symbolstartpos; value = e } }
-  | TPRINTLN TOPENINGBRACKET e = exp TCLOSINGBRACKET { Println { position = $symbolstartpos; value = e } }
-  | var = TIDENTIFIER a = assign_type e = exp { Assign (a, (var, { position = $symbolstartpos; value = e })) }
-  | TVAR d = var_decl { Declaration d }
+  | TPRINT TOPENINGBRACKET e = exp TCLOSINGBRACKET { { position = $symbolstartpos; value = Print e } }
+  | TPRINTLN TOPENINGBRACKET e = exp TCLOSINGBRACKET { { position = $symbolstartpos; value = Println e } }
+  | var = TIDENTIFIER a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
+  | TVAR d = var_decl { { position = $symbolstartpos; value =  Declaration d } }
   ;
 
 assign_type:
@@ -198,43 +198,43 @@ assign_type:
   ;
 
 exp:
-  | id = TIDENTIFIER { Id id }
-  | i = TINTVAL { Int i }
-  | f = TFLOATVAL { Float f }
-  | s = TSTRINGVAL { String s }
-  | b = TBOOLVAL { Bool b }
-  | h = THEXVAL { Hex h }
-  | o = TOCTOVAL { Octal o }
+  | id = TIDENTIFIER { { position = $symbolstartpos; value = Id id } }
+  | i = TINTVAL { { position = $symbolstartpos; value = Int i } }
+  | f = TFLOATVAL { { position = $symbolstartpos; value = Float f } }
+  | s = TSTRINGVAL { { position = $symbolstartpos; value = String s } }
+  | b = TBOOLVAL { { position = $symbolstartpos; value = Bool b } }
+  | h = THEXVAL { { position = $symbolstartpos; value = Hex h } }
+  | o = TOCTOVAL { { position = $symbolstartpos; value = Octal o } }
   | e1 = exp TPLUS e2 = exp
-    { BinaryOp (Plus, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
+    { { position = $symbolstartpos; value = BinaryOp (Plus, (e1, e2)) } }
   | e1 = exp TMINUS e2 = exp
-    { BinaryOp (Minus, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
+    { { position = $symbolstartpos; value = BinaryOp (Minus, (e1, e2)) } }
   | e1 = exp TTIMES e2 = exp
-    { BinaryOp (Times, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
+    { { position = $symbolstartpos; value = BinaryOp (Times, (e1, e2)) } }
   | e1 = exp TDIV e2 = exp
-    { BinaryOp (Div, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
+    { { position = $symbolstartpos; value = BinaryOp (Div, (e1, e2)) } }
   | e1 = exp TEQUALS e2 = exp
-    { BinaryOp (Equals, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
+    { { position = $symbolstartpos; value = BinaryOp (Equals, (e1, e2)) } }
   | e1 = exp TNOTEQUAL e2 = exp
-    { BinaryOp (NotEquals, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
+    { { position = $symbolstartpos; value = BinaryOp (NotEquals, (e1, e2)) } }
   | e1 = exp TAND e2 = exp
-    { BinaryOp (And, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
+    { { position = $symbolstartpos; value = BinaryOp (And, (e1, e2)) } }
   | e1 = exp TOR e2 = exp
-    { BinaryOp (Or, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
+    { { position = $symbolstartpos; value = BinaryOp (Or, (e1, e2)) } }
   | e1 = exp TSMALLER e2 = exp
-    { BinaryOp (Smaller, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
+    { { position = $symbolstartpos; value = BinaryOp (Smaller, (e1, e2)) } }
   | e1 = exp TGREATER e2 = exp
-    { BinaryOp (Greater, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
+    { { position = $symbolstartpos; value = BinaryOp (Greater, (e1, e2)) } }
   | e1 = exp TSMALLEREQ e2 = exp
-    { BinaryOp (SmallerEq, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
+    { { position = $symbolstartpos; value = BinaryOp (SmallerEq, (e1, e2)) } }
   | e1 = exp TGREATEREQ e2 = exp
-    { BinaryOp (GreaterEq, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
+    { { position = $symbolstartpos; value = BinaryOp (GreaterEq, (e1, e2)) } }
   | e1 = exp TDSMALLER e2 = exp
-    { BinaryOp (DSmaller, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
+    { { position = $symbolstartpos; value = BinaryOp (DSmaller, (e1, e2)) } }
   | e1 = exp TDGREATER e2 = exp
-    { BinaryOp (DGreater, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
+    { { position = $symbolstartpos; value = BinaryOp (DGreater, (e1, e2)) } }
   | TMINUS e = exp
-    { Unaryexp (UMinus, { position = $symbolstartpos; value = e }) }
+    { { position = $symbolstartpos; value = Unaryexp (UMinus, e) } }
   | TNOT e = exp
-    { Unaryexp (Not, { position = $symbolstartpos; value = e }) }
+    { { position = $symbolstartpos; value = Unaryexp (Not, e) } }
   ;
