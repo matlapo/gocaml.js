@@ -107,8 +107,8 @@ let semicolon = ";"
 let comma     = ","
 let period    = "."
 let dots      = "..."
-let obracket  = "{"
-let cbracket  = "}"
+let opar  = "{"
+let cpar  = "}"
 let oparent   = "("
 let cparent   = ")"
 let osquare   = "["
@@ -194,10 +194,10 @@ rule read =
   | dots      { TDOTS }
   | osquare   { TOPENINGSQUARE }
   | csquare   { TCLOSINGSQUARE }
-  | obracket  { TOPENINGBRACE }
-  | cbracket  { TCLOSINGBRACE }
-  | oparent   { TOPENINGBRACKET }
-  | cparent   { TCLOSINGBRACKET }
+  | opar  { TOPENINGBRACE }
+  | cpar  { TCLOSINGBRACE }
+  | oparent   { TOPENINGPAR }
+  | cparent   { TCLOSINGPAR }
   | ident     { TIDENTIFIER (Lexing.lexeme lexbuf) }
   | comment   { next_line lexbuf; read lexbuf }
   | mcomment  { next_line lexbuf; read lexbuf }

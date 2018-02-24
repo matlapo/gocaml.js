@@ -56,8 +56,8 @@
 %token TDOTS
 %token TOPENINGBRACE
 %token TCLOSINGBRACE
-%token TOPENINGBRACKET
-%token TCLOSINGBRACKET
+%token TOPENINGPAR
+%token TCLOSINGPAR
 %token TOPENINGSQUARE
 %token TCLOSINGSQUARE
 %token EOF
@@ -107,13 +107,13 @@ decl_node:
 
 decl_type:
   | TVAR vars = var_decl { Var vars }
-  | TFUNC name = TIDENTIFIER TOPENINGBRACKET args = fct_args TCLOSINGBRACKET TOPENINGBRACE body = stm_list TCLOSINGBRACE
+  | TFUNC name = TIDENTIFIER TOPENINGPAR args = fct_args TCLOSINGPAR TOPENINGBRACE body = stm_list TCLOSINGBRACE
     { Fct (name, args, body) }
   ;
 
 var_decl:
   | d = var_format { [d] }
-  | TOPENINGBRACKET ds = var_formats TCLOSINGBRACKET { ds }
+  | TOPENINGPAR ds = var_formats TCLOSINGPAR { ds }
   ;
 
 var_formats:
@@ -174,8 +174,8 @@ stm_list:
   | ColonEqual of (string * exp node) */
 
 stm:
-  | TPRINT TOPENINGBRACKET e = exp TCLOSINGBRACKET { { position = $symbolstartpos; value = Print e } }
-  | TPRINTLN TOPENINGBRACKET e = exp TCLOSINGBRACKET { { position = $symbolstartpos; value = Println e } }
+  | TPRINT TOPENINGPAR e = exp TCLOSINGPAR { { position = $symbolstartpos; value = Print e } }
+  | TPRINTLN TOPENINGPAR e = exp TCLOSINGPAR { { position = $symbolstartpos; value = Println e } }
   | var = TIDENTIFIER a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
   | TVAR d = var_decl { { position = $symbolstartpos; value =  Declaration d } }
   ;
