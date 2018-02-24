@@ -166,7 +166,7 @@ rule read =
   | stringval { TSTRINGVAL (Lexing.lexeme lexbuf) }
   | rawstrval { TRAWSTRVAL (Lexing.lexeme lexbuf) }
   | hexval    { THEXVAL (Lexing.lexeme lexbuf) }
-  | octoval   { TOCTOVAL (int_of_string (Lexing.lexeme lexbuf)) }
+  | octoval   { TOCTOVAL (Lexing.lexeme lexbuf) }
   | plus      { TPLUS }
   | minus     { TMINUS }
   | times     { TTIMES }

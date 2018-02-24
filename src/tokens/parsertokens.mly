@@ -136,7 +136,7 @@ value:
   | s = TSTRINGVAL    { "TSTRINGVAL(" ^ s ^ ")" }
   | s = TRAWSTRVAL    { "TRAWSTRVAL(" ^ s ^ ")" }
   | h = THEXVAL       { "THEXVAL(" ^ h ^ ")" }
-  | o = TOCTOVAL      { "TOCTOVAL(" ^ string_of_int o ^ ")" }
+  | o = TOCTOVAL      { "TOCTOVAL(" ^ o ^ ")" }
   | TPLUS             { "TPLUS" }
   | TMINUS            { "TMINUS" }
   | TTIMES            { "TTIMES" }

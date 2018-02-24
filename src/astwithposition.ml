@@ -36,7 +36,7 @@ type exp =
     | Float of float
     | String of string
     | Bool of bool
-    | Octal of int
+    | Octal of string
     | Hex of string
     | BinaryOp of binary * (exp node * exp node)
     | Unaryexp of unary * exp node
