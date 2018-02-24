@@ -4,6 +4,7 @@ type types =
     | IntT
     | FloatT
     | StringT
+    | RunesT
     | BoolT
     | HexT
     | OctalT
@@ -58,8 +59,8 @@ and loop =
     | While of exp node * stmt list
     | For of exp node * exp node * exp node * stmt list
 and stmt =
-    | Print of exp node
-    | Println of exp node
+    | Print of exp node list
+    | Println of exp node list
     | Append of exp node * exp node
     | Assign of assign * (string * exp node)
     | Declaration of (string list * types option * (exp node) list) list

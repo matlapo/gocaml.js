@@ -162,6 +162,7 @@ args_list:
   ;
 
 stm_list:
+  | TOPENINGBRACE s = stm_list TCLOSINGBRACE { s }
   | s = stm l = stm_list { s::l }
   | s = stm { [s] }
   | { [] }
@@ -179,8 +180,8 @@ stm_list:
   | ColonEqual of (string * exp node) */
 
 stm:
-  | TPRINT TOPENINGBRACKET e = exp TCLOSINGBRACKET { { position = $symbolstartpos; value = Print e } }
-  | TPRINTLN TOPENINGBRACKET e = exp TCLOSINGBRACKET { { position = $symbolstartpos; value = Println e } }
+  | TPRINT TOPENINGBRACKET e = exp_list TCLOSINGBRACKET { { position = $symbolstartpos; value = Print e } }
+  | TPRINTLN TOPENINGBRACKET e = exp_list TCLOSINGBRACKET { { position = $symbolstartpos; value = Println e } }
   | var = TIDENTIFIER a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
   | TVAR d = var_decl { { position = $symbolstartpos; value =  Declaration d } }
   ;
@@ -198,6 +199,7 @@ assign_type:
   ;
 
 exp:
+  | TOPENINGBRACKET e = exp TCLOSINGBRACKET { e }
   | id = TIDENTIFIER { { position = $symbolstartpos; value = Id id } }
   | i = TINTVAL { { position = $symbolstartpos; value = Int i } }
   | f = TFLOATVAL { { position = $symbolstartpos; value = Float f } }
