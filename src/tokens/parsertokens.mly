@@ -3,20 +3,15 @@
 %token TVAR
 %token TIF
 %token <string> TIDENTIFIER
-%token TINT
-%token TFLOAT
-%token TSTRING
-%token TBOOLEAN
 %token TPRINT
 %token TPRINTLN
 %token TAPPEND
 %token TELSE
-%token TTRUE
-%token TFALSE
 %token <int> TINTVAL
 %token <float> TFLOATVAL
 %token <string> TSTRINGVAL
-%token <int> TOCTOVAL
+%token <string> TRAWSTRVAL
+%token <string> TOCTOVAL
 %token <string> THEXVAL
 %token TPLUS
 %token TMINUS
@@ -65,26 +60,26 @@
 %token TCLOSINGSQUARE
 %token EOF
 %token TBREAK
-%token TCASE 
+%token TCASE
 %token TCHAN
 %token TCONST
 %token TCONTINUE
 %token TDEFAULT
-%token TDEFER 
-%token TFALL 
-%token TFOR 
-%token TFUNC 
-%token TGO 
-%token TGOTO 
-%token TIMPORT 
-%token TIFACE 
-%token TMAP 
-%token TPACKAGE 
-%token TRANGE 
-%token TRETURN 
-%token TSELECT 
-%token TSTRUCT 
-%token TSWITCH 
+%token TDEFER
+%token TFALL
+%token TFOR
+%token TFUNC
+%token TGO
+%token TGOTO
+%token TIMPORT
+%token TIFACE
+%token TMAP
+%token TPACKAGE
+%token TRANGE
+%token TRETURN
+%token TSELECT
+%token TSTRUCT
+%token TSWITCH
 %token TTYPE
 
 %start <string> prog
@@ -128,13 +123,12 @@ value:
   | TSTRUCT           { "TSTRUCT" }
   | TSWITCH           { "TSWITCH" }
   | TTYPE             { "TTYPE" }
-  | TTRUE             { "TTRUE" }
-  | TFALSE            { "TFALSE" }
   | i = TINTVAL       { "TINTVAL(" ^ string_of_int i ^ ")"  }
   | f = TFLOATVAL     { "TFLOATVAL(" ^ string_of_float f ^ ")" }
   | s = TSTRINGVAL    { "TSTRINGVAL(" ^ s ^ ")" }
+  | s = TRAWSTRVAL    { "TRAWSTRVAL(" ^ s ^ ")" }
   | h = THEXVAL       { "THEXVAL(" ^ h ^ ")" }
-  | o = TOCTOVAL      { "TOCTOVAL(" ^ string_of_int o ^ ")" }
+  | o = TOCTOVAL      { "TOCTOVAL(" ^ o ^ ")" }
   | TPLUS             { "TPLUS" }
   | TMINUS            { "TMINUS" }
   | TTIMES            { "TTIMES" }
@@ -180,9 +174,5 @@ value:
   | TCLOSINGBRACE     { "TCLOSINGBRACE" }
   | TOPENINGBRACKET   { "TOPENINGBRACKET" }
   | TCLOSINGBRACKET   { "TCLOSINGBRACKET" }
-  | TINT              { "TINT" }
-  | TFLOAT            { "TFLOAT" }
-  | TSTRING           { "TSTRING" }
-  | TBOOLEAN          { "TBOOLEAN" }
   | id = TIDENTIFIER  { "TIDENTIFIER(" ^ id ^ ")" }
   ;

@@ -4,21 +4,16 @@
 %token TVAR
 %token TIF
 %token <string> TIDENTIFIER
-%token TINT
-%token TFLOAT
-%token TSTRING
-%token TBOOLEAN
 %token TPRINT
 %token TPRINTLN
 %token TAPPEND
 %token TELSE
-%token TTRUE
-%token TFALSE
 %token <int> TINTVAL
 %token <float> TFLOATVAL
 %token <string> TSTRINGVAL
+%token <string> TRAWSTRVAL
 %token <bool> TBOOLVAL
-%token <int> TOCTOVAL
+%token <string> TOCTOVAL
 %token <string> THEXVAL
 %token TPLUS
 %token TMINUS
