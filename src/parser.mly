@@ -188,6 +188,7 @@ assign_type:
 
 exp:
   | TOPENINGBRACKET e = exp TCLOSINGBRACKET { e }
+  | TIDENTIFIER TOPENINGBRACKET e = exp_list TCLOSINGBRACKET { { position = $symbolstartpos; value = FuncCall e } }
   | id = TIDENTIFIER { { position = $symbolstartpos; value = Id id } }
   | i = TINTVAL { { position = $symbolstartpos; value = Int i } }
   | f = TFLOATVAL { { position = $symbolstartpos; value = Float f } }

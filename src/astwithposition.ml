@@ -41,6 +41,7 @@ type exp =
     | Hex of string
     | BinaryOp of binary * (exp node * exp node)
     | Unaryexp of unary * exp node
+    | FuncCall of exp node list 
 
 type assign =
     | Regular
