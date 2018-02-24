@@ -49,12 +49,6 @@ let type      = "type"
 (* identifiers *)
 let ident     = ['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''0'-'9''_']*
 
-(* types *)
-let int       = "int"
-let boolean   = "bool"
-let float     = "float64"
-let string    = "string"
-
 (* functions *)
 let print     = "print"
 let println   = "println"
@@ -67,8 +61,6 @@ let hexval       = '0''x' (digit | ['a'-'f'])*
 let floatval     = intval '.' digit+ | '.' digit+ | digit+ '.'
 let stringval    = '"' (ws | ['a'-'z''A'-'Z''0'-'9''~''@''#''$''%''^''&''*''-''+''/''\'''`''<''>''=''|''\'''.'','';'':''!''?''{''}''['']''('')'] | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | "\\'" | "\\\"" | "\\\\" )* '"'
 let rawstrval    = ''' [^'\'']* '''
-let btrue        = "true"
-let bfalse       = "false"
 
 (* operations *)
 let plus      = "+"
@@ -130,10 +122,6 @@ rule read =
   | print     { TPRINT }
   | println   { TPRINTLN }
   | append    { TAPPEND }
-  | int       { TINT }
-  | float     { TFLOAT }
-  | string    { TSTRING }
-  | boolean   { TBOOLEAN }
   | var       { TVAR }
   | if        { TIF }
   | else      { TELSE }
@@ -159,8 +147,6 @@ rule read =
   | struct    { TSTRUCT }
   | switch    { TSWITCH }
   | type      { TTYPE }
-  | btrue     { TTRUE }
-  | bfalse    { TFALSE }
   | intval    { TINTVAL (int_of_string (Lexing.lexeme lexbuf)) }
   | floatval  { TFLOATVAL (float_of_string (Lexing.lexeme lexbuf)) }
   | stringval { TSTRINGVAL (Lexing.lexeme lexbuf) }

@@ -3,21 +3,15 @@
 %token TVAR
 %token TIF
 %token <string> TIDENTIFIER
-%token TINT
-%token TFLOAT
-%token TSTRING
-%token TBOOLEAN
 %token TPRINT
 %token TPRINTLN
 %token TAPPEND
 %token TELSE
-%token TTRUE
-%token TFALSE
 %token <int> TINTVAL
 %token <float> TFLOATVAL
 %token <string> TSTRINGVAL
 %token <string> TRAWSTRVAL
-%token <int> TOCTOVAL
+%token <string> TOCTOVAL
 %token <string> THEXVAL
 %token TPLUS
 %token TMINUS
@@ -129,8 +123,6 @@ value:
   | TSTRUCT           { "TSTRUCT" }
   | TSWITCH           { "TSWITCH" }
   | TTYPE             { "TTYPE" }
-  | TTRUE             { "TTRUE" }
-  | TFALSE            { "TFALSE" }
   | i = TINTVAL       { "TINTVAL(" ^ string_of_int i ^ ")"  }
   | f = TFLOATVAL     { "TFLOATVAL(" ^ string_of_float f ^ ")" }
   | s = TSTRINGVAL    { "TSTRINGVAL(" ^ s ^ ")" }
@@ -182,9 +174,5 @@ value:
   | TCLOSINGBRACE     { "TCLOSINGBRACE" }
   | TOPENINGBRACKET   { "TOPENINGBRACKET" }
   | TCLOSINGBRACKET   { "TCLOSINGBRACKET" }
-  | TINT              { "TINT" }
-  | TFLOAT            { "TFLOAT" }
-  | TSTRING           { "TSTRING" }
-  | TBOOLEAN          { "TBOOLEAN" }
   | id = TIDENTIFIER  { "TIDENTIFIER(" ^ id ^ ")" }
   ;
