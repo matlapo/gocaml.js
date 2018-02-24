@@ -122,16 +122,9 @@ var_formats:
   ;
 
 var_format:
-  | vars = var_list t = types { (vars, Some t, []) }
+  | vars = var_list t = TIDENTIFIER { (vars, Some t, []) }
   | vars = var_list TASSIGN exps = exp_list { (vars, None, exps) }
-  | vars = var_list t = types TASSIGN exps = exp_list { (vars, Some t, exps) }
-  ;
-
-types:
-  | TINT { IntT }
-  | TFLOAT { FloatT }
-  | TSTRING { StringT }
-  | TBOOLEAN { BoolT }
+  | vars = var_list t = TIDENTIFIER TASSIGN exps = exp_list { (vars, Some t, exps) }
   ;
 
 var_list:
@@ -149,11 +142,11 @@ fct_args:
   | args = args_list { args }
 
 args_list:
-  | var = TIDENTIFIER t = types { [(var, Some t)] }
-  | vars = var_list t = types { List.map (fun x -> (x, Some t)) vars }
-  | vars = var_list t = types TCOMMA l = args_list
+  | var = TIDENTIFIER t = TIDENTIFIER { [(var, Some t)] }
+  | vars = var_list t = TIDENTIFIER { List.map (fun x -> (x, Some t)) vars }
+  | vars = var_list t = TIDENTIFIER TCOMMA l = args_list
     { List.append (List.map (fun x -> (x, Some t)) vars) l } //temporary
-  | var = TIDENTIFIER t = types TCOMMA l = args_list { (var, Some t)::l }
+  | var = TIDENTIFIER t = TIDENTIFIER TCOMMA l = args_list { (var, Some t)::l }
   ;
 
 stm_list:
