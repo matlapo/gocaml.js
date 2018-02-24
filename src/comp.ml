@@ -56,6 +56,7 @@ let () =
     let input_file = open_in filename in
     if mode = "scan" then scan input_file
     else if mode = "tokens" then tokens input_file
+    else if mode = "parse" then parse input_file
     else printf "%s is not a valid compiler mode\n" mode; exit 1;
   else
     print_string "You must pass two argument: scan|tokens <source file path>\n";

@@ -89,12 +89,12 @@
 %token TSWITCH
 %token TTYPE
 
-%start <program> prog
+%start <Astwithposition.program> prog
 %%
 
 prog:
-  | p = package    { p, [] }
-  | p = package ds = decls { p, ds }
+  | p = package EOF { (p, []) }
+  | p = package ds = decls EOF { (p, ds) }
   ;
 
 package:
@@ -102,45 +102,99 @@ package:
   ;
 
 decls:
-  | d1 = dec d2 = decls { d1::d2 }
-  | d = dec             { [d] }
+  | d1 = decl_node d2 = decls { d1::d2 }
+  | d = decl_node { [d] }
   ;
 
-dec:
-  | vb = var_block { { position = $symbolstartpos; value = vb } }
+decl_node:
+  | vb = decl_type { { position = $symbolstartpos; value = vb } }
   ;
 
-var_block:
-  | TVAR TOPENINGBRACKET vars = var_list TCLOSINGBRACKET { Var vars }
+decl_type:
+  | TVAR vars = var_decl { Var vars }
+  | TFUNC name = TIDENTIFIER TOPENINGBRACKET args = fct_args TCLOSINGBRACKET TOPENINGBRACE body = stm_list TCLOSINGBRACE
+    { Fct (name, args, body) }
   ;
 
-var_list:
-  | v1 = var v2 = var_list { v1::v2 }
-  | v = var                { [v] }
+var_decl:
+  | d = var_format { [d] }
+  | TOPENINGBRACKET ds = var_formats TCLOSINGBRACKET { ds }
   ;
 
-var:
-  | ids = id_list t = types exps = exp_list
-    { (ids, Some t, None) }
-  | ids = id_list TASSIGN exps = exp_list
-    { (ids, None, Some exps) }
-  | ids = id_list t = types exps = exp_list
-    { (ids, Some t, Some exps) }
+var_formats:
+  | v1 = var_format v2 = var_formats { v1::v2 }
+  | v = var_format { [v] }
+  ;
+
+var_format:
+  | vars = var_list t = types { (vars, Some t, []) }
+  | vars = var_list TASSIGN exps = exp_list { (vars, None, exps) }
+  | vars = var_list t = types TASSIGN exps = exp_list { (vars, Some t, exps) }
   ;
 
 types:
-  | TOPENINGBRACKET t = types TCLOSINGBRACKET { t }
-  | t = TIDENTIFIER { t }
+  | TINT { IntT }
+  | TFLOAT { FloatT }
+  | TSTRING { StringT }
+  | TBOOLEAN { BoolT }
   ;
 
-id_list:
-  | id = TIDENTIFIER TCOMMA ids = id_list { id::ids }
-  | id = TIDENTIFIER                       { [id] }
+var_list:
+  | v1 = TIDENTIFIER TCOMMA v2 = var_list { v1::v2 }
+  | v = TIDENTIFIER { [v] }
   ;
 
 exp_list:
-  | e = exp TCOMMA l = exp_list { e::l }
-  | e = exp                     { [e] }
+  | e = exp TCOMMA l = exp_list { { position = $symbolstartpos; value = e }::l }
+  | e = exp { [{ position = $symbolstartpos; value = e }] }
+  ;
+
+fct_args:
+  | { [] }
+  | args = args_list { args }
+
+args_list:
+  | var = TIDENTIFIER t = types { [(var, Some t)] }
+  | vars = var_list t = types { List.map (fun x -> (x, Some t)) vars }
+  | vars = var_list t = types TCOMMA l = args_list
+    { List.append (List.map (fun x -> (x, Some t)) vars) l } //temporary
+  | var = TIDENTIFIER t = types TCOMMA l = args_list { (var, Some t)::l }
+  ;
+
+stm_list:
+  | s = stm l = stm_list { { position = $symbolstartpos; value = s }::l }
+  | s = stm { [{ position = $symbolstartpos; value = s }] }
+  | { [] }
+  ;
+
+  /* | Println of exp node
+  | Append of exp node * exp node
+  | Assign of assign * (string * exp node)
+  | Declaration of (string list * types option * (exp node) list) list
+  | If of exp node * (stmt node) list * (stmt node list) option
+  | Loop of loop
+  | LeftArrow of (string * string)
+  | DoublePlus of string
+  | DoubleMinus of string
+  | ColonEqual of (string * exp node) */
+
+stm:
+  | TPRINT TOPENINGBRACKET e = exp TCLOSINGBRACKET { Print { position = $symbolstartpos; value = e } }
+  | TPRINTLN TOPENINGBRACKET e = exp TCLOSINGBRACKET { Println { position = $symbolstartpos; value = e } }
+  | var = TIDENTIFIER a = assign_type e = exp { Assign (a, (var, { position = $symbolstartpos; value = e })) }
+  | TVAR d = var_decl { Declaration d }
+  ;
+
+assign_type:
+  | TASSIGN { Regular }
+  | TPLUSEQUAL { PlusEqual }
+  | TMINUSEQUAL { MinusEqual }
+  | TMULTEQUAL { TimesEqual }
+  | TDIVEQUAL { DivEqual }
+  | TANDEQUAL { AndEqual }
+  | TOREQUAL { OrEqual }
+  | THATEQUAL { HatEqual }
+  | TPERCENTEQUAL { PercentEqual }
   ;
 
 exp:
@@ -152,42 +206,35 @@ exp:
   | h = THEXVAL { Hex h }
   | o = TOCTOVAL { Octal o }
   | e1 = exp TPLUS e2 = exp
-    { Plus ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
+    { BinaryOp (Plus, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
   | e1 = exp TMINUS e2 = exp
-    { Minus ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
+    { BinaryOp (Minus, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
   | e1 = exp TTIMES e2 = exp
-    { Times ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
+    { BinaryOp (Times, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
   | e1 = exp TDIV e2 = exp
-    { Div ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
+    { BinaryOp (Div, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
   | e1 = exp TEQUALS e2 = exp
-    { Equals ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
+    { BinaryOp (Equals, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
   | e1 = exp TNOTEQUAL e2 = exp
-    { Equals ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
+    { BinaryOp (NotEquals, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
   | e1 = exp TAND e2 = exp
-    { And ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
+    { BinaryOp (And, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
   | e1 = exp TOR e2 = exp
-    { Or ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
+    { BinaryOp (Or, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
   | e1 = exp TSMALLER e2 = exp
-    { Smaller ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
+    { BinaryOp (Smaller, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
   | e1 = exp TGREATER e2 = exp
-    { Greater ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
+    { BinaryOp (Greater, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
   | e1 = exp TSMALLEREQ e2 = exp
-    { SmallerEq ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
+    { BinaryOp (SmallerEq, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
   | e1 = exp TGREATEREQ e2 = exp
-    { GreaterEq ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
+    { BinaryOp (GreaterEq, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
   | e1 = exp TDSMALLER e2 = exp
-    { DSmaller ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
+    { BinaryOp (DSmaller, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
   | e1 = exp TDGREATER e2 = exp
-    { DGreater ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 }) }
-  | TNOT e = exp { Unaryexp (Not, { position = $symbolstartpos; value = e }) }
-  | TMINUS e = exp { Unaryexp (UMinus, { position = $symbolstartpos; value = e }) }
-  ;
-
-stm_list:
-  | s = stm TSEMICOLON l = stm_list { { position = $symbolstartpos; value = s::l } }
-  | s = stm                         { { position = $symbolstartpos; value = [s] } }
-  ;
-
-stm:
-  | TCONST { { position = $symbolstartpos; value = Id "test" } }
+    { BinaryOp (DGreater, ({ position = $symbolstartpos; value = e1 }, { position = $symbolstartpos; value = e2 })) }
+  | TMINUS e = exp
+    { Unaryexp (UMinus, { position = $symbolstartpos; value = e }) }
+  | TNOT e = exp
+    { Unaryexp (Not, { position = $symbolstartpos; value = e }) }
   ;

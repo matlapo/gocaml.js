@@ -1,13 +1,13 @@
 type 'a node = {position: Lexing.position; value: 'a}
 
 type types =
-    | Int
-    | Float
-    | String
-    | Bool
-    | Hex
-    | Octal
-    | Struct of struct_item list
+    | IntT
+    | FloatT
+    | StringT
+    | BoolT
+    | HexT
+    | OctalT
+    | StructT of struct_item list
 and struct_item = (string * types)
 
 type binary =
@@ -36,6 +36,8 @@ type exp =
     | Float of float
     | String of string
     | Bool of bool
+    | Octal of int
+    | Hex of string
     | BinaryOp of binary * (exp node * exp node)
     | Unaryexp of unary * exp node
 
@@ -60,7 +62,7 @@ and stmt =
     | Println of exp node
     | Append of exp node * exp node
     | Assign of assign * (string * exp node)
-    | Declaration of (string * types * exp node option)
+    | Declaration of (string list * types option * (exp node) list) list
     | If of exp node * (stmt node) list * (stmt node list) option
     | Loop of loop
     | LeftArrow of (string * string)
@@ -89,10 +91,10 @@ and stmt =
 
 type package = string
 
-type argument = (string * types)
+type argument = (string * types option)
 
 type decl =
-    | Var of (string list * string option * (exp node) list option) list
+    | Var of (string list * types option * (exp node) list) list
     | Type of (string * types)
     | Fct of (string * argument list * stmt node list)
 
