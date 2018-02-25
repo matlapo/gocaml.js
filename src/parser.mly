@@ -121,8 +121,8 @@ decl_node:
 
 decl_type:
   | TVAR vars = var_decls { Var vars }
-  | TFUNC name = TIDENTIFIER TOPENINGPAR args = fct_args TCLOSINGPAR TOPENINGBRACE body = stm_list TCLOSINGBRACE
-    { Fct (name, args, body) }
+  | TFUNC name = TIDENTIFIER TOPENINGPAR args = fct_args TCLOSINGPAR ret = fct_return TOPENINGBRACE body = stm_list TCLOSINGBRACE
+    { Fct (name, args, ret, body) }
   | TTYPE t = type_decls { Type t }
   ;
 
@@ -157,6 +157,10 @@ exp_list:
 fct_args:
   | { [] }
   | args = args_list { args }
+
+fct_return:
+  | { None }
+  | t = TIDENTIFIER { Some t }
 
 args_list:
   | var = TIDENTIFIER t = TIDENTIFIER { [(var, Some t)] }
