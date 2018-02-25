@@ -27,11 +27,16 @@ type binary =
     | GreaterEq
     | DGreater
     | DSmaller
+    | AndHat
+    | BAnd
+    | BOr
     | Caret
 
 type unary =
     | Not
     | UMinus
+    | UPlus
+    | UCaret
 
 type exp =
     | Id of string
