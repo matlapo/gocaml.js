@@ -12,6 +12,7 @@
 %token <float> TFLOATVAL
 %token <string> TSTRINGVAL
 %token <string> TRAWSTRVAL
+%token <string> TRUNEVAL
 %token <bool> TBOOLVAL
 %token <string> TOCTOVAL
 %token <string> THEXVAL
@@ -122,16 +123,9 @@ var_formats:
   ;
 
 var_format:
-  | vars = var_list t = types { (vars, Some t, []) }
+  | vars = var_list t = TIDENTIFIER { (vars, Some t, []) }
   | vars = var_list TASSIGN exps = exp_list { (vars, None, exps) }
-  | vars = var_list t = types TASSIGN exps = exp_list { (vars, Some t, exps) }
-  ;
-
-types:
-  | TINT { IntT }
-  | TFLOAT { FloatT }
-  | TSTRING { StringT }
-  | TBOOLEAN { BoolT }
+  | vars = var_list t = TIDENTIFIER TASSIGN exps = exp_list { (vars, Some t, exps) }
   ;
 
 var_list:
@@ -149,14 +143,15 @@ fct_args:
   | args = args_list { args }
 
 args_list:
-  | var = TIDENTIFIER t = types { [(var, Some t)] }
-  | vars = var_list t = types { List.map (fun x -> (x, Some t)) vars }
-  | vars = var_list t = types TCOMMA l = args_list
+  | var = TIDENTIFIER t = TIDENTIFIER { [(var, Some t)] }
+  | vars = var_list t = TIDENTIFIER { List.map (fun x -> (x, Some t)) vars }
+  | vars = var_list t = TIDENTIFIER TCOMMA l = args_list
     { List.append (List.map (fun x -> (x, Some t)) vars) l } //temporary
-  | var = TIDENTIFIER t = types TCOMMA l = args_list { (var, Some t)::l }
+  | var = TIDENTIFIER t = TIDENTIFIER TCOMMA l = args_list { (var, Some t)::l }
   ;
 
 stm_list:
+  | TOPENINGBRACE s = stm_list TCLOSINGBRACE { s }
   | s = stm l = stm_list { s::l }
   | s = stm { [s] }
   | { [] }
@@ -174,8 +169,8 @@ stm_list:
   | ColonEqual of (string * exp node) */
 
 stm:
-  | TPRINT TOPENINGPAR e = exp TCLOSINGPAR { { position = $symbolstartpos; value = Print e } }
-  | TPRINTLN TOPENINGPAR e = exp TCLOSINGPAR { { position = $symbolstartpos; value = Println e } }
+  | TPRINT TCLOSINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Print e } }
+  | TPRINTLN TCLOSINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Println e } }
   | var = TIDENTIFIER a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
   | TVAR d = var_decl { { position = $symbolstartpos; value =  Declaration d } }
   ;
@@ -193,10 +188,13 @@ assign_type:
   ;
 
 exp:
+  | TOPENINGPAR e = exp TCLOSINGPAR { e }
   | id = TIDENTIFIER { { position = $symbolstartpos; value = Id id } }
   | i = TINTVAL { { position = $symbolstartpos; value = Int i } }
   | f = TFLOATVAL { { position = $symbolstartpos; value = Float f } }
   | s = TSTRINGVAL { { position = $symbolstartpos; value = String s } }
+  | s = TRAWSTRVAL { { position = $symbolstartpos; value = RawStr s } }
+  | s = TRUNEVAL { { position = $symbolstartpos; value = Rune s } }
   | b = TBOOLVAL { { position = $symbolstartpos; value = Bool b } }
   | h = THEXVAL { { position = $symbolstartpos; value = Hex h } }
   | o = TOCTOVAL { { position = $symbolstartpos; value = Octal o } }

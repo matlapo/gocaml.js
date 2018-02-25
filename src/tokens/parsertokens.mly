@@ -11,6 +11,7 @@
 %token <float> TFLOATVAL
 %token <string> TSTRINGVAL
 %token <string> TRAWSTRVAL
+%token <string> TRUNEVAL
 %token <string> TOCTOVAL
 %token <string> THEXVAL
 %token TPLUS
@@ -127,6 +128,7 @@ value:
   | f = TFLOATVAL     { "TFLOATVAL(" ^ string_of_float f ^ ")" }
   | s = TSTRINGVAL    { "TSTRINGVAL(" ^ s ^ ")" }
   | s = TRAWSTRVAL    { "TRAWSTRVAL(" ^ s ^ ")" }
+  | r = TRUNEVAL      { "TRUNEVAL(" ^ r ^ ")" }
   | h = THEXVAL       { "THEXVAL(" ^ h ^ ")" }
   | o = TOCTOVAL      { "TOCTOVAL(" ^ o ^ ")" }
   | TPLUS             { "TPLUS" }
@@ -172,7 +174,7 @@ value:
   | TCLOSINGSQUARE    { "TCLOSINGSQUARE" }
   | TOPENINGBRACE     { "TOPENINGBRACE" }
   | TCLOSINGBRACE     { "TCLOSINGBRACE" }
-  | TOPENINGPAR   { "TOPENINGPAR" }
-  | TCLOSINGPAR   { "TCLOSINGPAR" }
+  | TOPENINGPAR       { "TOPENINGPAR" }
+  | TCLOSINGPAR       { "TCLOSINGPAR" }
   | id = TIDENTIFIER  { "TIDENTIFIER(" ^ id ^ ")" }
   ;

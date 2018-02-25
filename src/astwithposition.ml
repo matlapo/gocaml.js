@@ -4,6 +4,7 @@ type types =
     | IntT
     | FloatT
     | StringT
+    | RunesT
     | BoolT
     | HexT
     | OctalT
@@ -35,6 +36,8 @@ type exp =
     | Int of int
     | Float of float
     | String of string
+    | RawStr of string
+    | Rune of string
     | Bool of bool
     | Octal of string
     | Hex of string
@@ -58,11 +61,11 @@ and loop =
     | While of exp node * stmt list
     | For of exp node * exp node * exp node * stmt list
 and stmt =
-    | Print of exp node
-    | Println of exp node
+    | Print of exp node list
+    | Println of exp node list
     | Append of exp node * exp node
     | Assign of assign * (string * exp node)
-    | Declaration of (string list * types option * (exp node) list) list
+    | Declaration of (string list * string option * (exp node) list) list
     | If of exp node * (stmt node) list * (stmt node list) option
     | Loop of loop
     | LeftArrow of (string * string)
@@ -91,10 +94,10 @@ and stmt =
 
 type package = string
 
-type argument = (string * types option)
+type argument = (string * string option)
 
 type decl =
-    | Var of (string list * types option * (exp node) list) list
+    | Var of (string list * string option * (exp node) list) list
     | Type of (string * types)
     | Fct of (string * argument list * stmt node list)
 
