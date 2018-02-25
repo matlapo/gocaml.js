@@ -123,9 +123,23 @@ decl_type:
   | TVAR vars = var_decl { Var vars }
   | TFUNC name = TIDENTIFIER TOPENINGPAR args = fct_args TCLOSINGPAR TOPENINGBRACE body = stm_list TCLOSINGBRACE
     { Fct (name, args, body) }
-  | TTYPE name = TIDENTIFIER base = TIDENTIFIER { Type (name, TypeT base) }
-  | TTYPE name = TIDENTIFIER s = stuct_decl { Type (name, StructT s) }
+  /* | TTYPE name = TIDENTIFIER base = TIDENTIFIER { Type (name, TypeT base) } */
+  /* | TTYPE name = TIDENTIFIER s = stuct_decl { Type (name, StructT s) } */
+  | TTYPE t = type_decls { Type t }
   ;
+
+type_decls:
+  | t = type_format { [t] }
+  | TOPENINGPAR ts = type_formats TCLOSINGPAR { ts }
+
+type_formats:
+  | v1 = type_format v2 = type_formats { v1::v2 }
+  | v = type_format { [v] }
+  ;
+
+type_format:
+  | name = TIDENTIFIER base = TIDENTIFIER { (name, TypeT base) }
+  | name = TIDENTIFIER s = stuct_decl { (name, StructT s) }
 
 stuct_decl:
   | TSTRUCT TOPENINGBRACE v = var_list_list TCLOSINGBRACE { v }
@@ -156,6 +170,7 @@ var_list:
   | v1 = TIDENTIFIER TCOMMA v2 = var_list { v1::v2 }
   | v = TIDENTIFIER { [v] }
   ;
+
 
 exp_list:
   | e = exp TCOMMA l = exp_list { e::l }

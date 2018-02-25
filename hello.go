@@ -19,6 +19,16 @@ type point struct {
   y, y, y bool
 }
 
+type (
+  float float64
+
+  point struct {
+    x, y float64
+    x int
+    y, y, y bool
+  }
+)
+
 func main(x, y int, x float64, y int, x,y,t string) {
 
   var x, y string = 4, 6 - 5 + 6 * 8 / 7

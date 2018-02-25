@@ -101,7 +101,7 @@ type argument = (string * string option)
 
 type decl =
     | Var of (string list * string option * (exp node) list) list
-    | Type of (string * types) (* type new old OR type new struct { (string * string) list } *)
+    | Type of (string * types) list (* type new old OR type new struct { (string * string) list } *)
     | Fct of (string * argument list * stmt node list)
 
 type program = package * decl node list
