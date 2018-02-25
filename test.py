@@ -3,11 +3,11 @@ import sys
 import math
 from functools import reduce
 
-if os.system("ocamlbuild comp.native -use-ocamlfind") != 0:
+if os.system("ocamlbuild src/comp.native -use-ocamlfind") != 0:
     exit(1)
 print("COMPILATION: OK\n")
 
-TEST_DIR = "tests"
+TEST_DIR = "programs"
 
 modes = ['all', 'scanner', 'parser']
 
@@ -21,7 +21,7 @@ def successRate(results):
     return total / len(results)
 
 def checkfile(filename, expect_success):
-    out = os.system("./comp.native tokens " + filename)
+    out = os.system("./src/comp.native tokens " + filename)
     success = (expect_success and out == 0) or ((not expect_success) and out != 0)
     return (os.path.basename(filename), success, expect_success)
 
@@ -33,10 +33,10 @@ for mode in modes:
     invalidfiles = os.listdir(path=invalidpath)
     report[mode] = []
     for file in validfiles:
-        if file.endswith('.min'):
+        if file.endswith('.go'):
             report[mode].append(checkfile(validpath + "/" + file, True))
     for file in invalidfiles:
-        if file.endswith('.min'):
+        if file.endswith('.go'):
             report[mode].append(checkfile(invalidpath + "/" + file, False))
 
 print()
@@ -56,7 +56,7 @@ for mode in modes:
             if result[1]:
                 print(result[0] + ": GOOD")
             else:
-                print(result[0] + ": FAIL 💔 (expected " + ("success" if result[2] else "failure") + ")")
+                print(result[0] + ": FAIL (expected " + ("success" if result[2] else "failure") + ")")
     else:
         print("No tests found.")
     print("")
