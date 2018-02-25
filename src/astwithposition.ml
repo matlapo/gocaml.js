@@ -43,6 +43,7 @@ type exp =
     | Hex of string
     | BinaryOp of binary * (exp node * exp node)
     | Unaryexp of unary * exp node
+    | FuncCall of exp node list (* can also represent a typecast operation *)
 
 type assign =
     | Regular
@@ -66,7 +67,7 @@ and stmt =
     | Append of exp node * exp node
     | Assign of assign * (string * exp node)
     | Declaration of (string list * string option * (exp node) list) list
-    | If of exp node * (stmt node) list * (stmt node list) option
+    | If of exp node option * (stmt node) list * (stmt node list) option
     | Loop of loop
     | LeftArrow of (string * string)
     | DoublePlus of string
@@ -86,7 +87,7 @@ and stmt =
     | Iface
     | Map
     | Range
-    | Return of exp node
+    | Return of exp node option
     | Select
     | Struct
     | Switch of case list

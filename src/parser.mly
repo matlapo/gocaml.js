@@ -173,6 +173,16 @@ stm:
   | TPRINTLN TCLOSINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Println e } }
   | var = TIDENTIFIER a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
   | TVAR d = var_decl { { position = $symbolstartpos; value =  Declaration d } }
+  | TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
+    { { position = $symbolstartpos; value =  If (Some cond, s, Some l) } }
+  ;
+
+else_ifs:
+  | TELSE TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
+    { [{ position = $symbolstartpos; value = If (Some cond, s, Some l) }] }
+  | TELSE TOPENINGBRACE s = stm_list TCLOSINGBRACE
+    { [{ position = $symbolstartpos; value = If (None, s, None) }] }
+  | { [] }
   ;
 
 assign_type:
@@ -189,6 +199,7 @@ assign_type:
 
 exp:
   | TOPENINGPAR e = exp TCLOSINGPAR { e }
+  | TIDENTIFIER TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = FuncCall e } }
   | id = TIDENTIFIER { { position = $symbolstartpos; value = Id id } }
   | i = TINTVAL { { position = $symbolstartpos; value = Int i } }
   | f = TFLOATVAL { { position = $symbolstartpos; value = Float f } }
