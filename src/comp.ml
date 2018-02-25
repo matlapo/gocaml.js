@@ -36,7 +36,8 @@ let tokens input =
 let parse input =
   let lexer_buffer = Lexing.from_channel input in
   try
-    let _ = Parser.prog Lexer.read lexer_buffer in
+    let ast = Parser.prog Lexer.read lexer_buffer in
+      Pretty.pretty_print ast;
       print_string "OK\n";
       exit 0;
   with
