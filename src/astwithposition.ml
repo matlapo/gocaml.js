@@ -36,6 +36,8 @@ type exp =
     | Int of int
     | Float of float
     | String of string
+    | RawStr of string
+    | Rune of string
     | Bool of bool
     | Octal of string
     | Hex of string

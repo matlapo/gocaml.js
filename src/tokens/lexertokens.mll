@@ -59,8 +59,9 @@ let intval       = '0' | ['1'-'9'] digit*
 let octoval      = '0' digit*
 let hexval       = '0''x' (digit | ['a'-'f'])*
 let floatval     = intval '.' digit+ | '.' digit+ | digit+ '.'
-let stringval    = '"' (ws | ['a'-'z''A'-'Z''0'-'9''~''@''#''$''%''^''&''*''-''+''/''\'''`''<''>''=''|''\'''.'','';'':''!''?''{''}''['']''('')'] | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | "\\'" | "\\\"" | "\\\\" )* '"'
-let rawstrval    = ''' [^'\'']* '''
+let stringval    = '"' (ws | ['a'-'z''A'-'Z''0'-'9''~''@''#''$''%''^''&''*''-''+''/''\'''`''<''>''=''|''\'''.'','';'':''!''?''{''}''['']''('')'] | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | "\\'" | "\\\"" | "\\\\")* '"'
+let runeval      = ''' (ws | ['a'-'z''A'-'Z''0'-'9''~''@''#''$''%''^''&''*''-''+''/''`''<''>''=''|''.'','';'':''!''?''{''}''['']''('')'] | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | "\\'" | "\\\\") '''
+let rawstrval    = '`' [^'`']* '`'
 
 (* operations *)
 let plus      = "+"
@@ -107,8 +108,8 @@ let semicolon = ";"
 let comma     = ","
 let period    = "."
 let dots      = "..."
-let obracket  = "{"
-let cbracket  = "}"
+let opar  = "{"
+let cpar  = "}"
 let oparent   = "("
 let cparent   = ")"
 let osquare   = "["
@@ -151,6 +152,7 @@ rule read =
   | floatval  { TFLOATVAL (float_of_string (Lexing.lexeme lexbuf)) }
   | stringval { TSTRINGVAL (Lexing.lexeme lexbuf) }
   | rawstrval { TRAWSTRVAL (Lexing.lexeme lexbuf) }
+  | runeval   { TRUNEVAL (Lexing.lexeme lexbuf) }
   | hexval    { THEXVAL (Lexing.lexeme lexbuf) }
   | octoval   { TOCTOVAL (Lexing.lexeme lexbuf) }
   | plus      { TPLUS }
@@ -194,10 +196,10 @@ rule read =
   | dots      { TDOTS }
   | osquare   { TOPENINGSQUARE }
   | csquare   { TCLOSINGSQUARE }
-  | obracket  { TOPENINGBRACE }
-  | cbracket  { TCLOSINGBRACE }
-  | oparent   { TOPENINGBRACKET }
-  | cparent   { TCLOSINGBRACKET }
+  | opar      { TOPENINGBRACE }
+  | cpar      { TCLOSINGBRACE }
+  | oparent   { TOPENINGPAR }
+  | cparent   { TCLOSINGPAR }
   | ident     { TIDENTIFIER (Lexing.lexeme lexbuf) }
   | comment   { next_line lexbuf; read lexbuf }
   | mcomment  { next_line lexbuf; read lexbuf }

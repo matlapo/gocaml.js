@@ -12,6 +12,7 @@
 %token <float> TFLOATVAL
 %token <string> TSTRINGVAL
 %token <string> TRAWSTRVAL
+%token <string> TRUNEVAL
 %token <bool> TBOOLVAL
 %token <string> TOCTOVAL
 %token <string> THEXVAL
@@ -56,8 +57,8 @@
 %token TDOTS
 %token TOPENINGBRACE
 %token TCLOSINGBRACE
-%token TOPENINGBRACKET
-%token TCLOSINGBRACKET
+%token TOPENINGPAR
+%token TCLOSINGPAR
 %token TOPENINGSQUARE
 %token TCLOSINGSQUARE
 %token EOF
@@ -107,13 +108,13 @@ decl_node:
 
 decl_type:
   | TVAR vars = var_decl { Var vars }
-  | TFUNC name = TIDENTIFIER TOPENINGBRACKET args = fct_args TCLOSINGBRACKET TOPENINGBRACE body = stm_list TCLOSINGBRACE
+  | TFUNC name = TIDENTIFIER TOPENINGPAR args = fct_args TCLOSINGPAR TOPENINGBRACE body = stm_list TCLOSINGBRACE
     { Fct (name, args, body) }
   ;
 
 var_decl:
   | d = var_format { [d] }
-  | TOPENINGBRACKET ds = var_formats TCLOSINGBRACKET { ds }
+  | TOPENINGPAR ds = var_formats TCLOSINGPAR { ds }
   ;
 
 var_formats:
@@ -168,8 +169,8 @@ stm_list:
   | ColonEqual of (string * exp node) */
 
 stm:
-  | TPRINT TOPENINGBRACKET e = exp_list TCLOSINGBRACKET { { position = $symbolstartpos; value = Print e } }
-  | TPRINTLN TOPENINGBRACKET e = exp_list TCLOSINGBRACKET { { position = $symbolstartpos; value = Println e } }
+  | TPRINT TCLOSINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Print e } }
+  | TPRINTLN TCLOSINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Println e } }
   | var = TIDENTIFIER a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
   | TVAR d = var_decl { { position = $symbolstartpos; value =  Declaration d } }
   | TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
@@ -197,12 +198,14 @@ assign_type:
   ;
 
 exp:
-  | TOPENINGBRACKET e = exp TCLOSINGBRACKET { e }
-  | TIDENTIFIER TOPENINGBRACKET e = exp_list TCLOSINGBRACKET { { position = $symbolstartpos; value = FuncCall e } }
+  | TOPENINGPAR e = exp TCLOSINGPAR { e }
+  | TIDENTIFIER TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = FuncCall e } }
   | id = TIDENTIFIER { { position = $symbolstartpos; value = Id id } }
   | i = TINTVAL { { position = $symbolstartpos; value = Int i } }
   | f = TFLOATVAL { { position = $symbolstartpos; value = Float f } }
   | s = TSTRINGVAL { { position = $symbolstartpos; value = String s } }
+  | s = TRAWSTRVAL { { position = $symbolstartpos; value = RawStr s } }
+  | s = TRUNEVAL { { position = $symbolstartpos; value = Rune s } }
   | b = TBOOLVAL { { position = $symbolstartpos; value = Bool b } }
   | h = THEXVAL { { position = $symbolstartpos; value = Hex h } }
   | o = TOCTOVAL { { position = $symbolstartpos; value = Octal o } }
