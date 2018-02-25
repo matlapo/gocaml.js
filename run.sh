@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 #
 # Usage: ./run.sh <mode> <file>
 # 	mode: scan|tokens|parse|pretty|symbol|typecheck|codegen

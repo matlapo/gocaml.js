@@ -69,6 +69,7 @@ let minus     = "-"
 let times     = "*"
 let div       = "/"
 let not       = "!"
+let caret     = "^"
 let percent   = "%"
 let dequal    = "=="
 let sequal    = "="
@@ -102,14 +103,14 @@ let wtf       = "&ˆ="
 
 (* others *)
 let comment   = "//" [^'\n']* nl?
-let mcomment  = "/*" [^'\n']* "*/"
+let mcomment  = "/*" _* "*/"
 let colon     = ":"
 let semicolon = ";"
 let comma     = ","
 let period    = "."
 let dots      = "..."
-let opar  = "{"
-let cpar  = "}"
+let opar      = "{"
+let cpar      = "}"
 let oparent   = "("
 let cparent   = ")"
 let osquare   = "["
@@ -118,6 +119,8 @@ let csquare   = "]"
 
 rule read =
   parse
+  | comment   { next_line lexbuf; read lexbuf }
+  | mcomment  { next_line lexbuf; read lexbuf }
   | ws        { read lexbuf }
   | nl        { next_line lexbuf; read lexbuf }
   | print     { TPRINT }
@@ -160,6 +163,8 @@ rule read =
   | times     { TTIMES }
   | div       { TDIV }
   | not       { TNOT }
+  | percent   { TMOD }
+  | caret     { TCARET }
   | dequal    { TEQUALS }
   | sequal    { TASSIGN }
   | nequal    { TNOTEQUAL }
@@ -201,7 +206,5 @@ rule read =
   | oparent   { TOPENINGPAR }
   | cparent   { TCLOSINGPAR }
   | ident     { TIDENTIFIER (Lexing.lexeme lexbuf) }
-  | comment   { next_line lexbuf; read lexbuf }
-  | mcomment  { next_line lexbuf; read lexbuf }
   | eof       { EOF }
   | _         { raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf)) }

@@ -16,6 +16,7 @@ type binary =
     | Minus
     | Times
     | Div
+    | Mod
     | Equals
     | NotEquals
     | And
@@ -26,10 +27,16 @@ type binary =
     | GreaterEq
     | DGreater
     | DSmaller
+    | AndHat
+    | BAnd
+    | BOr
+    | Caret
 
 type unary =
     | Not
     | UMinus
+    | UPlus
+    | UCaret
 
 type exp =
     | Id of string

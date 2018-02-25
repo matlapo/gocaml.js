@@ -18,9 +18,14 @@
 %token <string> TOCTOVAL
 %token <string> THEXVAL
 %token TPLUS
+%token TUPLUS
 %token TMINUS
+%token TUMINUS
 %token TTIMES
 %token TDIV
+%token TMOD
+%token TCARET
+%token TUCARET
 %token TEQUALS
 %token TNOT
 %token TASSIGN
@@ -85,6 +90,13 @@
 %token TSTRUCT
 %token TSWITCH
 %token TTYPE
+
+%left TOR
+%left TAND
+%left TEQUALS TNOTEQUAL TSMALLER TSMALLEREQ TGREATER TGREATEREQ
+%left TPLUS TMINUS TBITOR TCARET
+%left TTIMES TDIV TMOD TDSMALLER TDGREATER TBITAND TANDHAT
+%left TUPLUS TUMINUS TNOT TUCARET
 
 %start <Astwithposition.program> prog
 %%
@@ -224,6 +236,8 @@ exp:
     { { position = $symbolstartpos; value = BinaryOp (Times, (e1, e2)) } }
   | e1 = exp TDIV e2 = exp
     { { position = $symbolstartpos; value = BinaryOp (Div, (e1, e2)) } }
+  | e1 = exp TMOD e2 = exp
+    { { position = $symbolstartpos; value = BinaryOp (Mod, (e1, e2)) } }
   | e1 = exp TEQUALS e2 = exp
     { { position = $symbolstartpos; value = BinaryOp (Equals, (e1, e2)) } }
   | e1 = exp TNOTEQUAL e2 = exp
@@ -244,8 +258,20 @@ exp:
     { { position = $symbolstartpos; value = BinaryOp (DSmaller, (e1, e2)) } }
   | e1 = exp TDGREATER e2 = exp
     { { position = $symbolstartpos; value = BinaryOp (DGreater, (e1, e2)) } }
-  | TMINUS e = exp
-    { { position = $symbolstartpos; value = Unaryexp (UMinus, e) } }
+  | e1 = exp TANDHAT e2 = exp
+    { { position = $symbolstartpos; value = BinaryOp (AndHat, (e1, e2)) } }
+  | e1 = exp TCARET e2 = exp
+    { { position = $symbolstartpos; value = BinaryOp (Caret, (e1, e2)) } }
+  | e1 = exp TBITAND e2 = exp
+    { { position = $symbolstartpos; value = BinaryOp (BAnd, (e1, e2)) } }
+  | e1 = exp TBITOR e2 = exp
+    { { position = $symbolstartpos; value = BinaryOp (BOr, (e1, e2)) } }
   | TNOT e = exp
     { { position = $symbolstartpos; value = Unaryexp (Not, e) } }
+  | TPLUS e = exp
+    { { position = $symbolstartpos; value = Unaryexp (UPlus, e) } } %prec TUPLUS
+  | TMINUS e = exp
+    { { position = $symbolstartpos; value = Unaryexp (UMinus, e) } } %prec TUMINUS
+  | TCARET e = exp
+    { { position = $symbolstartpos; value = Unaryexp (UCaret, e) } } %prec TUCARET
   ;
