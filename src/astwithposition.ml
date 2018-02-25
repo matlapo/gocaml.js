@@ -1,15 +1,8 @@
 type 'a node = {position: Lexing.position; value: 'a}
 
 type types =
-    | IntT
-    | FloatT
-    | StringT
-    | RunesT
-    | BoolT
-    | HexT
-    | OctalT
-    | StructT of struct_item list
-and struct_item = (string * types)
+    | TypeT of string
+    | StructT of (string list * string) list (* var name * type *)
 
 type binary =
     | Plus
@@ -62,6 +55,8 @@ type assign =
     | OrEqual
     | HatEqual
     | PercentEqual
+    | DoublePlus
+    | DoubleMinus
 
 type case = exp node * stmt list
 
@@ -106,7 +101,7 @@ type argument = (string * string option)
 
 type decl =
     | Var of (string list * string option * (exp node) list) list
-    | Type of (string * types)
+    | Type of (string * types) (* type new old OR type new struct { (string * string) list } *)
     | Fct of (string * argument list * stmt node list)
 
 type program = package * decl node list

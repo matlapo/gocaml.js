@@ -11,15 +11,24 @@ var (
   y = 01237
 )
 
+type float float64
+
+type point struct {
+  x, y float64
+  x int
+  y, y, y bool
+}
+
 func main(x, y int, x float64, y int, x,y,t string) {
 
   var x, y string = 4, 6 - 5 + 6 * 8 / 7
   var x1, x2 = 5 && 7, 6 || "hello" , 7
 
   if (4 == 4) {
-
+    a++
+    b--
   } else if 5 + 5 {
-    print (3+4)
+    //print (3+4)
   }
   else {
     y -= 5

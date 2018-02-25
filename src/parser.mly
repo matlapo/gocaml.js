@@ -123,6 +123,17 @@ decl_type:
   | TVAR vars = var_decl { Var vars }
   | TFUNC name = TIDENTIFIER TOPENINGPAR args = fct_args TCLOSINGPAR TOPENINGBRACE body = stm_list TCLOSINGBRACE
     { Fct (name, args, body) }
+  | TTYPE name = TIDENTIFIER base = TIDENTIFIER { Type (name, TypeT base) }
+  | TTYPE name = TIDENTIFIER s = stuct_decl { Type (name, StructT s) }
+  ;
+
+stuct_decl:
+  | TSTRUCT TOPENINGBRACE v = var_list_list TCLOSINGBRACE { v }
+  ;
+
+var_list_list:
+  | v1 = var_list t = TIDENTIFIER v2 = var_list_list { (v1, t)::v2 }
+  | v = var_list t = TIDENTIFIER { [(v, t)] }
   ;
 
 var_decl:
@@ -182,8 +193,8 @@ stm_list:
   | ColonEqual of (string * exp node) */
 
 stm:
-  | TPRINT TCLOSINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Print e } }
-  | TPRINTLN TCLOSINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Println e } }
+  | TPRINT TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Print e } }
+  | TPRINTLN TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Println e } }
   | var = TIDENTIFIER a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
   | TVAR d = var_decl { { position = $symbolstartpos; value =  Declaration d } }
   | TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
@@ -194,6 +205,8 @@ stm:
     { { position = $symbolstartpos; value = Loop (While (None, s)) } }
   | TFOR init = stm TSEMICOLON cond = exp TSEMICOLON inc = stm TOPENINGBRACE s = stm_list TCLOSINGBRACE
     { { position = $symbolstartpos; value = Loop (For (init, cond, inc, s)) } }
+  | var = TIDENTIFIER TDPLUS { { position = $symbolstartpos; value = DoublePlus var } }
+  | var = TIDENTIFIER TDMINUS { { position = $symbolstartpos; value = DoubleMinus var } }
   ;
 
 else_ifs:
