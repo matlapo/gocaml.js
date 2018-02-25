@@ -102,7 +102,7 @@ let wtf       = "&ˆ="
 
 (* others *)
 let comment   = "//" [^'\n']* nl?
-let mcomment  = "/*" [^'\n']* "*/"
+let mcomment  = "/*" _* "*/"
 let colon     = ":"
 let semicolon = ";"
 let comma     = ","
@@ -118,6 +118,8 @@ let csquare   = "]"
 
 rule read =
   parse
+  | comment   { next_line lexbuf; read lexbuf }
+  | mcomment  { next_line lexbuf; read lexbuf }
   | ws        { read lexbuf }
   | nl        { next_line lexbuf; read lexbuf }
   | print     { TPRINT }
@@ -201,7 +203,5 @@ rule read =
   | oparent   { TOPENINGPAR }
   | cparent   { TCLOSINGPAR }
   | ident     { TIDENTIFIER (Lexing.lexeme lexbuf) }
-  | comment   { next_line lexbuf; read lexbuf }
-  | mcomment  { next_line lexbuf; read lexbuf }
   | eof       { EOF }
   | _         { raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf)) }
