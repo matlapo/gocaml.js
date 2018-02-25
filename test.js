@@ -24,7 +24,7 @@ testDirectory('programs/parser', async (pathString) => {
     expect(result.status).toBe(1);
 });
 
-testDirectory('programs/parser', async (pathString) => {
+testDirectory('programs/scanner', async (pathString) => {
     const result = spawnSync('./run.sh', ['scan', pathString]);
     const output = result.output.join('');
 
