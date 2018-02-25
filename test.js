@@ -25,11 +25,11 @@ testDirectory('programs/parser', async (pathString) => {
 });
 
 function testDirectory(pathString, testFunction) {
-    describe(pathString, () => {
+    describe(path.basename(pathString), () => {
         for (const file of fs.readdirSync(pathString)) {
             const subPath = pathString + path.sep + file;
             if (isDir(subPath)) {
-                testDirectory(path.basename(subPath), testFunction);
+                testDirectory(subPath, testFunction);
             } else {
                 it(path.basename(subPath), testFunction.bind(this, subPath));
             }
