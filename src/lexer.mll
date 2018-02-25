@@ -69,6 +69,7 @@ let minus     = "-"
 let times     = "*"
 let div       = "/"
 let not       = "!"
+let caret     = "^"
 let percent   = "%"
 let dequal    = "=="
 let sequal    = "="
@@ -108,8 +109,8 @@ let semicolon = ";"
 let comma     = ","
 let period    = "."
 let dots      = "..."
-let opar  = "{"
-let cpar  = "}"
+let opar      = "{"
+let cpar      = "}"
 let oparent   = "("
 let cparent   = ")"
 let osquare   = "["
@@ -162,6 +163,8 @@ rule read =
   | times     { TTIMES }
   | div       { TDIV }
   | not       { TNOT }
+  | percent   { TMOD }
+  | caret     { TCARET }
   | dequal    { TEQUALS }
   | sequal    { TASSIGN }
   | nequal    { TNOTEQUAL }

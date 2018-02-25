@@ -20,6 +20,8 @@
 %token TMINUS
 %token TTIMES
 %token TDIV
+%token TMOD
+%token TCARET
 %token TEQUALS
 %token TNOT
 %token TASSIGN
@@ -217,6 +219,8 @@ exp:
     { { position = $symbolstartpos; value = BinaryOp (Times, (e1, e2)) } }
   | e1 = exp TDIV e2 = exp
     { { position = $symbolstartpos; value = BinaryOp (Div, (e1, e2)) } }
+  | e1 = exp TMOD e2 = exp
+    { { position = $symbolstartpos; value = BinaryOp (Mod, (e1, e2)) } }
   | e1 = exp TEQUALS e2 = exp
     { { position = $symbolstartpos; value = BinaryOp (Equals, (e1, e2)) } }
   | e1 = exp TNOTEQUAL e2 = exp

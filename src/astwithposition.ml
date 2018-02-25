@@ -16,6 +16,7 @@ type binary =
     | Minus
     | Times
     | Div
+    | Mod
     | Equals
     | NotEquals
     | And
@@ -26,6 +27,7 @@ type binary =
     | GreaterEq
     | DGreater
     | DSmaller
+    | Caret
 
 type unary =
     | Not

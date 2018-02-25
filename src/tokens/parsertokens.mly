@@ -18,6 +18,8 @@
 %token TMINUS
 %token TTIMES
 %token TDIV
+%token TMOD
+%token TCARET
 %token TEQUALS
 %token TNOT
 %token TASSIGN
@@ -135,6 +137,8 @@ value:
   | TMINUS            { "TMINUS" }
   | TTIMES            { "TTIMES" }
   | TDIV              { "TDIV" }
+  | TMOD              { "TMOD" }
+  | TCARET            { "TCARET" }
   | TNOT              { "TNOT" }
   | TEQUALS           { "TEQUALS" }
   | TASSIGN           { "TASSIGN" }
