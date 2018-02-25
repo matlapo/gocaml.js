@@ -1,5 +1,6 @@
 %{
   open Astwithposition
+  open Utils
 %}
 %token TVAR
 %token TIF
@@ -175,6 +176,12 @@ stm:
   | TVAR d = var_decl { { position = $symbolstartpos; value =  Declaration d } }
   | TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
     { { position = $symbolstartpos; value =  If (Some cond, s, Some l) } }
+  | TFOR cond = exp TCLOSINGBRACE s = stm_list TCLOSINGBRACE
+    { { position = $symbolstartpos; value = Loop (While (Some cond, s)) } }
+  | TFOR TOPENINGBRACE s = stm_list TCLOSINGBRACE
+    { { position = $symbolstartpos; value = Loop (While (None, s)) } }
+  | TFOR init = stm TSEMICOLON cond = exp TSEMICOLON inc = stm TOPENINGBRACE s = stm_list TCLOSINGBRACE
+    { { position = $symbolstartpos; value = Loop (For (init, cond, inc, s)) } }
   ;
 
 else_ifs:

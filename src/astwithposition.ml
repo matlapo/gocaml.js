@@ -59,8 +59,8 @@ type assign =
 type case = exp node * stmt list
 
 and loop =
-    | While of exp node * stmt list
-    | For of exp node * exp node * exp node * stmt list
+    | While of exp node option * stmt node list
+    | For of stmt node * exp node * stmt node * stmt node list
 and stmt =
     | Print of exp node list
     | Println of exp node list
