@@ -24,6 +24,14 @@ testDirectory('programs/parser', async (pathString) => {
     expect(result.status).toBe(1);
 });
 
+testDirectory('programs/parser', async (pathString) => {
+    const result = spawnSync('./run.sh', ['scan', pathString]);
+    const output = result.output.join('');
+
+    expect(output).toMatch(/Error/);
+    expect(result.status).toBe(1);
+});
+
 function testDirectory(pathString, testFunction) {
     describe(path.basename(pathString), () => {
         for (const file of fs.readdirSync(pathString)) {
