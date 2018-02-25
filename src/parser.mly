@@ -120,14 +120,60 @@ decl_node:
   ;
 
 decl_type:
-  | TVAR vars = var_decl { Var vars }
+  | TVAR vars = var_decls { Var vars }
   | TFUNC name = TIDENTIFIER TOPENINGPAR args = fct_args TCLOSINGPAR TOPENINGBRACE body = stm_list TCLOSINGBRACE
     { Fct (name, args, body) }
-  /* | TTYPE name = TIDENTIFIER base = TIDENTIFIER { Type (name, TypeT base) } */
-  /* | TTYPE name = TIDENTIFIER s = stuct_decl { Type (name, StructT s) } */
   | TTYPE t = type_decls { Type t }
   ;
 
+//rules for variable declarations
+var_decls:
+  | d = var_format { [d] }
+  | TOPENINGPAR ds = var_formats TCLOSINGPAR { ds }
+  ;
+
+var_formats:
+  | v1 = var_format v2 = var_formats { v1::v2 }
+  | v = var_format { [v] }
+  ;
+
+var_format:
+  | vars = var_list t = TIDENTIFIER { (vars, Some t, []) }
+  | vars = var_list TASSIGN exps = exp_list { (vars, None, exps) }
+  | vars = var_list t = TIDENTIFIER TASSIGN exps = exp_list { (vars, Some t, exps) }
+  ;
+
+var_list:
+  | v1 = TIDENTIFIER TCOMMA v2 = var_list { v1::v2 }
+  | v = TIDENTIFIER { [v] }
+  ;
+
+exp_list:
+  | e = exp TCOMMA l = exp_list { e::l }
+  | e = exp { [e] }
+  ;
+
+//rules for function declarations
+fct_args:
+  | { [] }
+  | args = args_list { args }
+
+args_list:
+  | var = TIDENTIFIER t = TIDENTIFIER { [(var, Some t)] }
+  | vars = var_list t = TIDENTIFIER { List.map (fun x -> (x, Some t)) vars }
+  | vars = var_list t = TIDENTIFIER TCOMMA l = args_list
+    { List.append (List.map (fun x -> (x, Some t)) vars) l } //temporary
+  | var = TIDENTIFIER t = TIDENTIFIER TCOMMA l = args_list { (var, Some t)::l }
+  ;
+
+stm_list:
+  | TOPENINGBRACE s = stm_list TCLOSINGBRACE { s }
+  | s = stm l = stm_list { s::l }
+  | s = stm { [s] }
+  | { [] }
+  ;
+
+//rules for type declarations
 type_decls:
   | t = type_format { [t] }
   | TOPENINGPAR ts = type_formats TCLOSINGPAR { ts }
@@ -150,68 +196,12 @@ var_list_list:
   | v = var_list t = TIDENTIFIER { [(v, t)] }
   ;
 
-var_decl:
-  | d = var_format { [d] }
-  | TOPENINGPAR ds = var_formats TCLOSINGPAR { ds }
-  ;
-
-var_formats:
-  | v1 = var_format v2 = var_formats { v1::v2 }
-  | v = var_format { [v] }
-  ;
-
-var_format:
-  | vars = var_list t = TIDENTIFIER { (vars, Some t, []) }
-  | vars = var_list TASSIGN exps = exp_list { (vars, None, exps) }
-  | vars = var_list t = TIDENTIFIER TASSIGN exps = exp_list { (vars, Some t, exps) }
-  ;
-
-var_list:
-  | v1 = TIDENTIFIER TCOMMA v2 = var_list { v1::v2 }
-  | v = TIDENTIFIER { [v] }
-  ;
-
-
-exp_list:
-  | e = exp TCOMMA l = exp_list { e::l }
-  | e = exp { [e] }
-  ;
-
-fct_args:
-  | { [] }
-  | args = args_list { args }
-
-args_list:
-  | var = TIDENTIFIER t = TIDENTIFIER { [(var, Some t)] }
-  | vars = var_list t = TIDENTIFIER { List.map (fun x -> (x, Some t)) vars }
-  | vars = var_list t = TIDENTIFIER TCOMMA l = args_list
-    { List.append (List.map (fun x -> (x, Some t)) vars) l } //temporary
-  | var = TIDENTIFIER t = TIDENTIFIER TCOMMA l = args_list { (var, Some t)::l }
-  ;
-
-stm_list:
-  | TOPENINGBRACE s = stm_list TCLOSINGBRACE { s }
-  | s = stm l = stm_list { s::l }
-  | s = stm { [s] }
-  | { [] }
-  ;
-
-  /* | Println of exp node
-  | Append of exp node * exp node
-  | Assign of assign * (string * exp node)
-  | Declaration of (string list * types option * (exp node) list) list
-  | If of exp node * (stmt node) list * (stmt node list) option
-  | Loop of loop
-  | LeftArrow of (string * string)
-  | DoublePlus of string
-  | DoubleMinus of string
-  | ColonEqual of (string * exp node) */
-
+//rules for statements and expressions
 stm:
   | TPRINT TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Print e } }
   | TPRINTLN TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Println e } }
   | var = TIDENTIFIER a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
-  | TVAR d = var_decl { { position = $symbolstartpos; value =  Declaration d } }
+  | TVAR d = var_decls { { position = $symbolstartpos; value =  Declaration d } }
   | TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
     { { position = $symbolstartpos; value =  If (Some cond, s, Some l) } }
   | TFOR cond = exp TCLOSINGBRACE s = stm_list TCLOSINGBRACE
