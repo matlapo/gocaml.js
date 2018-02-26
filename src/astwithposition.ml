@@ -79,7 +79,8 @@ and stmt =
     | LeftArrow of (string * string)
     | DoublePlus of string
     | DoubleMinus of string
-    | ShortDeclaration of (string list * (exp node) list) 
+    | ShortDeclaration of (string list * (exp node) list)
+    | ExpStatement of exp node
     | Break
     | Chan
     | Const

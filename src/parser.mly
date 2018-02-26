@@ -233,6 +233,7 @@ stm:
     { { position = $symbolstartpos; value = Loop (For (init, cond, inc, s)) } }
   | var = TIDENTIFIER TDPLUS { { position = $symbolstartpos; value = DoublePlus var } }
   | var = TIDENTIFIER TDMINUS { { position = $symbolstartpos; value = DoubleMinus var } }
+  | e = exp { { position = $symbolstartpos; value = ExpStatement e } }
   ;
 
 kind:
