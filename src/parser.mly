@@ -298,6 +298,8 @@ exp:
     { { position = $symbolstartpos; value = BinaryOp (BAnd, (e1, e2)) } }
   | e1 = exp TBITOR e2 = exp
     { { position = $symbolstartpos; value = BinaryOp (BOr, (e1, e2)) } }
+  | e1 = exp TAPPEND e2 = exp
+    { { position = $symbolstartpos; value = BinaryOp (Append, (e1, e2)) } }
   | TNOT e = exp
     { { position = $symbolstartpos; value = Unaryexp (Not, e) } }
   | TPLUS e = exp

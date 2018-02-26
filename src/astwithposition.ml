@@ -24,6 +24,7 @@ type binary =
     | BAnd
     | BOr
     | Caret
+    | Append
 
 type unary =
     | Not
@@ -65,7 +66,6 @@ and loop =
 and stmt =
     | Print of exp node list
     | Println of exp node list
-    | Append of exp node * exp node
     | Assign of assign * (string * exp node)
     | Declaration of (string list * string option * (exp node) list) list
     | If of exp node option * (stmt node) list * (stmt node list) option
