@@ -74,6 +74,7 @@ let () =
     else if mode = "tokens" then tokens input_file
     else if mode = "parse" then parse input_file
     else if mode = "pretty" then pretty input_file
+    else if mode = "typecheck" then parse input_file
     else printf "%s is not a valid compiler mode\n" mode; exit 1;
   else
     print_string "You must pass two argument: scan|tokens <source file path>\n";
