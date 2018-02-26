@@ -1,0 +1,33 @@
+[submodule "programs/extra/past-teams/DDoS"]
+	path = programs/extra/past-teams/DDoS
+	url = https://github.com/DDoS/Golite.git
+[submodule "programs/extra/past-teams/yiqiaowang"]
+	path = programs/extra/past-teams/yiqiaowang
+	url = https://github.com/yiqiaowang/goLite.git
+[submodule "programs/extra/past-teams/ossamaAhmed"]
+	path = programs/extra/past-teams/ossamaAhmed
+	url = https://github.com/ossamaAhmed/GoLite-compiler.git
+[submodule "programs/extra/past-teams/rohanjr"]
+	path = programs/extra/past-teams/rohanjr
+	url = https://github.com/rohanjr/golite-compiler.git
+[submodule "programs/extra/past-teams/tsani"]
+	path = programs/extra/past-teams/tsani
+	url = https://github.com/tsani/goto.git
+[submodule "programs/extra/past-teams/hardik-vala"]
+	path = programs/extra/past-teams/hardik-vala
+	url = https://github.com/hardik-vala/gopy.git
+[submodule "programs/extra/past-teams/EthanMacdonald"]
+	path = programs/extra/past-teams/EthanMacdonald
+	url = https://github.com/EthanMacdonald/Compylor.git
+[submodule "programs/extra/past-teams/dingkyu9315"]
+	path = programs/extra/past-teams/dingkyu9315
+	url = https://github.com/dongkyu9315/GoLiteCppCompiler.git
+[submodule "programs/extra/past-teams/newphew92"]
+	path = programs/extra/past-teams/newphew92
+	url = https://github.com/newphew92/GOcaml.git
+[submodule "programs/extra/past-teams/erincallow"]
+	path = programs/extra/past-teams/erincallow
+	url = https://github.com/erincallow/GoCompiler.git
+[submodule "programs/extra/past-teams/xldenis"]
+	path = programs/extra/past-teams/xldenis
+	url = https://github.com/xldenis/MGC.git
