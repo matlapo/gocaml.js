@@ -70,18 +70,18 @@ type simpleStm =
     | DoublePlus of string
     | DoubleMinus of string
     | ShortDeclaration of (string list * (exp node) list)
-    | Empty 
+    | Empty
 
 type case = exp node * stmt list
 and loop =
     | While of exp node option * stmt node list
-    | For of stmt node * exp node * stmt node * stmt node list
+    | For of simpleStm node * exp node * simpleStm node * stmt node list
 and stmt =
     | Print of exp node list
     | Println of exp node list
     | Declaration of (string list * string option * (exp node) list) list
     | TypeDeclaration of (string * types) list
-    | If of simpleStm option * exp node option * (stmt node) list * (stmt node list) option
+    | If of (simpleStm node) option * exp node option * (stmt node) list * (stmt node list) option
     | Loop of loop
     | LeftArrow of (string * string)
     | Break
@@ -103,7 +103,7 @@ and stmt =
     | Struct
     | Switch of case list
     | Type
-    | Simple of simpleStm
+    | Simple of simpleStm node
 
 type package = string
 

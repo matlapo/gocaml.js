@@ -229,7 +229,7 @@ stm:
     { { position = $symbolstartpos; value = Loop (While (Some cond, s)) } }
   | TFOR TOPENINGBRACE s = stm_list TCLOSINGBRACE
     { { position = $symbolstartpos; value = Loop (While (None, s)) } }
-  | TFOR init = stm TSEMICOLON cond = exp TSEMICOLON inc = stm TOPENINGBRACE s = stm_list TCLOSINGBRACE
+  | TFOR init = simpleStm TSEMICOLON cond = exp TSEMICOLON inc = simpleStm TOPENINGBRACE s = stm_list TCLOSINGBRACE
     { { position = $symbolstartpos; value = Loop (For (init, cond, inc, s)) } }
   | TRETURN e = exp { { position = $symbolstartpos; value = Return (Some e) } }
   | TRETURN { { position = $symbolstartpos; value = Return None } }
@@ -237,12 +237,12 @@ stm:
   ;
 
 simpleStm:
-  | e = exp { ExpStatement e }
-  | var = TIDENTIFIER TDPLUS { DoublePlus var }
-  | var = TIDENTIFIER TDMINUS { DoubleMinus var }
-  | var = kind a = assign_type e = exp { Assign (a, (var, e)) }
-  | v = var_list TCOLEQUAL e = exp_list { ShortDeclaration (v, e) }
-  | { Empty }
+  | e = exp { { position = $symbolstartpos; value = ExpStatement e } }
+  | var = TIDENTIFIER TDPLUS { { position = $symbolstartpos; value = DoublePlus var } }
+  | var = TIDENTIFIER TDMINUS { { position = $symbolstartpos; value = DoubleMinus var } }
+  | var = kind a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
+  | v = var_list TCOLEQUAL e = exp_list { { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
+  | { { position = $symbolstartpos; value = Empty } }
   ;
 
 kind:
