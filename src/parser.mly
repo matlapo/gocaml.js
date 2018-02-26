@@ -220,7 +220,8 @@ stm:
   | TPRINT TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Print e } }
   | TPRINTLN TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Println e } }
   | var = kind a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
-  | TVAR d = var_decls { { position = $symbolstartpos; value =  Declaration d } }
+  | TVAR d = var_decls { { position = $symbolstartpos; value = Declaration d } }
+  | TTYPE t = type_decls { { position = $symbolstartpos; value = TypeDeclaration t } }
   | TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
     { { position = $symbolstartpos; value =  If (Some cond, s, Some l) } }
   | TFOR cond = exp TCLOSINGBRACE s = stm_list TCLOSINGBRACE
