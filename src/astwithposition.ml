@@ -1,8 +1,8 @@
 type 'a node = {position: Lexing.position; value: 'a}
 
-type typesDecl =
+type typesDef =
     | TypeT of string
-    | StructT of (string list * typesDecl) list
+    | StructT of (string list * typesDef) list
     | ArrayT of string * int
     | SliceT of string
 
@@ -11,10 +11,11 @@ type typesRef =
     | ArrayR of string * int
     | SliceR of string
 
-type kind =
+type kind_elem =
     | Variable of string
     | Array of (string * int)
-    | Struct of (string * string)
+
+type kind = kind_elem list
 
 type binary =
     | Plus
@@ -45,7 +46,7 @@ type unary =
     | UCaret
 
 type exp =
-    | Id of string
+    | Id of kind
     | Int of int
     | Float of float
     | String of string
@@ -80,7 +81,7 @@ and stmt =
     | Println of exp node list
     | Assign of assign * (kind * exp node)
     | Declaration of (string list * typesRef option * (exp node) list) list
-    | TypeDeclaration of (string * typesDecl) list
+    | TypeDeclaration of (string * typesDef) list
     | If of exp node option * (stmt node) list * (stmt node list) option
     | Loop of loop
     | LeftArrow of (string * string)
@@ -114,7 +115,7 @@ type argument = (string * typesRef option)
 
 type decl =
     | Var of (string list * typesRef option * (exp node) list) list
-    | Type of (string * typesDecl) list
+    | Type of (string * typesDef) list
     | Fct of (string * argument list * typesRef option * stmt node list)
 
 type program = package * decl node list

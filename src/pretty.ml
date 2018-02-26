@@ -35,7 +35,7 @@ let string_of_unary_op op = match op with
   | UCaret -> "^"
 
 let rec string_of_exp {value = e; _} = match e with
-  | Id s -> s
+  | Id _ -> "[ID]" (* TODO *)
   | Int i -> string_of_int i
   | Float f -> string_of_float f
   | String s -> s

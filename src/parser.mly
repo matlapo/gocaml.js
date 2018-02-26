@@ -242,9 +242,12 @@ stm:
   ;
 
 kind:
+  | var = kind_elem TPERIOD vars = kind { var::vars }
+  | var = kind_elem { [var] }
+
+kind_elem:
   | var = TIDENTIFIER { Variable var }
   | var = TIDENTIFIER TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE { Array (var, i) }
-  | var = TIDENTIFIER TPERIOD member = TIDENTIFIER { Struct (var, member) }
   ;
 
 else_ifs:
@@ -270,7 +273,7 @@ assign_type:
 exp:
   | TOPENINGPAR e = exp TCLOSINGPAR { e }
   | TIDENTIFIER TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = FuncCall e } }
-  | id = TIDENTIFIER { { position = $symbolstartpos; value = Id id } }
+  | id = kind { { position = $symbolstartpos; value = Id id } }
   | i = TINTVAL { { position = $symbolstartpos; value = Int i } }
   | f = TFLOATVAL { { position = $symbolstartpos; value = Float f } }
   | s = TSTRINGVAL { { position = $symbolstartpos; value = String s } }
