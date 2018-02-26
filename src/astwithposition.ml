@@ -64,6 +64,13 @@ type assign =
     | DoublePlus
     | DoubleMinus
 
+type simpleStm =
+    | Assign of assign * (kind * exp node)
+    | ExpStatement of exp node
+    | DoublePlus of string
+    | DoubleMinus of string
+    | ShortDeclaration of (string list * (exp node) list)
+
 type case = exp node * stmt list
 and loop =
     | While of exp node option * stmt node list
@@ -71,16 +78,11 @@ and loop =
 and stmt =
     | Print of exp node list
     | Println of exp node list
-    | Assign of assign * (kind * exp node)
     | Declaration of (string list * string option * (exp node) list) list
     | TypeDeclaration of (string * types) list
     | If of exp node option * (stmt node) list * (stmt node list) option
     | Loop of loop
     | LeftArrow of (string * string)
-    | DoublePlus of string
-    | DoubleMinus of string
-    | ShortDeclaration of (string list * (exp node) list)
-    | ExpStatement of exp node
     | Break
     | Chan
     | Const
@@ -100,6 +102,7 @@ and stmt =
     | Struct
     | Switch of case list
     | Type
+    | Simple of simpleStm
 
 type package = string
 

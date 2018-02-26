@@ -219,10 +219,8 @@ var_list_list:
 stm:
   | TPRINT TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Print e } }
   | TPRINTLN TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Println e } }
-  | var = kind a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
   | TVAR d = var_decls { { position = $symbolstartpos; value = Declaration d } }
   | TTYPE t = type_decls { { position = $symbolstartpos; value = TypeDeclaration t } }
-  | v = var_list TCOLEQUAL e = exp_list { { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
   | TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
     { { position = $symbolstartpos; value =  If (Some cond, s, Some l) } }
   | TFOR cond = exp TCLOSINGBRACE s = stm_list TCLOSINGBRACE
@@ -231,11 +229,17 @@ stm:
     { { position = $symbolstartpos; value = Loop (While (None, s)) } }
   | TFOR init = stm TSEMICOLON cond = exp TSEMICOLON inc = stm TOPENINGBRACE s = stm_list TCLOSINGBRACE
     { { position = $symbolstartpos; value = Loop (For (init, cond, inc, s)) } }
-  | var = TIDENTIFIER TDPLUS { { position = $symbolstartpos; value = DoublePlus var } }
-  | var = TIDENTIFIER TDMINUS { { position = $symbolstartpos; value = DoubleMinus var } }
-  | e = exp { { position = $symbolstartpos; value = ExpStatement e } }
   | TRETURN e = exp { { position = $symbolstartpos; value = Return (Some e) } }
   | TRETURN { { position = $symbolstartpos; value = Return None } }
+  | simple = simpleStm { { position = $symbolstartpos; value = Simple simple } }
+  ;
+
+simpleStm:
+  | e = exp { ExpStatement e }
+  | var = TIDENTIFIER TDPLUS { DoublePlus var }
+  | var = TIDENTIFIER TDMINUS { DoubleMinus var }
+  | var = kind a = assign_type e = exp { Assign (a, (var, e)) }
+  | v = var_list TCOLEQUAL e = exp_list { ShortDeclaration (v, e) }
   ;
 
 kind:
