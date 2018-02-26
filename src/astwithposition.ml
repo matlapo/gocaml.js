@@ -70,6 +70,7 @@ type simpleStm =
     | DoublePlus of string
     | DoubleMinus of string
     | ShortDeclaration of (string list * (exp node) list)
+    | Empty 
 
 type case = exp node * stmt list
 and loop =

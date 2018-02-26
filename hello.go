@@ -47,7 +47,7 @@ func main(x, y int, x float64, y int, x,y,t string) int {
   u[1] += 3
   p.mem = 3
 
-  if x++; 4 == 4 {
+  if ; 4 == 4 {
     x++
   } else if x++; 5 + 5 {
     //print (3+4)

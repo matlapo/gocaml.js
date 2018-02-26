@@ -242,6 +242,7 @@ simpleStm:
   | var = TIDENTIFIER TDMINUS { DoubleMinus var }
   | var = kind a = assign_type e = exp { Assign (a, (var, e)) }
   | v = var_list TCOLEQUAL e = exp_list { ShortDeclaration (v, e) }
+  | { Empty }
   ;
 
 kind:
