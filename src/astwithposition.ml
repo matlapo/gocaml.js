@@ -80,7 +80,7 @@ and stmt =
     | Println of exp node list
     | Declaration of (string list * string option * (exp node) list) list
     | TypeDeclaration of (string * types) list
-    | If of exp node option * (stmt node) list * (stmt node list) option
+    | If of simpleStm option * exp node option * (stmt node) list * (stmt node list) option
     | Loop of loop
     | LeftArrow of (string * string)
     | Break
