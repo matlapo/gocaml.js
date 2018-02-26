@@ -12,8 +12,13 @@
       }
 
   let rec next_line_count c lexbuf = match c with
-  | 0 -> ()
-  | _ -> next_line lexbuf; next_line_count (c - 1) lexbuf
+    | 0 -> ()
+    | _ -> next_line lexbuf; next_line_count (c - 1) lexbuf
+
+  let inject_semicolon lexbuf =
+    lexbuf.lex_buffer <- Utils.bytes_insert_byte lexbuf.lex_buffer ';' lexbuf.lex_curr_pos;
+    lexbuf.lex_buffer_len <- (lexbuf.lex_buffer_len + 1)
+
 
 }
 
@@ -108,7 +113,7 @@ let wtf       = "&ˆ="
 
 (* others *)
 let comment   = "//" [^'\n']* nl?
-let mcomment  = "/*" ([^'*']*[^'/']*)* "*/"
+let mcomment  = "/*" ([^'*']*[^'/']*) "*/"
 let colon     = ":"
 let semicolon = ";"
 let comma     = ","
@@ -124,6 +129,23 @@ let csquare   = "]"
 
 rule read =
   parse
+  (* Semicolon injection rules *)
+  | ident nl  { inject_semicolon lexbuf; TIDENTIFIER (Lexing.lexeme lexbuf |> String.trim)}
+  | intval nl { inject_semicolon lexbuf; TINTVAL (int_of_string (Lexing.lexeme lexbuf |> String.trim))}
+  | floatval nl { inject_semicolon lexbuf; TFLOATVAL (float_of_string (Lexing.lexeme lexbuf |> String.trim))}
+  | runeval nl { inject_semicolon lexbuf; TRUNEVAL (Lexing.lexeme lexbuf |> String.trim)}
+  | stringval nl { inject_semicolon lexbuf; TSTRINGVAL (Lexing.lexeme lexbuf |> String.trim)}
+  | rawstrval nl { inject_semicolon lexbuf; TRAWSTRVAL (Lexing.lexeme lexbuf |> String.trim)}
+  | break nl { inject_semicolon lexbuf; TBREAK }
+  | continue nl { inject_semicolon lexbuf; TCONTINUE }
+  | fall nl { inject_semicolon lexbuf; TFALL }
+  | return nl { inject_semicolon lexbuf; TRETURN }
+  | dplus nl { inject_semicolon lexbuf; TDPLUS }
+  | dminus nl { inject_semicolon lexbuf; TDMINUS }
+  | cparent nl { inject_semicolon lexbuf; TCLOSINGPAR }
+  | csquare nl { inject_semicolon lexbuf; TCLOSINGSQUARE }
+  | cpar nl { inject_semicolon lexbuf; TCLOSINGBRACE }
+  (* Normal rules *)
   | comment   { next_line lexbuf; read lexbuf }
   | mcomment  { next_line_count ((Lexing.lexeme lexbuf |> String.split_on_char '\n' |> List.length) - 1) lexbuf; read lexbuf }
   | ws        { read lexbuf }
