@@ -4,42 +4,56 @@ const util = require('util');
 const exec = util.promisify(require('child_process').exec);
 const { spawnSync } = require('child_process');
 
+const VALID = 'VALID';
+const INVALID = 'INVALID';
+
 beforeAll(() => {
     spawnSync('./build.sh');
 });
 
-testDirectory('programs/valid', 'parse', true);
-testDirectory('programs/parser', 'parse', false);
-testDirectory('programs/scanner', 'scan', false);
+testDirectory('programs/scanner', 'scan');
+testDirectory('programs/parser', 'parse');
+testDirectory('programs/full', 'parse', VALID);
+testDirectory('programs/extra/rosettacode', 'parse', VALID);
 
-function testDirectory(pathString, command, valid) {
+function testDirectory(pathString, command, validity) {
     describe(path.basename(pathString), () => {
-        for (const file of fs.readdirSync(pathString)) {
-            const subPath = pathString + path.sep + file;
+        for (const fileName of fs.readdirSync(pathString)) {
+            const subPath = pathString + path.sep + fileName;
             if (isDir(subPath)) {
-                testDirectory(subPath, command, valid);
+                if (fileName == 'valid') {
+                    validity = VALID;
+                } else if (fileName === 'invalid') {
+                    validity = INVALID;
+                }
+
+                testDirectory(subPath, command, validity);
             } else {
-                testFile(subPath, command, valid)
+                testFile(subPath, command, validity)
             }
         }
     });
 }
 
-function testFile(pathString, command, valid) {
+function testFile(pathString, command, validity) {
     it(path.basename(pathString), () => {
+        expect(validity).toBeDefined();
+
         const result = spawnSync('./run.sh', [command, pathString]);
         const output = result.output.join('');
     
-        if (valid) {
+        if (validity === VALID) {
             expect(output).toMatch(/OK/);
             expect(result.status).toBe(0);
-        } else {
+        } else if (validity === INVALID) {
             expect(output).toMatch(/Error/);
             expect(result.status).toBe(1);
+        } else {
+            throw new Error('unreachable');
         }
     });
 }
 
-function isDir(path) {
-    return fs.lstatSync(path).isDirectory();
+function isDir(pathString) {
+    return fs.lstatSync(pathString).isDirectory();
 }
