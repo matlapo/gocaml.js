@@ -11,10 +11,10 @@ function testDirectory(pathString, command, validity) {
     describe(path.basename(pathString), () => {
         for (const dirPath of subDirectoriesOf(pathString)) {
             const dirName = path.basename(dirPath);
-            if (/valid/i.test(dirName)) {
-                validity = VALID;
-            } else if (/invalid/i.test(dirName)) {
+            if (/invalid/i.test(dirName)) {
                 validity = INVALID;
+            } else if (/valid/i.test(dirName)) {
+                validity = VALID;
             }
 
             testDirectory(dirPath, command, validity);
