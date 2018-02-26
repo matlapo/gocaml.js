@@ -281,7 +281,7 @@ assign_type:
 
 exp:
   | TOPENINGPAR e = exp TCLOSINGPAR { e }
-  | TIDENTIFIER TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = FuncCall e } }
+  | name = TIDENTIFIER TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = FuncCall (name, e) } }
   | id = kind { { position = $symbolstartpos; value = Id id } }
   | i = TINTVAL { { position = $symbolstartpos; value = Int i } }
   | f = TFLOATVAL { { position = $symbolstartpos; value = Float f } }
@@ -329,8 +329,6 @@ exp:
     { { position = $symbolstartpos; value = BinaryOp (BAnd, (e1, e2)) } }
   | e1 = exp TBITOR e2 = exp
     { { position = $symbolstartpos; value = BinaryOp (BOr, (e1, e2)) } }
-  | e1 = exp TAPPEND e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (Append, (e1, e2)) } }
   | TNOT e = exp
     { { position = $symbolstartpos; value = Unaryexp (Not, e) } }
   | TPLUS e = exp

@@ -46,7 +46,7 @@ let rec string_of_exp {value = e; _} = match e with
   | Hex s -> s
   | BinaryOp (b, (e1, e2)) -> "(" ^ (string_of_exp e1) ^ (string_of_binary_op b) ^ (string_of_exp e2) ^ ")"
   | Unaryexp (u, e) -> "(" ^ string_of_unary_op u ^ string_of_exp e ^ ")"
-  | FuncCall exps -> "" (* TODO *)
+  | FuncCall (name, exps) -> "" (* TODO *)
 
 let string_of_type _ = "[TYPE]" (* TODO *)
 
