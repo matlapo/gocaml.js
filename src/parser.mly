@@ -260,10 +260,10 @@ kind_elem:
   ;
 
 else_ifs:
-  | TELSE TIF simp = simpleStm TSEMICOLON cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
-    { [{ position = $symbolstartpos; value = If (Some simp, Some cond, s, Some l) }] }
   | TELSE TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
     { [{ position = $symbolstartpos; value = If (None, Some cond, s, Some l) }] }
+  | TELSE TIF simp = simpleStm TSEMICOLON cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
+    { [{ position = $symbolstartpos; value = If (Some simp, Some cond, s, Some l) }] }
   | TELSE TOPENINGBRACE s = stm_list TCLOSINGBRACE
     { [{ position = $symbolstartpos; value = If (None, None, s, None) }] }
   | { [] }
