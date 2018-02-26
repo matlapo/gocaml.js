@@ -228,6 +228,8 @@ stm:
   | TTYPE t = type_decls { { position = $symbolstartpos; value = TypeDeclaration t } }
   | TIF simp = simpleStm TSEMICOLON cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
     { { position = $symbolstartpos; value =  If (Some simp, Some cond, s, Some l) } }
+  | TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
+    { { position = $symbolstartpos; value =  If (None, Some cond, s, Some l) } }
   | TFOR cond = exp TCLOSINGBRACE s = stm_list TCLOSINGBRACE
     { { position = $symbolstartpos; value = Loop (While (Some cond, s)) } }
   | TFOR TOPENINGBRACE s = stm_list TCLOSINGBRACE
