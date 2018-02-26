@@ -1,3 +1,4 @@
 module.exports = {
-    globalSetup: './test/build'
+    globalSetup: './test/build',
+    roots: ['<rootDir>/test']
 };

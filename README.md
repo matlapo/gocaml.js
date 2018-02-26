@@ -15,7 +15,7 @@ A GoLite compiler written in OCaml (ewww C)
 * `./run.sh [mode] [filename]`
 ## Tests
 * `jest`
-* Watch mode: `jest --watchAll`
+* Watch mode: `jest --watch` (Won't automatically trigger test when a file is changes)
 ### Running only certain test suites
 To only run certain test suites, run `jest [suite names]`. The following test suites are available:
 * `focused` Runs only tests that are fully written by us.
