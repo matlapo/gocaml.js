@@ -26,6 +26,7 @@ let string_of_binary_op op = match op with
   | BAnd -> "&"
   | BOr -> "|"
   | Caret -> "^"
+  | _ -> "[TODO]"
 
 let string_of_unary_op op = match op with
   | Not -> "!"
