@@ -79,7 +79,7 @@ and stmt =
     | LeftArrow of (string * string)
     | DoublePlus of string
     | DoubleMinus of string
-    | ColonEqual of (string * exp node)
+    | ShortDeclaration of (string list * (exp node) list) 
     | Break
     | Chan
     | Const

@@ -40,6 +40,7 @@ func main(x, y int, x float64, y int, x,y,t string) int {
   var x, y string = 4, 6 - 5 + 6 * 8 / 7
   var x1, x2 = 5 && 7, 6 || "hello" , 7
 
+  v, t := 4+4, 7&4
   u[4] = 0
   u[1] += 3
   p.mem = 3
