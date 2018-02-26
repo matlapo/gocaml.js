@@ -36,9 +36,24 @@ let tokens input =
 let parse input =
   let lexer_buffer = Lexing.from_channel input in
   try
+    let _ = Parser.prog Lexer.read lexer_buffer in
+      print_string "OK\n";
+      exit 0;
+  with
+  | Lexer.SyntaxError msg ->
+    print_error lexer_buffer ("Error: " ^ msg);
+    exit 1
+  | Parser.Error ->
+    let token = Lexing.lexeme lexer_buffer in
+    print_error lexer_buffer ("Error: Unexpected " ^ token);
+    exit 1
+
+let pretty input =
+  let lexer_buffer = Lexing.from_channel input in
+  try
     let ast = Parser.prog Lexer.read lexer_buffer in
       Pretty.pretty_print ast;
-      print_string "OK\n";
+      print_newline ();
       exit 0;
   with
   | Lexer.SyntaxError msg ->
@@ -58,6 +73,7 @@ let () =
     if mode = "scan" then scan input_file
     else if mode = "tokens" then tokens input_file
     else if mode = "parse" then parse input_file
+    else if mode = "pretty" then pretty input_file
     else printf "%s is not a valid compiler mode\n" mode; exit 1;
   else
     print_string "You must pass two argument: scan|tokens <source file path>\n";
