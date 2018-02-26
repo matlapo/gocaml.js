@@ -1,8 +1,15 @@
 type 'a node = {position: Lexing.position; value: 'a}
 
-type types =
+type typesDecl =
     | TypeT of string
-    | StructT of (string list * string) list (* var name * type *)
+    | StructT of (string list * typesDecl) list
+    | ArrayT of string * int
+    | SliceT of string
+
+type typesRef =
+    | TypeR of string
+    | ArrayR of string * int
+    | SliceR of string
 
 type kind =
     | Variable of string
@@ -72,8 +79,8 @@ and stmt =
     | Print of exp node list
     | Println of exp node list
     | Assign of assign * (kind * exp node)
-    | Declaration of (string list * string option * (exp node) list) list
-    | TypeDeclaration of (string * types) list
+    | Declaration of (string list * typesRef option * (exp node) list) list
+    | TypeDeclaration of (string * typesDecl) list
     | If of exp node option * (stmt node) list * (stmt node list) option
     | Loop of loop
     | LeftArrow of (string * string)
@@ -103,11 +110,11 @@ and stmt =
 
 type package = string
 
-type argument = (string * string option)
+type argument = (string * typesRef option)
 
 type decl =
-    | Var of (string list * string option * (exp node) list) list
-    | Type of (string * types) list (* type new old OR type new struct { (string * string) list } *)
-    | Fct of (string * argument list * string option * stmt node list)
+    | Var of (string list * typesRef option * (exp node) list) list
+    | Type of (string * typesDecl) list
+    | Fct of (string * argument list * typesRef option * stmt node list)
 
 type program = package * decl node list

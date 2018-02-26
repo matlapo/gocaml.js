@@ -48,6 +48,8 @@ let rec string_of_exp {value = e; _} = match e with
   | Unaryexp (u, e) -> "(" ^ string_of_unary_op u ^ string_of_exp e ^ ")"
   | FuncCall exps -> "" (* TODO *)
 
+let string_of_type _ = "[TYPE]" (* TODO *)
+
 let string_of_decl {value = decl; _} = match decl with
   | Var vars -> List.fold_left
     (fun a (ids, t, exps) ->
@@ -55,7 +57,7 @@ let string_of_decl {value = decl; _} = match decl with
       "var " ^
       string_of_list (fun s -> s) true ids ^
       (match t with
-      | Some t -> " " ^ t
+      | Some t -> " " ^ string_of_type t
       | None -> "")
       ^
       " = " ^

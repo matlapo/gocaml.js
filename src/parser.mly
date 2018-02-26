@@ -101,6 +101,18 @@
 %start <Astwithposition.program> prog
 %%
 
+// Helpers
+identifier_with_parenthesis: (* TODO: add this everywhere *)
+  | t = TIDENTIFIER { t }
+  | TOPENINGPAR t = identifier_with_parenthesis TCLOSINGPAR { t }
+  ;
+
+identifier_list:
+  | v1 = TIDENTIFIER TCOMMA v2 = identifier_list { v1::v2 }
+  | v = TIDENTIFIER { [v] }
+  ;
+
+// Start of program
 prog:
   | p = package EOF { (p, []) }
   | p = package ds = decls EOF { (p, ds) }
@@ -139,20 +151,15 @@ var_formats:
   ;
 
 var_format:
-  | vars = var_list t = TIDENTIFIER { (vars, Some t, []) }
-  | vars = var_list TOPENINGSQUARE size = array_size TCLOSINGSQUARE t = TIDENTIFIER { (vars, Some (t ^ "[" ^ size ^ "]"), []) }
-  | vars = var_list TASSIGN exps = exp_list { (vars, None, exps) }
-  | vars = var_list t = TIDENTIFIER TASSIGN exps = exp_list { (vars, Some t, exps) }
+  | vars = identifier_list t = type_ref { (vars, Some t, []) }
+  | vars = identifier_list TASSIGN exps = exp_list { (vars, None, exps) }
+  | vars = identifier_list t = type_ref TASSIGN exps = exp_list { (vars, Some t, exps) }
   ;
 
-array_size:
-  | { "" }
-  | i = TINTVAL { string_of_int i }
-  ;
-
-var_list:
-  | v1 = TIDENTIFIER TCOMMA v2 = var_list { v1::v2 }
-  | v = TIDENTIFIER { [v] }
+type_ref:
+  | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE base = identifier_with_parenthesis { ArrayR (base, i) }
+  | TOPENINGSQUARE TCLOSINGSQUARE base = identifier_with_parenthesis { SliceR base }
+  | base = identifier_with_parenthesis { TypeR base }
   ;
 
 exp_list:
@@ -168,15 +175,15 @@ fct_args:
 
 fct_return:
   | { None }
-  | t = TIDENTIFIER { Some t }
+  | t = type_ref { Some t }
   ;
 
 args_list:
-  | var = TIDENTIFIER t = TIDENTIFIER { [(var, Some t)] }
-  | vars = var_list t = TIDENTIFIER { List.map (fun x -> (x, Some t)) vars }
-  | vars = var_list t = TIDENTIFIER TCOMMA l = args_list
+  | var = TIDENTIFIER t = type_ref { [(var, Some t)] }
+  | vars = identifier_list t = type_ref { List.map (fun x -> (x, Some t)) vars }
+  | vars = identifier_list t = type_ref TCOMMA l = args_list
     { List.append (List.map (fun x -> (x, Some t)) vars) l } //temporary
-  | var = TIDENTIFIER t = TIDENTIFIER TCOMMA l = args_list { (var, Some t)::l }
+  | var = TIDENTIFIER t = type_ref TCOMMA l = args_list { (var, Some t)::l }
   ;
 
 stm_list:
@@ -198,21 +205,19 @@ type_formats:
   ;
 
 type_format:
-  | name = TIDENTIFIER base = TIDENTIFIER { (name, TypeT base) }
-  | name = TIDENTIFIER s = stuct_decl { (name, StructT s) }
+  | name = TIDENTIFIER t = type_def { (name, t) }
   ;
 
-stuct_decl:
-  | TSTRUCT TOPENINGBRACE v = var_list_list TCLOSINGBRACE { v }
+type_def:
+  | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE base = identifier_with_parenthesis { ArrayT (base, i) }
+  | TOPENINGSQUARE TCLOSINGSQUARE base = identifier_with_parenthesis { SliceT base }
+  | TSTRUCT TOPENINGBRACE s = type_def_list TCLOSINGBRACE { StructT s }
+  | base = identifier_with_parenthesis { TypeT base }
   ;
 
-var_list_list:
-  | v1 = var_list t = TIDENTIFIER v2 = var_list_list { (v1, t)::v2 }
-  | v1 = var_list TOPENINGSQUARE size = array_size TCLOSINGSQUARE t = TIDENTIFIER v2 = var_list_list
-    { (v1, t ^ "[" ^ size ^ "]")::v2 }
-  | v = var_list t = TIDENTIFIER { [(v, t)] }
-  | v = var_list TOPENINGSQUARE size = array_size TCLOSINGSQUARE t = TIDENTIFIER
-    { [(v, t ^ "[" ^ size ^ "]")] }
+type_def_list:
+  | ids = identifier_list t = type_def tdl = type_def_list { (ids, t)::tdl }
+  | ids = identifier_list t = type_def { [(ids, t)] }
   ;
 
 //rules for statements and expressions
@@ -222,7 +227,7 @@ stm:
   | var = kind a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
   | TVAR d = var_decls { { position = $symbolstartpos; value = Declaration d } }
   | TTYPE t = type_decls { { position = $symbolstartpos; value = TypeDeclaration t } }
-  | v = var_list TCOLEQUAL e = exp_list { { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
+  | v = identifier_list TCOLEQUAL e = exp_list { { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
   | TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
     { { position = $symbolstartpos; value =  If (Some cond, s, Some l) } }
   | TFOR cond = exp TCLOSINGBRACE s = stm_list TCLOSINGBRACE
