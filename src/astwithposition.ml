@@ -49,7 +49,7 @@ type exp =
     | Hex of string
     | BinaryOp of binary * (exp node * exp node)
     | Unaryexp of unary * exp node
-    | FuncCall of exp node list (* can also represent a typecast operation *)
+    | FuncCall of string * exp node list (* can also represent a typecast operation *)
 
 type assign =
     | Regular
