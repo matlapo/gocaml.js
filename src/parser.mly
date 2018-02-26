@@ -236,6 +236,7 @@ stm:
 kind:
   | var = TIDENTIFIER { Variable var }
   | var = TIDENTIFIER TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE { Array (var, i) }
+  | var = TIDENTIFIER TPERIOD member = TIDENTIFIER { Struct (var, member) }
   ;
 
 else_ifs:
