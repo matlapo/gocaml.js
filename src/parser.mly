@@ -234,6 +234,8 @@ stm:
   | var = TIDENTIFIER TDPLUS { { position = $symbolstartpos; value = DoublePlus var } }
   | var = TIDENTIFIER TDMINUS { { position = $symbolstartpos; value = DoubleMinus var } }
   | e = exp { { position = $symbolstartpos; value = ExpStatement e } }
+  | TRETURN e = exp { { position = $symbolstartpos; value = Return (Some e) } }
+  | TRETURN { { position = $symbolstartpos; value = Return None } }
   ;
 
 kind:
