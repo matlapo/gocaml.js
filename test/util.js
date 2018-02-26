@@ -7,94 +7,6 @@ const { spawnSync } = require('child_process');
 const VALID = 'VALID';
 const INVALID = 'INVALID';
 
-beforeAll(() => {
-    spawnSync('./build.sh');
-});
-
-// Our tests
-testDirectory('programs/scanner', 'scan');
-testDirectory('programs/parser', 'parse');
-testDirectory('programs/full', 'parse', VALID);
-
-// Extra tests
-testDirectory('programs/extra/rosettacode', 'parse', VALID);
-
-// Tests from past teams
-if (fs.readdirSync('programs/extra/past-teams').length > 1) {
-    // DDoS
-    testDirectory('programs/extra/past-teams/DDoS/programs', 'parse', VALID);
-
-    // dingkyu9315
-    testDirectory(
-        'programs/extra/past-teams/dingkyu9315/programs',
-        'parse',
-        VALID
-    );
-
-    // erincallow
-    testDirectory(
-        'programs/extra/past-teams/erincallow/Programs',
-        'parse',
-        VALID
-    );
-
-    // EthanMacdonald
-    testDirectory(
-        'programs/extra/past-teams/EthanMacdonald/programs',
-        'parse',
-        VALID
-    );
-
-    // hardik-vala
-    testDirectory(
-        'programs/extra/past-teams/hardik-vala/programs',
-        'parse',
-        VALID
-    );
-
-    // newphew92
-    testDirectory(
-        'programs/extra/past-teams/newphew92/programs',
-        'parse',
-        VALID
-    );
-
-    // ossamaAhmed
-    testDirectory(
-        'programs/extra/past-teams/ossamaAhmed/programs',
-        'parse',
-        VALID
-    );
-
-    // rohanjr
-    testDirectory(
-        'programs/extra/past-teams/rohanjr/test-programs',
-        'parse',
-        VALID
-    );
-
-    // tsani
-    testDirectory(
-        'programs/extra/past-teams/tsani/programs',
-        'parse',
-        VALID
-    );
-
-    // xldenis
-    testDirectory(
-        'programs/extra/past-teams/xldenis/programs',
-        'parse',
-        VALID
-    );
-
-    // yiqiaowang
-    testDirectory(
-        'programs/extra/past-teams/yiqiaowang/programs',
-        'parse',
-        VALID
-    );
-}
-
 function testDirectory(pathString, command, validity) {
     describe(path.basename(pathString), () => {
         for (const dirPath of subDirectoriesOf(pathString)) {
@@ -147,3 +59,7 @@ function subFilesOf(directoryPath) {
         .filter((p) => !fs.lstatSync(p).isDirectory())
         .filter((p) => /.go$/.test(p));
 }
+
+exports.VALID = VALID;
+exports.INVALID = INVALID;
+exports.testDirectory = testDirectory;
