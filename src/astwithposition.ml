@@ -4,6 +4,11 @@ type types =
     | TypeT of string
     | StructT of (string list * string) list (* var name * type *)
 
+type kind =
+    | Variable of string
+    | Array of (string * int)
+    | Struct of (string * string)
+
 type binary =
     | Plus
     | Minus
@@ -66,7 +71,7 @@ and loop =
 and stmt =
     | Print of exp node list
     | Println of exp node list
-    | Assign of assign * (string * exp node)
+    | Assign of assign * (kind * exp node)
     | Declaration of (string list * string option * (exp node) list) list
     | If of exp node option * (stmt node) list * (stmt node list) option
     | Loop of loop

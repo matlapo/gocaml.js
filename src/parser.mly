@@ -148,6 +148,7 @@ var_format:
 array_size:
   | { "" }
   | i = TINTVAL { string_of_int i }
+  ;
 
 var_list:
   | v1 = TIDENTIFIER TCOMMA v2 = var_list { v1::v2 }
@@ -163,10 +164,12 @@ exp_list:
 fct_args:
   | { [] }
   | args = args_list { args }
+  ;
 
 fct_return:
   | { None }
   | t = TIDENTIFIER { Some t }
+  ;
 
 args_list:
   | var = TIDENTIFIER t = TIDENTIFIER { [(var, Some t)] }
@@ -187,6 +190,7 @@ stm_list:
 type_decls:
   | t = type_format { [t] }
   | TOPENINGPAR ts = type_formats TCLOSINGPAR { ts }
+  ;
 
 type_formats:
   | v1 = type_format v2 = type_formats { v1::v2 }
@@ -196,6 +200,7 @@ type_formats:
 type_format:
   | name = TIDENTIFIER base = TIDENTIFIER { (name, TypeT base) }
   | name = TIDENTIFIER s = stuct_decl { (name, StructT s) }
+  ;
 
 stuct_decl:
   | TSTRUCT TOPENINGBRACE v = var_list_list TCLOSINGBRACE { v }
@@ -214,7 +219,7 @@ var_list_list:
 stm:
   | TPRINT TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Print e } }
   | TPRINTLN TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Println e } }
-  | var = TIDENTIFIER a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
+  | var = kind a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
   | TVAR d = var_decls { { position = $symbolstartpos; value =  Declaration d } }
   | TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
     { { position = $symbolstartpos; value =  If (Some cond, s, Some l) } }
@@ -226,6 +231,11 @@ stm:
     { { position = $symbolstartpos; value = Loop (For (init, cond, inc, s)) } }
   | var = TIDENTIFIER TDPLUS { { position = $symbolstartpos; value = DoublePlus var } }
   | var = TIDENTIFIER TDMINUS { { position = $symbolstartpos; value = DoubleMinus var } }
+  ;
+
+kind:
+  | var = TIDENTIFIER { Variable var }
+  | var = TIDENTIFIER TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE { Array (var, i) }
   ;
 
 else_ifs:
