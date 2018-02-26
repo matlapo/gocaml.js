@@ -12,7 +12,7 @@ testDirectory('programs/valid', (pathString) => {
     const result = spawnSync('./run.sh', ['parse', pathString]);
     const output = result.output.join('');
     
-    expect(output).toBe('OK\n');
+    expect(output).toMatch(/OK/);
     expect(result.status).toBe(0);
 });
 

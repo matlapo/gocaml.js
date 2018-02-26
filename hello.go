@@ -37,7 +37,7 @@ type (
 
 func main(x, y int, x float64, y int, x,y,t string) int {
 
-  4 + 4
+  return 3+45
 
   var x, y string = 4, 6 - 5 + 6 * 8 / 7
   var x1, x2 = 5 && 7, 6 || "hello" , 7
@@ -47,10 +47,11 @@ func main(x, y int, x float64, y int, x,y,t string) int {
   u[1] += 3
   p.mem = 3
 
-  if (4 == 4) {
-    a++
-    b--
-  } else if 5 + 5 {
+  for i++; i < 5; 3+3 {  }
+
+  if ; 4 == 4 {
+    x++
+  } else if x++; 5 + 5 {
     //print (3+4)
   }
   else {

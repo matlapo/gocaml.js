@@ -224,21 +224,28 @@ type_def_list:
 stm:
   | TPRINT TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Print e } }
   | TPRINTLN TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Println e } }
-  | var = kind a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
   | TVAR d = var_decls { { position = $symbolstartpos; value = Declaration d } }
   | TTYPE t = type_decls { { position = $symbolstartpos; value = TypeDeclaration t } }
-  | v = identifier_list TCOLEQUAL e = exp_list { { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
-  | TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
-    { { position = $symbolstartpos; value =  If (Some cond, s, Some l) } }
+  | TIF simp = simpleStm TSEMICOLON cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
+    { { position = $symbolstartpos; value =  If (Some simp, Some cond, s, Some l) } }
   | TFOR cond = exp TCLOSINGBRACE s = stm_list TCLOSINGBRACE
     { { position = $symbolstartpos; value = Loop (While (Some cond, s)) } }
   | TFOR TOPENINGBRACE s = stm_list TCLOSINGBRACE
     { { position = $symbolstartpos; value = Loop (While (None, s)) } }
-  | TFOR init = stm TSEMICOLON cond = exp TSEMICOLON inc = stm TOPENINGBRACE s = stm_list TCLOSINGBRACE
+  | TFOR init = simpleStm TSEMICOLON cond = exp TSEMICOLON inc = simpleStm TOPENINGBRACE s = stm_list TCLOSINGBRACE
     { { position = $symbolstartpos; value = Loop (For (init, cond, inc, s)) } }
+  | TRETURN e = exp { { position = $symbolstartpos; value = Return (Some e) } }
+  | TRETURN { { position = $symbolstartpos; value = Return None } }
+  | simple = simpleStm { { position = $symbolstartpos; value = Simple simple } }
+  ;
+
+simpleStm:
+  | e = exp { { position = $symbolstartpos; value = ExpStatement e } }
   | var = TIDENTIFIER TDPLUS { { position = $symbolstartpos; value = DoublePlus var } }
   | var = TIDENTIFIER TDMINUS { { position = $symbolstartpos; value = DoubleMinus var } }
-  | e = exp { { position = $symbolstartpos; value = ExpStatement e } }
+  | var = kind a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
+  | v = identifier_list TCOLEQUAL e = exp_list { { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
+  | { { position = $symbolstartpos; value = Empty } }
   ;
 
 kind:
@@ -251,10 +258,12 @@ kind_elem:
   ;
 
 else_ifs:
+  | TELSE TIF simp = simpleStm TSEMICOLON cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
+    { [{ position = $symbolstartpos; value = If (Some simp, Some cond, s, Some l) }] }
   | TELSE TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
-    { [{ position = $symbolstartpos; value = If (Some cond, s, Some l) }] }
+    { [{ position = $symbolstartpos; value = If (None, Some cond, s, Some l) }] }
   | TELSE TOPENINGBRACE s = stm_list TCLOSINGBRACE
-    { [{ position = $symbolstartpos; value = If (None, s, None) }] }
+    { [{ position = $symbolstartpos; value = If (None, None, s, None) }] }
   | { [] }
   ;
 
