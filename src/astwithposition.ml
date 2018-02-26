@@ -110,7 +110,7 @@ and stmt =
     | Return of exp node option
     | Select
     | Struct
-    | Switch of (simpleStm node) option * exp node * case list
+    | Switch of (simpleStm node) option * exp node option * case list
     | Type
     | Simple of simpleStm node
 
