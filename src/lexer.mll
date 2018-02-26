@@ -19,6 +19,7 @@
     lexbuf.lex_buffer <- Utils.bytes_insert_byte lexbuf.lex_buffer ';' lexbuf.lex_curr_pos;
     lexbuf.lex_buffer_len <- (lexbuf.lex_buffer_len + 1)
 
+  let count_new_lines str = (String.split_on_char '\n' str |> List.length) - 1
 }
 
 (* helper regex *)
@@ -111,8 +112,8 @@ let andh      = "&ˆ"
 let wtf       = "&ˆ="
 
 (* others *)
-let comment   = "//" [^'\n']* nl?
-let mcomment  = "/*" ([^'*']*[^'/']*) "*/"
+let comment   = "//" [^'\n']*
+let mcomment  = "/*" ([^'*']*('*'[^'/'])?)* "*/"
 let colon     = ":"
 let semicolon = ";"
 let comma     = ","
@@ -125,27 +126,29 @@ let cparent   = ")"
 let osquare   = "["
 let csquare   = "]"
 
+let scnl = ws* (comment|mcomment)* nl
+
 rule read =
   parse
   (* Semicolon injection rules *)
-  | ident nl { next_line lexbuf; inject_semicolon lexbuf; TIDENTIFIER (Lexing.lexeme lexbuf |> String.trim); }
-  | intval nl { next_line lexbuf; inject_semicolon lexbuf; TINTVAL (int_of_string (Lexing.lexeme lexbuf |> String.trim))}
-  | floatval nl { next_line lexbuf; inject_semicolon lexbuf; TFLOATVAL (float_of_string (Lexing.lexeme lexbuf |> String.trim))}
-  | runeval nl { next_line lexbuf; inject_semicolon lexbuf; TRUNEVAL (Lexing.lexeme lexbuf |> String.trim)}
-  | stringval nl { next_line lexbuf; inject_semicolon lexbuf; TSTRINGVAL (Lexing.lexeme lexbuf |> String.trim)}
-  | rawstrval nl { next_line lexbuf; inject_semicolon lexbuf; TRAWSTRVAL (Lexing.lexeme lexbuf |> String.trim)}
-  | break nl { next_line lexbuf; inject_semicolon lexbuf; TBREAK }
-  | continue nl { next_line lexbuf; inject_semicolon lexbuf; TCONTINUE }
-  | fall nl { next_line lexbuf; inject_semicolon lexbuf; TFALL }
-  | return nl { next_line lexbuf; inject_semicolon lexbuf; TRETURN }
-  | dplus nl { next_line lexbuf; inject_semicolon lexbuf; TDPLUS }
-  | dminus nl { next_line lexbuf; inject_semicolon lexbuf; TDMINUS }
-  | cparent nl { next_line lexbuf; inject_semicolon lexbuf; TCLOSINGPAR }
-  | csquare nl { next_line lexbuf; inject_semicolon lexbuf; TCLOSINGSQUARE }
-  | cpar nl { next_line lexbuf; inject_semicolon lexbuf; TCLOSINGBRACE }
+  | (ident as id) (scnl as cnl) { inject_semicolon lexbuf; next_line_count (count_new_lines cnl) lexbuf; TIDENTIFIER id }
+  | (intval as i) (scnl as cnl) { next_line_count (count_new_lines cnl) lexbuf; inject_semicolon lexbuf; TINTVAL (int_of_string (i))}
+  | (floatval as f) (scnl as cnl) { next_line_count (count_new_lines cnl) lexbuf; inject_semicolon lexbuf; TFLOATVAL (float_of_string f)}
+  | (runeval as r) (scnl as cnl) { next_line_count (count_new_lines cnl) lexbuf; inject_semicolon lexbuf; TRUNEVAL r}
+  | (stringval as s) (scnl as cnl) { next_line_count (count_new_lines cnl) lexbuf; inject_semicolon lexbuf; TSTRINGVAL s}
+  | (rawstrval as s) (scnl as cnl) { next_line_count (count_new_lines cnl) lexbuf; inject_semicolon lexbuf; TRAWSTRVAL s}
+  | break (scnl as cnl) { next_line_count (count_new_lines cnl) lexbuf; inject_semicolon lexbuf; TBREAK }
+  | continue (scnl as cnl) { next_line_count (count_new_lines cnl) lexbuf; inject_semicolon lexbuf; TCONTINUE }
+  | fall (scnl as cnl) { next_line_count (count_new_lines cnl) lexbuf; inject_semicolon lexbuf; TFALL }
+  | return (scnl as cnl) { next_line_count (count_new_lines cnl) lexbuf; inject_semicolon lexbuf; TRETURN }
+  | dplus (scnl as cnl) { next_line_count (count_new_lines cnl) lexbuf; inject_semicolon lexbuf; TDPLUS }
+  | dminus (scnl as cnl) { next_line_count (count_new_lines cnl) lexbuf; inject_semicolon lexbuf; TDMINUS }
+  | cparent (scnl as cnl) { next_line_count (count_new_lines cnl) lexbuf; inject_semicolon lexbuf; TCLOSINGPAR }
+  | csquare (scnl as cnl) { next_line_count (count_new_lines cnl) lexbuf; inject_semicolon lexbuf; TCLOSINGSQUARE }
+  | cpar (scnl as cnl) { next_line_count (count_new_lines cnl) lexbuf; inject_semicolon lexbuf; TCLOSINGBRACE }
   (* Normal rules *)
-  | comment   { next_line lexbuf; read lexbuf }
-  | mcomment  { next_line_count ((Lexing.lexeme lexbuf |> String.split_on_char '\n' |> List.length) - 1) lexbuf; read lexbuf }
+  | comment nl { next_line lexbuf; read lexbuf }
+  | (mcomment nl) as cnl  { next_line_count (count_new_lines cnl) lexbuf; read lexbuf }
   | ws        { read lexbuf }
   | nl        { next_line lexbuf; read lexbuf }
   | print     { TPRINT }
