@@ -239,6 +239,18 @@ stm:
   | TRETURN e = exp { { position = $symbolstartpos; value = Return (Some e) } }
   | TRETURN { { position = $symbolstartpos; value = Return None } }
   | simple = simpleStm { { position = $symbolstartpos; value = Simple simple } }
+  | TSWITCH e = exp TOPENINGBRACE cases = case_list TCLOSINGBRACE
+    { { position = $symbolstartpos; value = Switch (e, cases) } }
+  ;
+
+case_list:
+  | c1 = case c2 = case_list { c1::c2 }
+  | c = case  { [c] }
+  ;
+
+case:
+  | TCASE e = exp TCOLON s = stm_list { (Some e, s) }
+  | TDEFAULT TCOLON s = stm_list { (None, s) }
   ;
 
 simpleStm:

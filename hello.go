@@ -47,14 +47,22 @@ func main(x, y int, x float64, y int, x,y,t string) int {
 
   x = Append(3+3, 2+2)
 
-  for i++; i < 5; 3+3 {  } //TODO
+  // for i++; i < 5; 3+3 {  }
 
-  if ; 4 == 4 {
+  switch 3 {
+  case 4:
+      print (3)
+  case 5:
+      printfn(2)
+  default:
+      printfn(4)
+  }
+
+  if 4 == 4 {
     x++
   } else if x++; 5 + 5 {
     //print (3+4)
-  }
-  else {
+  } else {
     y -= 5
   }
 
@@ -66,7 +74,7 @@ func main(x, y int, x float64, y int, x,y,t string) int {
     }
   )
 
-  print (3+3) //this is a comment
+  print (3+3)
   println (4+4)
   y = 7 + 7
   y += 6 && 8
@@ -78,3 +86,4 @@ func main(x, y int, x float64, y int, x,y,t string) int {
     // z int = 0xff45abc
     // y = 01237
   )
+}

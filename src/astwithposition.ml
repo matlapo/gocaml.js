@@ -80,7 +80,7 @@ type simpleStm =
     | ShortDeclaration of (string list * (exp node) list)
     | Empty
 
-type case = exp node * stmt list
+type case = exp node option * stmt node list
 and loop =
     | While of exp node option * stmt node list
     | For of simpleStm node * exp node * simpleStm node * stmt node list
@@ -110,7 +110,7 @@ and stmt =
     | Return of exp node option
     | Select
     | Struct
-    | Switch of case list
+    | Switch of exp node * case list
     | Type
     | Simple of simpleStm node
 
