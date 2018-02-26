@@ -10,6 +10,11 @@
       { pos with pos_bol = lexbuf.lex_curr_pos;
                  pos_lnum = pos.pos_lnum + 1
       }
+
+  let rec next_line_count c lexbuf = match c with
+  | 0 -> ()
+  | _ -> next_line lexbuf; next_line_count (c - 1) lexbuf
+
 }
 
 (* helper regex *)
@@ -103,7 +108,7 @@ let wtf       = "&ˆ="
 
 (* others *)
 let comment   = "//" [^'\n']* nl?
-let mcomment  = "/*" _* "*/"
+let mcomment  = "/*" ([^'*']*[^'/']*)* "*/"
 let colon     = ":"
 let semicolon = ";"
 let comma     = ","
@@ -120,7 +125,7 @@ let csquare   = "]"
 rule read =
   parse
   | comment   { next_line lexbuf; read lexbuf }
-  | mcomment  { next_line lexbuf; read lexbuf }
+  | mcomment  { next_line_count ((Lexing.lexeme lexbuf |> String.split_on_char '\n' |> List.length) - 1) lexbuf; read lexbuf }
   | ws        { read lexbuf }
   | nl        { next_line lexbuf; read lexbuf }
   | print     { TPRINT }
