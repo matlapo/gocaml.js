@@ -19,7 +19,9 @@
     lexbuf.lex_buffer <- Utils.bytes_insert_byte lexbuf.lex_buffer ';' lexbuf.lex_curr_pos;
     lexbuf.lex_buffer_len <- (lexbuf.lex_buffer_len + 1)
 
+  let count_new_lines str = (String.split_on_char '\n' str |> List.length) - 1
 
+  let possible_semicolon = ref false
 }
 
 (* helper regex *)
@@ -112,8 +114,8 @@ let andh      = "&ˆ"
 let wtf       = "&ˆ="
 
 (* others *)
-let comment   = "//" [^'\n']* nl?
-let mcomment  = "/*" ([^'*']*[^'/']*) "*/"
+let comment   = "//" [^'\n']*
+let mcomment  = "/*" ([^'*']*('*'[^'/'])?)* "*/"
 let colon     = ":"
 let semicolon = ";"
 let comma     = ","
@@ -126,112 +128,107 @@ let cparent   = ")"
 let osquare   = "["
 let csquare   = "]"
 
+let scnl = ws* (comment|mcomment)* nl
 
 rule read =
   parse
-  (* Semicolon injection rules *)
-  | ident nl  { inject_semicolon lexbuf; TIDENTIFIER (Lexing.lexeme lexbuf |> String.trim)}
-  | intval nl { inject_semicolon lexbuf; TINTVAL (int_of_string (Lexing.lexeme lexbuf |> String.trim))}
-  | floatval nl { inject_semicolon lexbuf; TFLOATVAL (float_of_string (Lexing.lexeme lexbuf |> String.trim))}
-  | runeval nl { inject_semicolon lexbuf; TRUNEVAL (Lexing.lexeme lexbuf |> String.trim)}
-  | stringval nl { inject_semicolon lexbuf; TSTRINGVAL (Lexing.lexeme lexbuf |> String.trim)}
-  | rawstrval nl { inject_semicolon lexbuf; TRAWSTRVAL (Lexing.lexeme lexbuf |> String.trim)}
-  | break nl { inject_semicolon lexbuf; TBREAK }
-  | continue nl { inject_semicolon lexbuf; TCONTINUE }
-  | fall nl { inject_semicolon lexbuf; TFALL }
-  | return nl { inject_semicolon lexbuf; TRETURN }
-  | dplus nl { inject_semicolon lexbuf; TDPLUS }
-  | dminus nl { inject_semicolon lexbuf; TDMINUS }
-  | cparent nl { inject_semicolon lexbuf; TCLOSINGPAR }
-  | csquare nl { inject_semicolon lexbuf; TCLOSINGSQUARE }
-  | cpar nl { inject_semicolon lexbuf; TCLOSINGBRACE }
   (* Normal rules *)
-  | comment   { next_line lexbuf; read lexbuf }
-  | mcomment  { next_line_count ((Lexing.lexeme lexbuf |> String.split_on_char '\n' |> List.length) - 1) lexbuf; read lexbuf }
+  | comment { read lexbuf }
+  | mcomment as cnl {
+      (* Increase the line count by the number of new lines in the comment *)
+      next_line_count (count_new_lines cnl) lexbuf;
+      (* If there is at least one newline in the comment and there should be a
+         newline, insert the new line *)
+      if (count_new_lines cnl) > 0 && !possible_semicolon then
+        (possible_semicolon := false; TSEMICOLON)
+      else
+        (* Otherwise, continue reading the buffer *)
+        read lexbuf
+    }
   | ws        { read lexbuf }
-  | nl        { next_line lexbuf; read lexbuf }
-  | print     { TPRINT }
-  | println   { TPRINTLN }
-  | append    { TAPPEND }
-  | var       { TVAR }
-  | if        { TIF }
-  | else      { TELSE }
-  | break     { TBREAK }
-  | case      { TCASE }
-  | chan      { TCHAN }
-  | const     { TCONST }
-  | continue  { TCONTINUE }
-  | default   { TDEFAULT }
-  | defer     { TDEFER }
-  | fall      { TFALL }
-  | for       { TFOR }
-  | func      { TFUNC }
-  | go        { TGO }
-  | goto      { TGOTO }
-  | import    { TIMPORT }
-  | iface     { TIFACE }
-  | map       { TMAP }
-  | package   { TPACKAGE }
-  | range     { TRANGE }
-  | return    { TRETURN }
-  | select    { TSELECT }
-  | struct    { TSTRUCT }
-  | switch    { TSWITCH }
-  | type      { TTYPE }
-  | intval    { TINTVAL (int_of_string (Lexing.lexeme lexbuf)) }
-  | floatval  { TFLOATVAL (float_of_string (Lexing.lexeme lexbuf)) }
-  | stringval { TSTRINGVAL (Lexing.lexeme lexbuf) }
-  | rawstrval { TRAWSTRVAL (Lexing.lexeme lexbuf) }
-  | runeval   { TRUNEVAL (Lexing.lexeme lexbuf) }
-  | hexval    { THEXVAL (Lexing.lexeme lexbuf) }
-  | octoval   { TOCTOVAL (Lexing.lexeme lexbuf) }
-  | plus      { TPLUS }
-  | minus     { TMINUS }
-  | times     { TTIMES }
-  | div       { TDIV }
-  | not       { TNOT }
-  | percent   { TMOD }
-  | caret     { TCARET }
-  | dequal    { TEQUALS }
-  | sequal    { TASSIGN }
-  | nequal    { TNOTEQUAL }
-  | land      { TAND }
-  | lor       { TOR }
-  | band      { TBITAND }
-  | bor       { TBITOR }
-  | pequal    { TPLUSEQUAL }
-  | mequal    { TMINUSEQUAL }
-  | multequal { TMULTEQUAL }
-  | divequal  { TDIVEQUAL }
-  | aequal    { TANDEQUAL }
-  | oequal    { TOREQUAL }
-  | hequal    { THATEQUAL }
-  | perequal  { TPERCENTEQUAL }
-  | greater   { TGREATER }
-  | smaller   { TSMALLER }
-  | greateq   { TGREATEREQ }
-  | smalleq   { TSMALLEREQ }
-  | dsmaller  { TDSMALLER }
-  | dgreater  { TDGREATER }
-  | larrow    { TLEFTARROW }
-  | dgequal   { TDGEQUAL }
-  | dsequal   { TDSEQUAL }
-  | dplus     { TDPLUS }
-  | dminus    { TDMINUS }
-  | colequal  { TCOLEQUAL }
-  | andh      { TANDHAT }
-  | wtf       { TWTF }
-  | colon     { TCOLON }
-  | semicolon { TSEMICOLON }
-  | comma     { TCOMMA }
-  | period    { TPERIOD }
-  | dots      { TDOTS }
-  | osquare   { TOPENINGSQUARE }
-  | csquare   { TCLOSINGSQUARE }
-  | opar      { TOPENINGBRACE }
-  | cpar      { TCLOSINGBRACE }
-  | oparent   { TOPENINGPAR }
-  | cparent   { TCLOSINGPAR }
-  | ident     { TIDENTIFIER (Lexing.lexeme lexbuf) }
+  | nl        { next_line lexbuf; if !possible_semicolon then (possible_semicolon := false; TSEMICOLON) else read lexbuf }
+  | print     { possible_semicolon := false; TPRINT }
+  | println   { possible_semicolon := false; TPRINTLN }
+  | append    { possible_semicolon := false; TAPPEND }
+  | var       { possible_semicolon := false; TVAR }
+  | if        { possible_semicolon := false; TIF }
+  | else      { possible_semicolon := false; TELSE }
+  | break     { possible_semicolon := true; TBREAK }
+  | case      { possible_semicolon := false; TCASE }
+  | chan      { possible_semicolon := false; TCHAN }
+  | const     { possible_semicolon := false; TCONST }
+  | continue  { possible_semicolon := true; TCONTINUE }
+  | default   { possible_semicolon := false; TDEFAULT }
+  | defer     { possible_semicolon := false; TDEFER }
+  | fall      { possible_semicolon := true; TFALL }
+  | for       { possible_semicolon := false; TFOR }
+  | func      { possible_semicolon := false; TFUNC }
+  | go        { possible_semicolon := false; TGO }
+  | goto      { possible_semicolon := false; TGOTO }
+  | import    { possible_semicolon := false; TIMPORT }
+  | iface     { possible_semicolon := false; TIFACE }
+  | map       { possible_semicolon := false; TMAP }
+  | package   { possible_semicolon := false; TPACKAGE }
+  | range     { possible_semicolon := false; TRANGE }
+  | return    { possible_semicolon := true; TRETURN }
+  | select    { possible_semicolon := false; TSELECT }
+  | struct    { possible_semicolon := false; TSTRUCT }
+  | switch    { possible_semicolon := false; TSWITCH }
+  | type      { possible_semicolon := false; TTYPE }
+  | intval    { possible_semicolon := true; TINTVAL (int_of_string (Lexing.lexeme lexbuf)) }
+  | floatval  { possible_semicolon := true; TFLOATVAL (float_of_string (Lexing.lexeme lexbuf)) }
+  | stringval { possible_semicolon := true; TSTRINGVAL (Lexing.lexeme lexbuf) }
+  | rawstrval { possible_semicolon := true; TRAWSTRVAL (Lexing.lexeme lexbuf) }
+  | runeval   { possible_semicolon := true; TRUNEVAL (Lexing.lexeme lexbuf) }
+  | hexval    { possible_semicolon := true; THEXVAL (Lexing.lexeme lexbuf) }
+  | octoval   { possible_semicolon := true; TOCTOVAL (Lexing.lexeme lexbuf) }
+  | plus      { possible_semicolon := false; TPLUS }
+  | minus     { possible_semicolon := false; TMINUS }
+  | times     { possible_semicolon := false; TTIMES }
+  | div       { possible_semicolon := false; TDIV }
+  | not       { possible_semicolon := false; TNOT }
+  | percent   { possible_semicolon := false; TMOD }
+  | caret     { possible_semicolon := false; TCARET }
+  | dequal    { possible_semicolon := false; TEQUALS }
+  | sequal    { possible_semicolon := false; TASSIGN }
+  | nequal    { possible_semicolon := false; TNOTEQUAL }
+  | land      { possible_semicolon := false; TAND }
+  | lor       { possible_semicolon := false; TOR }
+  | band      { possible_semicolon := false; TBITAND }
+  | bor       { possible_semicolon := false; TBITOR }
+  | pequal    { possible_semicolon := false; TPLUSEQUAL }
+  | mequal    { possible_semicolon := false; TMINUSEQUAL }
+  | multequal { possible_semicolon := false; TMULTEQUAL }
+  | divequal  { possible_semicolon := false; TDIVEQUAL }
+  | aequal    { possible_semicolon := false; TANDEQUAL }
+  | oequal    { possible_semicolon := false; TOREQUAL }
+  | hequal    { possible_semicolon := false; THATEQUAL }
+  | perequal  { possible_semicolon := false; TPERCENTEQUAL }
+  | greater   { possible_semicolon := false; TGREATER }
+  | smaller   { possible_semicolon := false; TSMALLER }
+  | greateq   { possible_semicolon := false; TGREATEREQ }
+  | smalleq   { possible_semicolon := false; TSMALLEREQ }
+  | dsmaller  { possible_semicolon := false; TDSMALLER }
+  | dgreater  { possible_semicolon := false; TDGREATER }
+  | larrow    { possible_semicolon := false; TLEFTARROW }
+  | dgequal   { possible_semicolon := false; TDGEQUAL }
+  | dsequal   { possible_semicolon := false; TDSEQUAL }
+  | dplus     { possible_semicolon := true; TDPLUS }
+  | dminus    { possible_semicolon := true; TDMINUS }
+  | colequal  { possible_semicolon := false; TCOLEQUAL }
+  | andh      { possible_semicolon := false; TANDHAT }
+  | wtf       { possible_semicolon := false; TWTF }
+  | colon     { possible_semicolon := false; TCOLON }
+  | semicolon { possible_semicolon := false; TSEMICOLON }
+  | comma     { possible_semicolon := false; TCOMMA }
+  | period    { possible_semicolon := false; TPERIOD }
+  | dots      { possible_semicolon := false; TDOTS }
+  | osquare   { possible_semicolon := false; TOPENINGSQUARE }
+  | csquare   { possible_semicolon := true; TCLOSINGSQUARE }
+  | opar      { possible_semicolon := false; TOPENINGBRACE }
+  | cpar      { possible_semicolon := true; TCLOSINGBRACE }
+  | oparent   { possible_semicolon := false; TOPENINGPAR }
+  | cparent   { possible_semicolon := true; TCLOSINGPAR }
+  | ident     { possible_semicolon := true; TIDENTIFIER (Lexing.lexeme lexbuf) }
   | eof       { EOF }
   | _         { raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf)) }
