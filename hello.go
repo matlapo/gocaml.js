@@ -31,6 +31,7 @@ type (
     x, y float64
     x int
     y, y, y bool
+    u point
   }
 )
 
@@ -38,6 +39,10 @@ func main(x, y int, x float64, y int, x,y,t string) int {
 
   var x, y string = 4, 6 - 5 + 6 * 8 / 7
   var x1, x2 = 5 && 7, 6 || "hello" , 7
+
+  u[4] = 0
+  u[1] += 3
+  p.mem = 3
 
   if (4 == 4) {
     a++
@@ -48,6 +53,14 @@ func main(x, y int, x float64, y int, x,y,t string) int {
   else {
     y -= 5
   }
+
+  type float int
+  type (
+    int int
+    point struct {
+      x, y int
+    }
+  )
 
   print (3+3) //this is a comment
   println (4+4)
