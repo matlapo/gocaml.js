@@ -275,7 +275,10 @@ assign_type:
 
 exp:
   | TOPENINGPAR e = exp TCLOSINGPAR { e }
-  | name = TIDENTIFIER TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = FuncCall (name, e) } }
+  | name = TIDENTIFIER TOPENINGPAR e = exp_list TCLOSINGPAR
+    { { position = $symbolstartpos; value = FuncCall (name, e) } }
+  | TAPPEND TOPENINGPAR e1 = exp TCOMMA e2 = exp TCLOSINGPAR
+    { { position = $symbolstartpos; value = Append (e1, e2) } }
   | id = TIDENTIFIER { { position = $symbolstartpos; value = Id id } }
   | i = TINTVAL { { position = $symbolstartpos; value = Int i } }
   | f = TFLOATVAL { { position = $symbolstartpos; value = Float f } }

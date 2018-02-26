@@ -47,6 +47,8 @@ func main(x, y int, x float64, y int, x,y,t string) int {
   u[1] += 3
   p.mem = 3
 
+  x = Append(3+3, 2+2)
+
   for i++; i < 5; 3+3 {  }
 
   if ; 4 == 4 {
