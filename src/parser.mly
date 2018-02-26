@@ -240,7 +240,9 @@ stm:
   | TRETURN { { position = $symbolstartpos; value = Return None } }
   | simple = simpleStm { { position = $symbolstartpos; value = Simple simple } }
   | TSWITCH e = exp TOPENINGBRACE cases = case_list TCLOSINGBRACE
-    { { position = $symbolstartpos; value = Switch (e, cases) } }
+    { { position = $symbolstartpos; value = Switch (None, e, cases) } }
+  | TSWITCH s = simpleStm TSEMICOLON e = exp TOPENINGBRACE cases = case_list TCLOSINGBRACE
+    { { position = $symbolstartpos; value = Switch (Some s, e, cases) } }
   ;
 
 case_list:
