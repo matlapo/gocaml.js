@@ -19,7 +19,6 @@
     lexbuf.lex_buffer <- Utils.bytes_insert_byte lexbuf.lex_buffer ';' lexbuf.lex_curr_pos;
     lexbuf.lex_buffer_len <- (lexbuf.lex_buffer_len + 1)
 
-
 }
 
 (* helper regex *)
@@ -126,25 +125,24 @@ let cparent   = ")"
 let osquare   = "["
 let csquare   = "]"
 
-
 rule read =
   parse
   (* Semicolon injection rules *)
-  | ident nl  { inject_semicolon lexbuf; TIDENTIFIER (Lexing.lexeme lexbuf |> String.trim)}
-  | intval nl { inject_semicolon lexbuf; TINTVAL (int_of_string (Lexing.lexeme lexbuf |> String.trim))}
-  | floatval nl { inject_semicolon lexbuf; TFLOATVAL (float_of_string (Lexing.lexeme lexbuf |> String.trim))}
-  | runeval nl { inject_semicolon lexbuf; TRUNEVAL (Lexing.lexeme lexbuf |> String.trim)}
-  | stringval nl { inject_semicolon lexbuf; TSTRINGVAL (Lexing.lexeme lexbuf |> String.trim)}
-  | rawstrval nl { inject_semicolon lexbuf; TRAWSTRVAL (Lexing.lexeme lexbuf |> String.trim)}
-  | break nl { inject_semicolon lexbuf; TBREAK }
-  | continue nl { inject_semicolon lexbuf; TCONTINUE }
-  | fall nl { inject_semicolon lexbuf; TFALL }
-  | return nl { inject_semicolon lexbuf; TRETURN }
-  | dplus nl { inject_semicolon lexbuf; TDPLUS }
-  | dminus nl { inject_semicolon lexbuf; TDMINUS }
-  | cparent nl { inject_semicolon lexbuf; TCLOSINGPAR }
-  | csquare nl { inject_semicolon lexbuf; TCLOSINGSQUARE }
-  | cpar nl { inject_semicolon lexbuf; TCLOSINGBRACE }
+  | ident nl { next_line lexbuf; inject_semicolon lexbuf; TIDENTIFIER (Lexing.lexeme lexbuf |> String.trim); }
+  | intval nl { next_line lexbuf; inject_semicolon lexbuf; TINTVAL (int_of_string (Lexing.lexeme lexbuf |> String.trim))}
+  | floatval nl { next_line lexbuf; inject_semicolon lexbuf; TFLOATVAL (float_of_string (Lexing.lexeme lexbuf |> String.trim))}
+  | runeval nl { next_line lexbuf; inject_semicolon lexbuf; TRUNEVAL (Lexing.lexeme lexbuf |> String.trim)}
+  | stringval nl { next_line lexbuf; inject_semicolon lexbuf; TSTRINGVAL (Lexing.lexeme lexbuf |> String.trim)}
+  | rawstrval nl { next_line lexbuf; inject_semicolon lexbuf; TRAWSTRVAL (Lexing.lexeme lexbuf |> String.trim)}
+  | break nl { next_line lexbuf; inject_semicolon lexbuf; TBREAK }
+  | continue nl { next_line lexbuf; inject_semicolon lexbuf; TCONTINUE }
+  | fall nl { next_line lexbuf; inject_semicolon lexbuf; TFALL }
+  | return nl { next_line lexbuf; inject_semicolon lexbuf; TRETURN }
+  | dplus nl { next_line lexbuf; inject_semicolon lexbuf; TDPLUS }
+  | dminus nl { next_line lexbuf; inject_semicolon lexbuf; TDMINUS }
+  | cparent nl { next_line lexbuf; inject_semicolon lexbuf; TCLOSINGPAR }
+  | csquare nl { next_line lexbuf; inject_semicolon lexbuf; TCLOSINGSQUARE }
+  | cpar nl { next_line lexbuf; inject_semicolon lexbuf; TCLOSINGBRACE }
   (* Normal rules *)
   | comment   { next_line lexbuf; read lexbuf }
   | mcomment  { next_line_count ((Lexing.lexeme lexbuf |> String.split_on_char '\n' |> List.length) - 1) lexbuf; read lexbuf }

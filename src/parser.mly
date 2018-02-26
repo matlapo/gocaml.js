@@ -119,12 +119,12 @@ prog:
   ;
 
 package:
-  | TPACKAGE id = TIDENTIFIER { id }
+  | TPACKAGE id = TIDENTIFIER TSEMICOLON { id }
   ;
 
 decls:
-  | d1 = decl_node d2 = decls { d1::d2 }
-  | d = decl_node { [d] }
+  | d1 = decl_node TSEMICOLON d2 = decls { d1::d2 }
+  | d = decl_node TSEMICOLON { [d] }
   ;
 
 decl_node:
@@ -141,13 +141,13 @@ decl_type:
 
 //rules for variable declarations
 var_decls:
-  | d = var_format { [d] }
   | TOPENINGPAR ds = var_formats TCLOSINGPAR { ds }
+  | d = var_format { [d] }
   ;
 
 var_formats:
-  | v1 = var_format v2 = var_formats { v1::v2 }
-  | v = var_format { [v] }
+  | v1 = var_format TSEMICOLON v2 = var_formats { v1::v2 }
+  | v = var_format TSEMICOLON { [v] }
   ;
 
 var_format:
@@ -188,8 +188,8 @@ args_list:
 
 stm_list:
   | TOPENINGBRACE s = stm_list TCLOSINGBRACE { s }
-  | s = stm l = stm_list { s::l }
-  | s = stm { [s] }
+  | s = stm TSEMICOLON l = stm_list { s::l }
+  | s = stm TSEMICOLON { [s] }
   | { [] }
   ;
 
@@ -200,8 +200,8 @@ type_decls:
   ;
 
 type_formats:
-  | v1 = type_format v2 = type_formats { v1::v2 }
-  | v = type_format { [v] }
+  | v1 = type_format TSEMICOLON v2 = type_formats { v1::v2 }
+  | v = type_format TSEMICOLON { [v] }
   ;
 
 type_format:
@@ -216,8 +216,8 @@ type_def:
   ;
 
 type_def_list:
-  | ids = identifier_list t = type_def tdl = type_def_list { (ids, t)::tdl }
-  | ids = identifier_list t = type_def { [(ids, t)] }
+  | ids = identifier_list t = type_def TSEMICOLON tdl = type_def_list { (ids, t)::tdl }
+  | ids = identifier_list t = type_def TSEMICOLON { [(ids, t)] }
   ;
 
 //rules for statements and expressions
