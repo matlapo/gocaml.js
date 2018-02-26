@@ -5,10 +5,14 @@ package main
 var x, y string = 4, 6 - 5 + 6 * 8 / 7
 var x1, x2 = 5 && 7, 6 || "hello" , 7
 
+var x [4]int
+
 var (
+  x []int
   x, y string = 5, 6
   z int = 0xff45abc
   y = 01237
+  u [0]int
 )
 
 type float float64
@@ -17,6 +21,7 @@ type point struct {
   x, y float64
   x int
   y, y, y bool
+  h, e [45]int
 }
 
 type (

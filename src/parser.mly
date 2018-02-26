@@ -119,6 +119,7 @@ decl_node:
   | vb = decl_type { { position = $symbolstartpos; value = vb } }
   ;
 
+//top-level declarations
 decl_type:
   | TVAR vars = var_decls { Var vars }
   | TFUNC name = TIDENTIFIER TOPENINGPAR args = fct_args TCLOSINGPAR ret = fct_return TOPENINGBRACE body = stm_list TCLOSINGBRACE
@@ -139,9 +140,14 @@ var_formats:
 
 var_format:
   | vars = var_list t = TIDENTIFIER { (vars, Some t, []) }
+  | vars = var_list TOPENINGSQUARE size = array_size TCLOSINGSQUARE t = TIDENTIFIER { (vars, Some (t ^ "[" ^ size ^ "]"), []) }
   | vars = var_list TASSIGN exps = exp_list { (vars, None, exps) }
   | vars = var_list t = TIDENTIFIER TASSIGN exps = exp_list { (vars, Some t, exps) }
   ;
+
+array_size:
+  | { "" }
+  | i = TINTVAL { string_of_int i }
 
 var_list:
   | v1 = TIDENTIFIER TCOMMA v2 = var_list { v1::v2 }
@@ -197,7 +203,11 @@ stuct_decl:
 
 var_list_list:
   | v1 = var_list t = TIDENTIFIER v2 = var_list_list { (v1, t)::v2 }
+  | v1 = var_list TOPENINGSQUARE size = array_size TCLOSINGSQUARE t = TIDENTIFIER v2 = var_list_list
+    { (v1, t ^ "[" ^ size ^ "]")::v2 }
   | v = var_list t = TIDENTIFIER { [(v, t)] }
+  | v = var_list TOPENINGSQUARE size = array_size TCLOSINGSQUARE t = TIDENTIFIER
+    { [(v, t ^ "[" ^ size ^ "]")] }
   ;
 
 //rules for statements and expressions
