@@ -25,7 +25,8 @@ A GoLite compiler written in OCaml (ewww C)
 To only run certain test suites, run `jest [suite names]`. The following test suites are available:
 * `focused` Runs only tests that are fully written by us.
 * `extra` Runs go sample programs from online sources.
-* `past-teams` Runs tests from past COMP520 teams.
+* `curated-past-teams` Runs tests past COMP520 teams that were checked against the reference golite compiler.
+* `past-teams` Runs tests from all past COMP520 teams.
 
 Example: `jest focused extra`
 ### Running only certain test files
