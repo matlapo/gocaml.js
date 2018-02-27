@@ -83,8 +83,8 @@ let blank_simple (simp: simpleStm node) =
     |> List.map blank_exp
     |> List.flatten
     |> List.append (List.map (blank_kind simp.position.pos_lnum) l |> List.flatten)
-  | DoubleMinus s -> helper simp.position.pos_lnum s
-  | DoublePlus s -> helper simp.position.pos_lnum s
+  | DoubleMinus s -> blank_kind simp.position.pos_lnum s
+  | DoublePlus s -> blank_kind simp.position.pos_lnum s
   | Empty -> []
 
 let rec blank_stm (stm: stmt node) =
