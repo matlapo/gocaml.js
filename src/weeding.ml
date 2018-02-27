@@ -43,18 +43,18 @@ let rec blank_exp (e: exp node) : string list =
     match e.value with
     | Id l -> blank_kind l
     | BinaryOp (_, (a, b)) ->
-      blank_exp a || blank_exp b
-    | Unaryexp (_, a) ->
       blank_exp a
+      |> List.append (blank_exp b)
+    | Unaryexp (_, a) -> blank_exp a
     | FuncCall (_, l) ->
-      List.exists (fun x -> blank_exp x) l
+      l
+      |> List.map blank_exp
+      |> List.flatten
     | Append (a, b) ->
-      blank_exp a || blank_exp b
-    | _ -> false in
-  if error then print_endline ("Error: _ not allowed in this context: line " ^ (string_of_int e.position.pos_lnum));
-  error
-
-let blank_kind (k: kind) : string list =
+      blank_exp a
+      |> List.append (blank_exp b)
+    | _ -> []
+and blank_kind (k: kind) : string list =
   k
   |> List.map (fun x ->
     match x with
