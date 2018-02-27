@@ -101,6 +101,25 @@
 %start <Astwithposition.program> prog
 %%
 
+this_boy_is_on_fireeeeeeeeeee:
+  | TIMPORT    {}
+  | TSELECT    {}
+  | TWTF       {}
+  | TCHAN      {}
+  | TCONST     {}
+  | TDEFER     {}
+  | TDGEQUAL   {}
+  | TDSEQUAL   {}
+  | TFALL      {}
+  | TGO        {}
+  | TGOTO      {}
+  | TIFACE     {}
+  | TLEFTARROW {}
+  | TMAP       {}
+  | TRANGE     {}
+  | TDOTS      {}
+  ;
+
 // Helpers
 identifier_with_parenthesis: (* TODO: add this everywhere *)
   | t = TIDENTIFIER { t }
