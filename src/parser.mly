@@ -290,8 +290,8 @@ case:
 
 simpleStm:
   | e = exp { { position = $symbolstartpos; value = ExpStatement e } }
-  | var = TIDENTIFIER TDPLUS { { position = $symbolstartpos; value = DoublePlus var } }
-  | var = TIDENTIFIER TDMINUS { { position = $symbolstartpos; value = DoubleMinus var } }
+  | k = kind TDPLUS { { position = $symbolstartpos; value = DoublePlus k } }
+  | k = kind TDMINUS { { position = $symbolstartpos; value = DoubleMinus k } }
   | var = kind_list TASSIGN e = exp_list { { position = $symbolstartpos; value = Assign (Regular, (var, e)) } }
   | var = kind a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, ([var], [e])) } }
   | v = kind_list TCOLEQUAL e = exp_list { { position = $symbolstartpos; value = ShortDeclaration (v, e) } }

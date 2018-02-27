@@ -139,8 +139,8 @@ and string_of_stmt lvl { value = s; _} = match s with
   | Default -> indent lvl ^ "default\n"
 and string_of_simple_stmt {value = s;_} = match s with
   | ExpStatement exp -> string_of_exp exp
-  | DoublePlus s -> s ^ "++"
-  | DoubleMinus s -> s ^ "--"
+  | DoublePlus k -> string_of_kind k ^ "++"
+  | DoubleMinus k -> string_of_kind k ^ "--"
   | ShortDeclaration (kl, exps) -> string_of_list string_of_kind "," kl ^ " := " ^ string_of_exps exps
   | Empty -> ""
   | Assign (a, (kl, exps)) -> string_of_list string_of_kind "," kl ^ " "
