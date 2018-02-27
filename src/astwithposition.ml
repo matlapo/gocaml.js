@@ -76,7 +76,7 @@ type simpleStm =
     | ShortDeclaration of (kind list * (exp node) list)
     | Empty
 
-type case = exp node option * stmt node list
+type case = exp node list option * stmt node list
 and loop =
     | While of exp node option * stmt node list
     | For of simpleStm node * exp node option * simpleStm node * stmt node list
