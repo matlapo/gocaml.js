@@ -92,21 +92,33 @@ let rec blank_stm (s: stmt node) : string list =
     |> List.flatten
   | TypeDeclaration l ->
     l
-    |> List.exists (fun (s, ts) ->
-      s = blank_s || blank_def ts
+    |> List.map (fun (s, ts) ->
+      blank_def ts
+      |> List.append (helper s)
     )
+    |> List.flatten
   | If (s, e, l, el) ->
+    let s =
+      s
+      |> Option.map blank_simple
+      |> Option.default [] in
+    let e =
+      e
+      |> Option.map blank_exp
+      |> Option.default [] in
+    let l =
+      l
+      |> List.map blank_stm
+      |> List.flatten in
+    let el =
+      el
+      |> Option.map (fun x -> List.map blank_stm x)
+      |> Option.default []
+      |> List.flatten in
     s
-    |> bind (fun x -> Some (blank_simple x))
-    |> Option.default false
-    || e
-      |> bind (fun x -> Some (blank_exp x))
-      |> Option.default false
-    || l
-      |> List.exists blank_stm
-    || el
-      |> Option.map (fun x -> List.exists blank_stm x)
-      |> Option.default false
+    |> List.append e
+    |> List.append l
+    |> List.append el
   | Loop l ->
     (match l with
     | While (e, l) ->
