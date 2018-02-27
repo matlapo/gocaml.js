@@ -179,11 +179,11 @@ fct_return:
   ;
 
 args_list:
-  | var = TIDENTIFIER t = type_ref { [(var, Some t)] }
+  | a = arg TCOMMA l = args_list { a@l }
+  | a = arg { a }
+
+arg:
   | vars = identifier_list t = type_ref { List.map (fun x -> (x, Some t)) vars }
-  | vars = identifier_list t = type_ref TCOMMA l = args_list
-    { List.append (List.map (fun x -> (x, Some t)) vars) l } //temporary
-  | var = TIDENTIFIER t = type_ref TCOMMA l = args_list { (var, Some t)::l }
   ;
 
 stm_list:
