@@ -39,7 +39,7 @@ let rec blank_exp (e: exp node) =
     | Append (a, b) ->
       blank_exp a || blank_exp b
     | _ -> false in
-  (* if test then print_string (e.position) *)
+  if test then print_endline ("Error: _ not allowed in this context: line " ^ (string_of_int e.position.pos_lnum)) else ();
   test
 
 let rec blank_kind (k: kind) =
