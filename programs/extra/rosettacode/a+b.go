@@ -1,4 +1,3 @@
-// Source: http://rosettacode.org/wiki/A%2BB#Go
 package main
  
 func main() {
