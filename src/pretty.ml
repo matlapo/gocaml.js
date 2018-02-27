@@ -128,7 +128,6 @@ and string_of_stmt lvl { value = s; _} = match s with
     ^ string_of_simple_stmt sstmt2 ^ " {\n"
     ^ string_of_stmts (lvl + 1) stmts
     ^ indent lvl ^ "}\n"
-  | LeftArrow (_,_) -> indent lvl ^ "LeftArrow\n"
   | Return exp -> indent lvl ^ "return " ^ none_or_print string_of_exp exp ^ "\n"
   | Switch (sstmt, exp, cases) -> indent lvl ^ "switch "
     ^ none_or_print (fun s -> string_of_simple_stmt s ^ "; ") sstmt
