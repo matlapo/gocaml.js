@@ -16,6 +16,7 @@ let default_error x = Printf.sprintf "Error: missing default case for this switc
 let default_many_error x = Printf.sprintf "Error: multiple defaults in switch statement: line %d" x
 
 (* Helpers for finding invalid use of continue/break *)
+let continue_error x = Printf.sprintf "Error: invalid usage of keyword 'continue': line %d" x
 
 let rec blank_def line (t: typesDef) =
   match t with
@@ -195,6 +196,35 @@ let rec blank_stm (stm: stmt node) =
     |> List.append s
   | _ -> []
 
+let check_default (s: stmt node) =
+  match s.value with
+  | Switch (_, _, cs) ->
+    let d =
+      cs
+      |> List.fold_left (fun acc (e, _) -> if Option.is_none e then acc + 1 else acc) 0 in
+    if d = 1 then []
+    else if d = 0 then [default_error s.position.pos_lnum]
+    else [default_many_error s.position.pos_lnum]
+  | _ -> []
+
+let check_continue (s: stmt node) =
+  let rec helper (s: stmt node) (seen: bool) =
+    match s.value with
+    | Continue -> if seen = true then [] else [continue_error s.position.pos_lnum]
+    | Loop loop ->
+      (match loop with
+      | While (_, s) ->
+        s
+        |> List.map (fun x -> helper x true)
+        |> List.flatten
+      | _ -> [])
+    | Block s ->
+        s
+        |> List.map (fun x -> helper x seen)
+        |> List.flatten
+    | _ -> []
+  in helper s false
+
 let illegal_blanks (prog: program) =
   let p, d = prog in
   let blanks =
@@ -215,6 +245,10 @@ let illegal_blanks (prog: program) =
         )
         |> List.flatten
       | Fct (name, args, _, s) ->
+        let continue =
+          s
+          |> List.map check_continue
+          |> List.flatten in
         let name = helper x.position.pos_lnum name in
         let args =
           args
@@ -232,34 +266,10 @@ let illegal_blanks (prog: program) =
         name
         |> List.append s
         |> List.append args
+        |> List.append continue
       | _ -> []
     )
     |> List.flatten in
   match blanks with
   | [] -> ""
   | x::_ -> x
-
-let check_default (s: stmt node) =
-  match s.value with
-  | Switch (_, _, cs) ->
-    let d =
-      cs
-      |> List.fold_left (fun acc (e, _) -> if Option.is_none e then acc + 1 else acc) 0 in
-    if d = 1 then []
-    else if d = 0 then [default_error s.position.pos_lnum]
-    else [default_many_error s.position.pos_lnum]
-  | _ -> []
-
-(* let test (s: stmt node) =
-  let helper (s: stmt node) (seen: bool) =
-    match s.value with
-    | Continue -> seen
-    | Loop loop ->
-      match loop with
-      | While (_, s) ->
-        s
-        |> List.map (fun x -> helper s true)
-        |> List.fold_left (fun acc x -> acc )
-    | _ -> false
-  in
-  5 *)
