@@ -183,7 +183,7 @@ count_dimensions_array:
 
 count_dimensions_slice:
   | TOPENINGSQUARE TCLOSINGSQUARE i = count_dimensions_slice { i + 1 }
-  | TOPENINGSQUARE TCLOSINGSQUARE { 1 }
+  | TOPENINGSQUARE TCLOSINGSQUARE { 0 }
   ;
 
 exp_list:
