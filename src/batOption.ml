@@ -150,7 +150,7 @@ let eq ?(eq=(=)) x y = match x,y with
    eq None None = true
 *)
 
-let enum = function
+(* let enum = function
   | None   -> BatEnum.from (fun () -> raise BatEnum.No_more_elements)
   | Some e -> BatEnum.singleton e
 (*$T enum
@@ -183,7 +183,7 @@ let print print_a out = function
 
 let maybe_printer a_printer paren out = function
   | None -> ()
-  | Some x -> a_printer paren out x
+  | Some x -> a_printer paren out x *)
 
 module Monad =
 struct
