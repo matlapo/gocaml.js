@@ -12,8 +12,6 @@
 %token <string> TSTRINGVAL
 %token <string> TRAWSTRVAL
 %token <string> TRUNEVAL
-%token <string> TOCTOVAL
-%token <string> THEXVAL
 %token TPLUS
 %token TMINUS
 %token TTIMES
@@ -131,8 +129,6 @@ value:
   | s = TSTRINGVAL    { "TSTRINGVAL(" ^ s ^ ")" }
   | s = TRAWSTRVAL    { "TRAWSTRVAL(" ^ s ^ ")" }
   | r = TRUNEVAL      { "TRUNEVAL(" ^ r ^ ")" }
-  | h = THEXVAL       { "THEXVAL(" ^ h ^ ")" }
-  | o = TOCTOVAL      { "TOCTOVAL(" ^ o ^ ")" }
   | TPLUS             { "TPLUS" }
   | TMINUS            { "TMINUS" }
   | TTIMES            { "TTIMES" }

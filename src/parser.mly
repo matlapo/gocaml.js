@@ -15,8 +15,6 @@
 %token <string> TRAWSTRVAL
 %token <string> TRUNEVAL
 %token <bool> TBOOLVAL
-%token <string> TOCTOVAL
-%token <string> THEXVAL
 %token TPLUS
 %token TUPLUS
 %token TMINUS
@@ -104,17 +102,14 @@
 keyword:
   | TIMPORT    {}
   | TSELECT    {}
-  | TWTF       {}
   | TCHAN      {}
+  | TLEFTARROW {}
   | TCONST     {}
   | TDEFER     {}
-  | TDGEQUAL   {}
-  | TDSEQUAL   {}
   | TFALL      {}
   | TGO        {}
   | TGOTO      {}
   | TIFACE     {}
-  | TLEFTARROW {}
   | TMAP       {}
   | TRANGE     {}
   | TDOTS      {}
@@ -194,6 +189,7 @@ count_dimensions_slice:
 exp_list:
   | e = exp TCOMMA l = exp_list { e::l }
   | e = exp { [e] }
+  | { [] }
   ;
 
 //rules for function declarations
@@ -239,6 +235,7 @@ type_def:
   | d = count_dimensions_array base = identifier_with_parenthesis { ArrayT (base, d) }
   | i = count_dimensions_slice base = identifier_with_parenthesis { SliceT (base, i) }
   | TSTRUCT TOPENINGBRACE s = type_def_list TCLOSINGBRACE { StructT s }
+  | TSTRUCT TOPENINGBRACE TCLOSINGBRACE { StructT [] }
   | base = identifier_with_parenthesis { TypeT base }
   ;
 
@@ -249,7 +246,7 @@ type_def_list:
 
 //rules for statements and expressions
 stm:
-  | TOPENINGBRACE s = stm TCLOSINGBRACE { s }
+  | TOPENINGBRACE ss = stm_list TCLOSINGBRACE { { position = $symbolstartpos; value = Block ss } }
   | TPRINT TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Print e } }
   | TPRINTLN TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Println e } }
   | TVAR d = var_decls { { position = $symbolstartpos; value = Declaration d } }
@@ -258,12 +255,14 @@ stm:
     { { position = $symbolstartpos; value =  If (None, Some cond, s, Some l) } }
   | TIF simp = simpleStm TSEMICOLON cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
     { { position = $symbolstartpos; value =  If (Some simp, Some cond, s, Some l) } }
-  | TFOR cond = exp TCLOSINGBRACE s = stm_list TCLOSINGBRACE
+  | TFOR cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE
     { { position = $symbolstartpos; value = Loop (While (Some cond, s)) } }
   | TFOR TOPENINGBRACE s = stm_list TCLOSINGBRACE
     { { position = $symbolstartpos; value = Loop (While (None, s)) } }
   | TFOR init = simpleStm TSEMICOLON cond = exp TSEMICOLON inc = simpleStm TOPENINGBRACE s = stm_list TCLOSINGBRACE
-    { { position = $symbolstartpos; value = Loop (For (init, cond, inc, s)) } }
+    { { position = $symbolstartpos; value = Loop (For (init, Some cond, inc, s)) } }
+  | TFOR init = simpleStm TSEMICOLON TSEMICOLON inc = simpleStm TOPENINGBRACE s = stm_list TCLOSINGBRACE
+    { { position = $symbolstartpos; value = Loop (For (init, None, inc, s)) } }
   | TRETURN e = exp { { position = $symbolstartpos; value = Return (Some e) } }
   | TRETURN { { position = $symbolstartpos; value = Return None } }
   | simple = simpleStm { { position = $symbolstartpos; value = Simple simple } }
@@ -285,7 +284,7 @@ case_list:
   ;
 
 case:
-  | TCASE e = exp TCOLON s = stm_list { (Some e, s) }
+  | TCASE es = exp_list TCOLON s = stm_list { (Some es, s) }
   | TDEFAULT TCOLON s = stm_list { (None, s) }
   ;
 
@@ -293,9 +292,15 @@ simpleStm:
   | e = exp { { position = $symbolstartpos; value = ExpStatement e } }
   | var = TIDENTIFIER TDPLUS { { position = $symbolstartpos; value = DoublePlus var } }
   | var = TIDENTIFIER TDMINUS { { position = $symbolstartpos; value = DoubleMinus var } }
-  | var = kind a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
-  | v = identifier_list TCOLEQUAL e = exp_list { { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
-  |  { { position = $symbolstartpos; value = Empty } }
+  | var = kind_list TASSIGN e = exp_list { { position = $symbolstartpos; value = Assign (Regular, (var, e)) } }
+  | var = kind a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, ([var], [e])) } }
+  | v = kind_list TCOLEQUAL e = exp_list { { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
+  | { { position = $symbolstartpos; value = Empty } }
+  ;
+
+kind_list:
+  | k = kind TCOMMA ks = kind_list { k::ks }
+  | k = kind { [k] }
   ;
 
 kind:
@@ -308,8 +313,8 @@ kind_elem:
   ;
 
 array_element:
-  | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE l = array_element { i::l}
-  | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE { [i] }
+  | TOPENINGSQUARE e = exp TCLOSINGSQUARE l = array_element { e::l }
+  | TOPENINGSQUARE e = exp TCLOSINGSQUARE { [e] }
   ;
 
 else_ifs:
@@ -323,7 +328,6 @@ else_ifs:
   ;
 
 assign_type:
-  | TASSIGN { Regular }
   | TPLUSEQUAL { PlusEqual }
   | TMINUSEQUAL { MinusEqual }
   | TMULTEQUAL { TimesEqual }
@@ -332,6 +336,9 @@ assign_type:
   | TOREQUAL { OrEqual }
   | THATEQUAL { HatEqual }
   | TPERCENTEQUAL { PercentEqual }
+  | TWTF { AndHatEqual }
+  | TDGEQUAL { DoubleGreaterEqual }
+  | TDSEQUAL { DoubleSmallerEqual }
   ;
 
 exp:
@@ -347,8 +354,6 @@ exp:
   | s = TRAWSTRVAL { { position = $symbolstartpos; value = RawStr s } }
   | s = TRUNEVAL { { position = $symbolstartpos; value = Rune s } }
   | b = TBOOLVAL { { position = $symbolstartpos; value = Bool b } }
-  | h = THEXVAL { { position = $symbolstartpos; value = Hex h } }
-  | o = TOCTOVAL { { position = $symbolstartpos; value = Octal o } }
   | e1 = exp TPLUS e2 = exp
     { { position = $symbolstartpos; value = BinaryOp (Plus, (e1, e2)) } }
   | e1 = exp TMINUS e2 = exp

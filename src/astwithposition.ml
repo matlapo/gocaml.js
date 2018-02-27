@@ -11,12 +11,6 @@ type typesRef =
     | ArrayR of string * (int list) (* The list of int is the size of each dimension *)
     | SliceR of string * int (* The int is the number of dimensions *)
 
-type kind_elem =
-    | Variable of string
-    | Array of string * (int list)
-
-type kind = kind_elem list
-
 type binary =
     | Plus
     | Minus
@@ -52,12 +46,14 @@ type exp =
     | RawStr of string
     | Rune of string
     | Bool of bool
-    | Octal of string
-    | Hex of string
     | BinaryOp of binary * (exp node * exp node)
     | Unaryexp of unary * exp node
     | FuncCall of string * exp node list (* can also represent a typecast operation *)
     | Append of exp node * exp node
+and kind = kind_elem list
+and kind_elem =
+    | Variable of string
+    | Array of string * (exp node list)
 
 type assign =
     | Regular
@@ -71,20 +67,24 @@ type assign =
     | PercentEqual
     | DoublePlus
     | DoubleMinus
+    | AndHatEqual
+    | DoubleGreaterEqual
+    | DoubleSmallerEqual
 
 type simpleStm =
-    | Assign of assign * (kind * exp node)
+    | Assign of assign * (kind list * exp node list)
     | ExpStatement of exp node
     | DoublePlus of string
     | DoubleMinus of string
-    | ShortDeclaration of (string list * (exp node) list)
+    | ShortDeclaration of (kind list * (exp node) list)
     | Empty
 
-type case = exp node option * stmt node list
+type case = exp node list option * stmt node list
 and loop =
     | While of exp node option * stmt node list
-    | For of simpleStm node * exp node * simpleStm node * stmt node list
+    | For of simpleStm node * exp node option * simpleStm node * stmt node list
 and stmt =
+    | Block of stmt node list
     | Print of exp node list
     | Println of exp node list
     | Declaration of (string list * typesRef option * (exp node) list) list
