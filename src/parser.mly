@@ -101,7 +101,7 @@
 %start <Astwithposition.program> prog
 %%
 
-this_boy_is_on_fireeeeeeeeeee:
+keyword:
   | TIMPORT    {}
   | TSELECT    {}
   | TWTF       {}
