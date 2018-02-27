@@ -1,6 +1,11 @@
 # GoLite OCaml
 A GoLite compiler written in OCaml (ewww C)
 
+# Team Members
+* Maxence Frenette (260685124)
+* Maxime Plante (260685695)
+* Mathieu Lapointe (TODO)
+
 # Setup
 ## Tools
 * Install OPAM
