@@ -4,7 +4,7 @@ A GoLite compiler written in OCaml (ewww C)
 # Team Members
 * Maxence Frenette (260685124)
 * Maxime Plante (260685695)
-* Mathieu Lapointe (TODO)
+* Mathieu Lapointe (260685906)
 
 # Setup
 ## Tools
