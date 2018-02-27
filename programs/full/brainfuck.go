@@ -12,7 +12,7 @@ func brainfuck(program string) {
 		case '<':
 			dataPointer--
 		case '+':
-			buffer[dataPointer]--
+			buffer[dataPointer]++
 		case '-':
 			buffer[dataPointer]--
 		case '.':
