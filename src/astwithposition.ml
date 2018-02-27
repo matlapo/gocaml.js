@@ -85,7 +85,6 @@ and loop =
 and stmt =
     | Print of exp node list
     | Println of exp node list
-    | Assign of assign * (kind * exp node)
     | Declaration of (string list * typesRef option * (exp node) list) list
     | TypeDeclaration of (string * typesDef) list
     | If of (simpleStm node) option * exp node option * (stmt node) list * (stmt node list) option
