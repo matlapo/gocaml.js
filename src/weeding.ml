@@ -8,17 +8,17 @@ let id x = x
 
 let blank_s = "_"
 let blank_error x = Printf.sprintf "Error: _ not allowed in this context: line %d" x
-let helper s = if s = blank_s then [ blank_error 0 ] else []
+let helper n s = if s = blank_s then [ blank_error n ] else []
 
 let rec blank_def (t: typesDef) =
   match t with
-  | TypeT s -> helper s
-  | ArrayT (s, _) -> helper s
-  | SliceT (s, _) -> helper s
+  | TypeT s -> helper 0 s
+  | ArrayT (s, _) -> helper 0 s
+  | SliceT (s, _) -> helper 0 s
   | StructT l ->
     l
     |> List.map (fun (ls, ts) ->
-      List.map helper ls
+      List.map (helper 0) ls
       |> List.flatten
       |> List.append (blank_def ts)
     )
@@ -43,25 +43,25 @@ and blank_kind (k: kind) : string list =
   k
   |> List.map (fun x ->
     match x with
-    | Variable s -> helper s
+    | Variable s -> helper 0 s
     | Array (s, l) ->
       l
       |> List.map blank_exp
-      |> List.append [helper s]
+      |> List.append [helper 0 s]
       |> List.flatten
   )
   |> List.flatten
 
-let blank_simple (s: simpleStm node) =
-  match s.value with
+let blank_simple (simp: simpleStm node) =
+  match simp.value with
   | Assign (_, (l, e)) ->
     e
     |> List.map blank_exp
     |> List.flatten
     |> List.append (List.map blank_kind l |> List.flatten)
   | ExpStatement e -> blank_exp e
-  | DoublePlus s -> helper s
-  | DoubleMinus s -> helper s
+  | DoublePlus s -> helper simp.position.pos_lnum s
+  | DoubleMinus s -> helper simp.position.pos_lnum s
   | ShortDeclaration (l, e) ->
     e
     |> List.map blank_exp
@@ -69,8 +69,8 @@ let blank_simple (s: simpleStm node) =
     |> List.append (List.map blank_kind l |> List.flatten)
   | Empty -> []
 
-let rec blank_stm (s: stmt node) : string list =
-  match s.value with
+let rec blank_stm (stm: stmt node) : string list =
+  match stm.value with
   | Block l ->
     l
     |> List.map blank_stm
@@ -94,7 +94,7 @@ let rec blank_stm (s: stmt node) : string list =
     l
     |> List.map (fun (s, ts) ->
       blank_def ts
-      |> List.append (helper s)
+      |> List.append (helper stm.position.pos_lnum s)
     )
     |> List.flatten
   | If (s, e, l, el) ->
@@ -159,10 +159,10 @@ let illegal_blanks (prog: program) =
         )
         |> List.flatten
       | Fct (name, args, _, s) ->
-        let name = helper name in
+        let name = helper x.position.pos_lnum name in
         let args =
           args
-          |> List.map (fun (arg, _) -> helper arg)
+          |> List.map (fun (arg, _) -> helper x.position.pos_lnum arg)
           |> List.flatten in
         let s =
           s
