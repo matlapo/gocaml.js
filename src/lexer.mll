@@ -1,6 +1,7 @@
 {
   open Lexing
   open Parser
+  open Utils
 
   exception SyntaxError of string
 
@@ -68,8 +69,8 @@ let append    = "append"
 
 (* literals *)
 let intval       = '0' | ['1'-'9'] digit*
-let octoval      = '0' digit*
-let hexval       = '0''x' (digit | ['a'-'f'])*
+let octoval      = '0' ['0'-'7']*
+let hexval       = '0''x' ['0'-'9''A'-'F''a'-'f']*
 let floatval     = intval '.' digit+ | '.' digit+ | digit+ '.'
 let stringval    = '"' (ws | ['a'-'z''A'-'Z''0'-'9''~''@''#''$''%''^''&''*''-''+''/''\'''`''<''>''=''|''\'''.'','';'':''!''?''{''}''['']''('')'] | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | "\\'" | "\\\"" | "\\\\")* '"'
 let runeval      = ''' (ws | ['a'-'z''A'-'Z''0'-'9''~''@''#''$''%''^''&''*''-''+''/''`''<''>''=''|''.'','';'':''!''?''{''}''['']''('')'] | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | "\\'" | "\\\\") '''
@@ -180,8 +181,8 @@ rule read =
   | stringval { possible_semicolon := true; TSTRINGVAL (Lexing.lexeme lexbuf) }
   | rawstrval { possible_semicolon := true; TRAWSTRVAL (Lexing.lexeme lexbuf) }
   | runeval   { possible_semicolon := true; TRUNEVAL (Lexing.lexeme lexbuf) }
-  | hexval    { possible_semicolon := true; THEXVAL (Lexing.lexeme lexbuf) }
-  | octoval   { possible_semicolon := true; TOCTOVAL (Lexing.lexeme lexbuf) }
+  | hexval    { possible_semicolon := true; TINTVAL (int_of_hex (Lexing.lexeme lexbuf)) }
+  | octoval   { possible_semicolon := true; TINTVAL (int_of_oct (Lexing.lexeme lexbuf)) }
   | plus      { possible_semicolon := false; TPLUS }
   | minus     { possible_semicolon := false; TMINUS }
   | times     { possible_semicolon := false; TTIMES }

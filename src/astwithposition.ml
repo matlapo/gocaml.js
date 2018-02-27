@@ -46,8 +46,6 @@ type exp =
     | RawStr of string
     | Rune of string
     | Bool of bool
-    | Octal of string
-    | Hex of string
     | BinaryOp of binary * (exp node * exp node)
     | Unaryexp of unary * exp node
     | FuncCall of string * exp node list (* can also represent a typecast operation *)

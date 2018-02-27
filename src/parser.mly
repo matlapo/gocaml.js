@@ -15,8 +15,6 @@
 %token <string> TRAWSTRVAL
 %token <string> TRUNEVAL
 %token <bool> TBOOLVAL
-%token <string> TOCTOVAL
-%token <string> THEXVAL
 %token TPLUS
 %token TUPLUS
 %token TMINUS
@@ -353,8 +351,6 @@ exp:
   | s = TRAWSTRVAL { { position = $symbolstartpos; value = RawStr s } }
   | s = TRUNEVAL { { position = $symbolstartpos; value = Rune s } }
   | b = TBOOLVAL { { position = $symbolstartpos; value = Bool b } }
-  | h = THEXVAL { { position = $symbolstartpos; value = Hex h } }
-  | o = TOCTOVAL { { position = $symbolstartpos; value = Octal o } }
   | e1 = exp TPLUS e2 = exp
     { { position = $symbolstartpos; value = BinaryOp (Plus, (e1, e2)) } }
   | e1 = exp TMINUS e2 = exp
