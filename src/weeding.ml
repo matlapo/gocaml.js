@@ -54,18 +54,24 @@ and blank_kind line (k: kind) : string list =
 
 let blank_simple (simp: simpleStm node) =
   match simp.value with
-  | Assign (_, (_, e)) ->
-    e
-    |> List.map blank_exp
-    |> List.flatten
+  | Assign (a, (l, e)) ->
+    let e =
+      e
+      |> List.map blank_exp
+      |> List.flatten in
+    let l =
+      match a with
+      | Regular -> []
+      | _ -> l |> List.map (blank_kind simp.position.pos_lnum) |> List.flatten in
+    List.append e l
   | ExpStatement e -> blank_exp e
-  | DoublePlus s -> helper simp.position.pos_lnum s
-  | DoubleMinus s -> helper simp.position.pos_lnum s
   | ShortDeclaration (l, e) ->
     e
     |> List.map blank_exp
     |> List.flatten
     |> List.append (List.map (blank_kind simp.position.pos_lnum) l |> List.flatten)
+  | DoubleMinus s -> helper simp.position.pos_lnum s
+  | DoublePlus s -> helper simp.position.pos_lnum s
   | Empty -> []
 
 let rec blank_stm (stm: stmt node) =
