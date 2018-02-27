@@ -14,10 +14,13 @@
 OCB_FLAGS = -use-ocamlfind -use-menhir
 OCB = ocamlbuild $(OCB_FLAGS)
 
-all: native # profile debug
+all: byte # profile debug
 
 clean:
 	$(OCB) -clean
 
 native:
 	$(OCB) comp.native
+
+byte:
+	$(OCB) comp.byte
