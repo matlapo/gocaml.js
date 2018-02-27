@@ -7,22 +7,26 @@ let bind x f = Option.bind f x
 let id x = x
 
 let blank_s = "_"
+let blank_error x = Printf.sprintf "Error: _ not allowed in this context: line %d" x
 
-let rec blank_def (t: typesDef) =
-  match t with
-  | TypeT s -> s = blank_s
-  | StructT l ->
-    l
-    |> List.exists (fun (ls, ts) ->
-      List.exists (fun x -> x = blank_s) ls
-      || blank_def ts
-    )
-  | ArrayT (s, _) -> s = blank_s
-  | SliceT (s, _) -> s = blank_s
-
+let blank_def (t: typesDef) =
+  let rec helper acc t: string list =
+    match t with
+    | TypeT s -> if s = blank_s then [ blank_error 0 ] else []
+    | StructT l ->
+      l
+      |> List.map (fun (ls, ts) ->
+        List.map (fun x -> if x = blank_s then [ blank_error 0 ] else []) ls
+        |> List.flatten
+        |> List.append (helper acc ts)
+      )
+      |> List.flatten
+    | ArrayT (s, _) -> if s = blank_s then [ blank_error 0 ] else []
+    | SliceT (s, _) -> if s = blank_s then [ blank_error 0 ] else [] in
+  helper [] t
 
 let rec blank_exp (e: exp node) =
-  let test =
+  let error =
     match e.value with
     | Id l ->
       l
@@ -39,8 +43,8 @@ let rec blank_exp (e: exp node) =
     | Append (a, b) ->
       blank_exp a || blank_exp b
     | _ -> false in
-  if test then print_endline ("Error: _ not allowed in this context: line " ^ (string_of_int e.position.pos_lnum)) else ();
-  test
+  if error then print_endline ("Error: _ not allowed in this context: line " ^ (string_of_int e.position.pos_lnum));
+  error
 
 let rec blank_kind (k: kind) =
   k
