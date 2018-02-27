@@ -101,7 +101,7 @@
 %start <Astwithposition.program> prog
 %%
 
-this_boy_is_on_fireeeeeeeeeee:
+keyword:
   | TIMPORT    {}
   | TSELECT    {}
   | TWTF       {}
@@ -176,9 +176,19 @@ var_format:
   ;
 
 type_ref:
-  | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE base = identifier_with_parenthesis { ArrayR (base, i) }
-  | TOPENINGSQUARE TCLOSINGSQUARE base = identifier_with_parenthesis { SliceR base }
+  | d = count_dimensions_array base = identifier_with_parenthesis { ArrayR (base, d) }
+  | i = count_dimensions_slice base = identifier_with_parenthesis { SliceR (base, i + 1) }
   | base = identifier_with_parenthesis { TypeR base }
+  ;
+
+count_dimensions_array:
+  | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE l = count_dimensions_array { i::l }
+  | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE { [i] }
+  ;
+
+count_dimensions_slice:
+  | TOPENINGSQUARE TCLOSINGSQUARE i = count_dimensions_slice { i + 1 }
+  | TOPENINGSQUARE TCLOSINGSQUARE { 1 }
   ;
 
 exp_list:
@@ -226,8 +236,8 @@ type_format:
   ;
 
 type_def:
-  | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE base = identifier_with_parenthesis { ArrayT (base, i) }
-  | TOPENINGSQUARE TCLOSINGSQUARE base = identifier_with_parenthesis { SliceT base }
+  | d = count_dimensions_array base = identifier_with_parenthesis { ArrayT (base, d) }
+  | i = count_dimensions_slice base = identifier_with_parenthesis { SliceT (base, i) }
   | TSTRUCT TOPENINGBRACE s = type_def_list TCLOSINGBRACE { StructT s }
   | base = identifier_with_parenthesis { TypeT base }
   ;
@@ -294,7 +304,12 @@ kind:
 
 kind_elem:
   | var = TIDENTIFIER { Variable var }
-  | var = TIDENTIFIER TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE { Array (var, i) }
+  | var = TIDENTIFIER i = array_element { Array (var, i) }
+  ;
+
+array_element:
+  | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE l = array_element { i::l}
+  | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE { [i] }
   ;
 
 else_ifs:
