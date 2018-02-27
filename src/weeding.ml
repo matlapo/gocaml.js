@@ -24,6 +24,12 @@ let rec blank_def line (t: typesDef) =
     )
     |> List.flatten
 
+let blank_ref line (t: typesRef) =
+  match t with
+  | TypeR s -> helper line s
+  | ArrayR (s, _) -> helper line s
+  | SliceR (s, _) -> helper line s
+
 let rec blank_exp (e: exp node) : string list =
     match e.value with
     | Id l -> blank_kind e.position.pos_lnum l
@@ -90,9 +96,14 @@ let rec blank_stm (stm: stmt node) =
     |> List.flatten
   | Declaration l ->
     l
-    |> List.map (fun (s, _, es) ->
+    |> List.map (fun (s, d, es) ->
+      let d =
+        d
+        |> Option.map (blank_ref stm.position.pos_lnum)
+        |> Option.default [] in
       List.map blank_exp es
       |> List.flatten
+      |> List.append d
     )
     |> List.flatten
   | TypeDeclaration l ->
@@ -157,17 +168,27 @@ let illegal_blanks (prog: program) =
       match x.value with
       | Var l ->
         l
-        |> List.map (fun (_, _, exps) ->
-          exps
-          |> List.map (fun x -> blank_exp x)
-          |> List.flatten
+        |> List.map (fun (_, r, exps) ->
+          let exps =
+            exps
+            |> List.map (fun x -> blank_exp x)
+            |> List.flatten in
+          r
+          |> Option.map (blank_ref x.position.pos_lnum)
+          |> Option.default []
+          |> List.append exps
         )
         |> List.flatten
       | Fct (name, args, _, s) ->
         let name = helper x.position.pos_lnum name in
         let args =
           args
-          |> List.map (fun (arg, _) -> helper x.position.pos_lnum arg)
+          |> List.map (fun (arg, r) ->
+            r
+            |> Option.map (blank_ref x.position.pos_lnum)
+            |> Option.default []
+            |> List.append (helper x.position.pos_lnum arg)
+          )
           |> List.flatten in
         let s =
           s
