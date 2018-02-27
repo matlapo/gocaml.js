@@ -80,11 +80,18 @@ let rec blank_stm (s: stmt node) =
     |> List.exists (fun (s, ts) ->
       s = blank_s || blank_def ts
     )
-  (* | If (s, e, l, el) ->
-      let a =
-        s
-        |> bind (fun x -> Some (blank_simple x))
-        |> Option.default false *)
+  | If (s, e, l, el) ->
+      s
+      |> bind (fun x -> Some (blank_simple x))
+      |> Option.default false
+      || e
+         |> bind (fun x -> Some (blank_exp x))
+         |> Option.default false
+      || l
+         |> List.exists blank_stm
+      || el
+         |> Option.map (fun x -> List.exists blank_stm x)
+         |> Option.default false
   | Simple s -> blank_simple s
   | _ -> false
 
