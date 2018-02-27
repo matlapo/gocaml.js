@@ -152,13 +152,28 @@ let illegal_blanks (prog: program) =
       match x.value with
       | Var l ->
         l
-        |> List.exists (fun (_, _, exps) ->
+        |> List.map (fun (_, _, exps) ->
           exps
-          |> List.exists (fun x -> blank_exp x)
+          |> List.map (fun x -> blank_exp x)
+          |> List.flatten
         )
-      | Fct (n, args, _, l) ->
-        n = blank_s
-        || List.exists blank_stm l
-      | _ -> false
-    ) in
-  blanks |> List.exists id
+        |> List.flatten
+      | Fct (name, args, _, s) ->
+        let name = helper name in
+        let args =
+          args
+          |> List.map (fun (arg, _) -> helper arg)
+          |> List.flatten in
+        let s =
+          s
+          |> List.map blank_stm
+          |> List.flatten in
+        name
+        |> List.append s
+        |> List.append args
+      | _ -> []
+    )
+    |> List.flatten in
+  match blanks with
+  | [] -> ""
+  | x::_ -> x
