@@ -3,17 +3,17 @@ type 'a node = {position: Lexing.position; value: 'a}
 type typesDef =
     | TypeT of string
     | StructT of (string list * typesDef) list
-    | ArrayT of string * int
-    | SliceT of string
+    | ArrayT of string * (int list) (* The list of int is the size of each dimension *)
+    | SliceT of string * int (* The int is the number of dimensions *)
 
 type typesRef =
     | TypeR of string
-    | ArrayR of string * int
-    | SliceR of string
+    | ArrayR of string * (int list) (* The list of int is the size of each dimension *)
+    | SliceR of string * int (* The int is the number of dimensions *)
 
 type kind_elem =
     | Variable of string
-    | Array of (string * int)
+    | Array of string * (int list)
 
 type kind = kind_elem list
 
