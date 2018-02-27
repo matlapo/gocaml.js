@@ -65,8 +65,6 @@ type assign =
     | OrEqual
     | HatEqual
     | PercentEqual
-    | DoublePlus
-    | DoubleMinus
     | AndHatEqual
     | DoubleGreaterEqual
     | DoubleSmallerEqual
