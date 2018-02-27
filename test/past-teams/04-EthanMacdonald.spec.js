@@ -4,6 +4,9 @@ describe('EthanMacdonald', () => {
     testDirectory(
         'programs/extra/past-teams/EthanMacdonald/programs',
         'parse',
-        { validity: VALID }
+        {
+            validity: VALID,
+            ignore: [/./]
+        }
     );
 });

@@ -89,7 +89,6 @@ and stmt =
     | TypeDeclaration of (string * typesDef) list
     | If of (simpleStm node) option * exp node option * (stmt node) list * (stmt node list) option
     | Loop of loop
-    | LeftArrow of (string * string)
     | Return of exp node option
     | Switch of (simpleStm node) option * exp node option * case list
     | Simple of simpleStm node

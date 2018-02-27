@@ -12,7 +12,9 @@ func rotr32(x int, r int) int {
 
 func rand32bit() int {
 	x := state
-	count := x >> 59 // 59 = 64 - 5
+	// count = x >> 59, since 59 = 64 - 5
+	// This hack is needed to avoid a warning with the real Go compiler
+	count := (x >> 30) >> 29
 
 	state = x*multiplier + increment
 	x ^= x >> 18                // 18 = (64 - 27)/2
