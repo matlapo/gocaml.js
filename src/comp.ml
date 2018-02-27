@@ -64,6 +64,23 @@ let pretty input =
     print_error lexer_buffer ("Error: Unexpected " ^ token);
     exit 1
 
+let weed input =
+  let lexer_buffer = Lexing.from_channel input in
+  try
+    let ast = Parser.prog Lexer.read lexer_buffer in
+      let w = Weeding.illegal_blanks ast in
+      if w then print_string "true" else print_string "false";
+      print_newline ();
+      exit 0;
+  with
+  | Lexer.SyntaxError msg ->
+    print_error lexer_buffer ("Error: " ^ msg);
+    exit 1
+  | Parser.Error ->
+    let token = Lexing.lexeme lexer_buffer in
+    print_error lexer_buffer ("Error: Unexpected " ^ token);
+    exit 1
+
 let () =
   let argv = Sys.argv in
   if Array.length argv = 3 then
@@ -73,6 +90,7 @@ let () =
     if mode = "scan" then scan input_file
     else if mode = "tokens" then tokens input_file
     else if mode = "parse" then parse input_file
+    else if mode = "weed" then weed input_file
     else if mode = "pretty" then pretty input_file
     else if mode = "typecheck" then parse input_file
     else printf "%s is not a valid compiler mode\n" mode; exit 1;
