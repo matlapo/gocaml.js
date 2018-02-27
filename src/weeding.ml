@@ -10,23 +10,23 @@ let blank_s = "_"
 let blank_error x = Printf.sprintf "Error: _ not allowed in this context: line %d" x
 let helper n s = if s = blank_s then [ blank_error n ] else []
 
-let rec blank_def (t: typesDef) =
+let rec blank_def line (t: typesDef) =
   match t with
-  | TypeT s -> helper 0 s
-  | ArrayT (s, _) -> helper 0 s
-  | SliceT (s, _) -> helper 0 s
+  | TypeT s -> helper line s
+  | ArrayT (s, _) -> helper line s
+  | SliceT (s, _) -> helper line s
   | StructT l ->
     l
     |> List.map (fun (ls, ts) ->
       List.map (helper 0) ls
       |> List.flatten
-      |> List.append (blank_def ts)
+      |> List.append (blank_def line ts)
     )
     |> List.flatten
 
 let rec blank_exp (e: exp node) : string list =
     match e.value with
-    | Id l -> blank_kind l
+    | Id l -> blank_kind e.position.pos_lnum l
     | BinaryOp (_, (a, b)) ->
       blank_exp a
       |> List.append (blank_exp b)
@@ -39,15 +39,15 @@ let rec blank_exp (e: exp node) : string list =
       blank_exp a
       |> List.append (blank_exp b)
     | _ -> []
-and blank_kind (k: kind) : string list =
+and blank_kind line (k: kind) : string list =
   k
   |> List.map (fun x ->
     match x with
-    | Variable s -> helper 0 s
+    | Variable s -> helper line s
     | Array (s, l) ->
       l
       |> List.map blank_exp
-      |> List.append [helper 0 s]
+      |> List.append [helper line s]
       |> List.flatten
   )
   |> List.flatten
@@ -58,7 +58,7 @@ let blank_simple (simp: simpleStm node) =
     e
     |> List.map blank_exp
     |> List.flatten
-    |> List.append (List.map blank_kind l |> List.flatten)
+    |> List.append (List.map (blank_kind simp.position.pos_lnum) l |> List.flatten)
   | ExpStatement e -> blank_exp e
   | DoublePlus s -> helper simp.position.pos_lnum s
   | DoubleMinus s -> helper simp.position.pos_lnum s
@@ -66,10 +66,10 @@ let blank_simple (simp: simpleStm node) =
     e
     |> List.map blank_exp
     |> List.flatten
-    |> List.append (List.map blank_kind l |> List.flatten)
+    |> List.append (List.map (blank_kind simp.position.pos_lnum) l |> List.flatten)
   | Empty -> []
 
-let rec blank_stm (stm: stmt node) : string list =
+let rec blank_stm (stm: stmt node) =
   match stm.value with
   | Block l ->
     l
@@ -93,7 +93,7 @@ let rec blank_stm (stm: stmt node) : string list =
   | TypeDeclaration l ->
     l
     |> List.map (fun (s, ts) ->
-      blank_def ts
+      blank_def stm.position.pos_lnum ts
       |> List.append (helper stm.position.pos_lnum s)
     )
     |> List.flatten
