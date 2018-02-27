@@ -69,7 +69,7 @@ let weed input =
   try
     let ast = Parser.prog Lexer.read lexer_buffer in
       let w = Weeding.illegal_blanks ast in
-      if w then print_string "true" else print_string "false";
+      print_string w; 
       print_newline ();
       exit 0;
   with
