@@ -194,6 +194,7 @@ count_dimensions_slice:
 exp_list:
   | e = exp TCOMMA l = exp_list { e::l }
   | e = exp { [e] }
+  | { [] }
   ;
 
 //rules for function declarations
@@ -258,7 +259,7 @@ stm:
     { { position = $symbolstartpos; value =  If (None, Some cond, s, Some l) } }
   | TIF simp = simpleStm TSEMICOLON cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
     { { position = $symbolstartpos; value =  If (Some simp, Some cond, s, Some l) } }
-  | TFOR cond = exp TCLOSINGBRACE s = stm_list TCLOSINGBRACE
+  | TFOR cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE
     { { position = $symbolstartpos; value = Loop (While (Some cond, s)) } }
   | TFOR TOPENINGBRACE s = stm_list TCLOSINGBRACE
     { { position = $symbolstartpos; value = Loop (While (None, s)) } }
@@ -308,8 +309,8 @@ kind_elem:
   ;
 
 array_element:
-  | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE l = array_element { i::l}
-  | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE { [i] }
+  | TOPENINGSQUARE e = exp TCLOSINGSQUARE l = array_element { e::l }
+  | TOPENINGSQUARE e = exp TCLOSINGSQUARE { [e] }
   ;
 
 else_ifs:

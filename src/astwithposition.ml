@@ -11,12 +11,6 @@ type typesRef =
     | ArrayR of string * (int list) (* The list of int is the size of each dimension *)
     | SliceR of string * int (* The int is the number of dimensions *)
 
-type kind_elem =
-    | Variable of string
-    | Array of string * (int list)
-
-type kind = kind_elem list
-
 type binary =
     | Plus
     | Minus
@@ -58,6 +52,10 @@ type exp =
     | Unaryexp of unary * exp node
     | FuncCall of string * exp node list (* can also represent a typecast operation *)
     | Append of exp node * exp node
+and kind = kind_elem list
+and kind_elem =
+    | Variable of string
+    | Array of string * (exp node list)
 
 type assign =
     | Regular
