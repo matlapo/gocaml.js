@@ -187,8 +187,8 @@ args_list:
   ;
 
 stm_list:
-  | TOPENINGBRACE s = stm_list TCLOSINGBRACE { s }
   | s = stm TSEMICOLON l = stm_list { s::l }
+  | s = stm { [s] }
   | { [] }
   ;
 
@@ -221,6 +221,7 @@ type_def_list:
 
 //rules for statements and expressions
 stm:
+  | TOPENINGBRACE s = stm TCLOSINGBRACE { s }
   | TPRINT TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Print e } }
   | TPRINTLN TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Println e } }
   | TVAR d = var_decls { { position = $symbolstartpos; value = Declaration d } }

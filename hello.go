@@ -49,7 +49,11 @@ func main(x, y int, x float64, y int, x,y,t string) int {
 
   // for i++; i < 5; 3+3 {  }
 
-  switch 3 {
+  switch {
+  default: x := 2;
+  }
+
+  switch x:=6; 6 {
   case 4:
       print (3)
   case 5:
@@ -60,8 +64,10 @@ func main(x, y int, x float64, y int, x,y,t string) int {
 
   if 4 == 4 {
     x++
+    break
   } else if x++; 5 + 5 {
     //print (3+4)
+    continue
   } else {
     y -= 5
   }
