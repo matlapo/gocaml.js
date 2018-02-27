@@ -25,15 +25,23 @@ let blank_def (t: typesDef) =
     | SliceT (s, _) -> if s = blank_s then [ blank_error 0 ] else [] in
   helper [] t
 
-let rec blank_exp (e: exp node) =
-  let error =
+let rec blank_def (t: typesDef) =
+  match t with
+  | TypeT s -> if s = blank_s then [blank_error 0] else []
+  | ArrayT (s, _) -> if s = blank_s then [blank_error 0] else []
+  | SliceT (s, _) -> if s = blank_s then [blank_error 0] else []
+  | StructT l ->
+    l
+    |> List.map (fun (ls, ts) ->
+      List.map (fun x -> if x = blank_s then [blank_error 0] else []) ls
+      |> List.flatten
+      |> List.append (blank_def ts)
+    )
+    |> List.flatten
+
+let rec blank_exp (e: exp node) : string list =
     match e.value with
-    | Id l ->
-      l
-      |> List.exists (function
-        | Variable v -> v = blank_s
-        | _ -> false
-      )
+    | Id l -> blank_kind l
     | BinaryOp (_, (a, b)) ->
       blank_exp a || blank_exp b
     | Unaryexp (_, a) ->
@@ -46,15 +54,18 @@ let rec blank_exp (e: exp node) =
   if error then print_endline ("Error: _ not allowed in this context: line " ^ (string_of_int e.position.pos_lnum));
   error
 
-let rec blank_kind (k: kind) =
+let blank_kind (k: kind) : string list =
   k
-  |> List.exists (fun x ->
+  |> List.map (fun x ->
     match x with
-    | Variable s -> s = blank_s
+    | Variable s -> if s = blank_s then [blank_error 0] else []
     | Array (s, l) ->
-      s = blank_s ||
-      l |> List.exists (fun x -> blank_exp x)
+      l
+      |> List.map blank_exp
+      |> List.append [if s = blank_s then [blank_error 0] else []]
+      |> List.flatten
   )
+  |> List.flatten
 
 let blank_simple (s: simpleStm node) =
   match s.value with
