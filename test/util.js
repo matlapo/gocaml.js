@@ -7,36 +7,40 @@ const { spawnSync } = require('child_process');
 const VALID = 'VALID';
 const INVALID = 'INVALID';
 
-function testDirectory(pathString, command, validity) {
+function testDirectory(pathString, command, options = {}) {
     describe(path.basename(pathString), () => {
         for (const dirPath of subDirectoriesOf(pathString)) {
             const dirName = path.basename(dirPath);
             if (/invalid/i.test(dirName)) {
-                validity = INVALID;
+                options = { ...options, validity: INVALID };
             } else if (/valid/i.test(dirName)) {
-                validity = VALID;
+                options = { ...options, validity: VALID };
             }
 
-            testDirectory(dirPath, command, validity);
+            testDirectory(dirPath, command, options);
         }
 
-        for (const filePath of subFilesOf(pathString)) {
-            testFile(filePath, command, validity);
-        }
+        testFiles(pathString, command, options);
     });
 }
 
-function testFile(pathString, command, validity) {
+function testFiles(pathString, command, options) {
+    for (const filePath of subFilesOf(pathString, options.ignore)) {
+        testFile(filePath, command, options);
+    }
+}
+
+function testFile(pathString, command, options) {
     it(path.basename(pathString), () => {
-        expect(validity).toBeDefined();
+        expect(options.validity).toBeDefined();
 
         const result = spawnSync('./run.sh', [command, pathString]);
         const output = result.output.join('');
 
-        if (validity === VALID) {
+        if (options.validity === VALID) {
             expect(output).toMatch(/OK/);
             expect(result.status).toBe(0);
-        } else if (validity === INVALID) {
+        } else if (options.validity === INVALID) {
             expect(output).toMatch(/Error/);
             expect(result.status).toBe(1);
         } else {
@@ -52,14 +56,31 @@ function subDirectoriesOf(directoryPath) {
         .filter((p) => fs.lstatSync(p).isDirectory());
 }
 
-function subFilesOf(directoryPath) {
+function subFilesOf(directoryPath, ignore) {
     return fs
         .readdirSync(directoryPath)
         .map((p) => directoryPath + path.sep + p)
         .filter((p) => !fs.lstatSync(p).isDirectory())
-        .filter((p) => /.go$/.test(p));
+        .filter((p) => /.go$/.test(p))
+        .filter((p) => {
+            return (
+                !ignore ||
+                ignore.every((ignorePattern) => {
+                    if (ignorePattern instanceof RegExp) {
+                        return !ignorePattern.test(p);
+                    } else if (typeof ignorePattern === 'string') {
+                        return !p.includes(ignorePattern);
+                    } else {
+                        throw new TypeError(
+                            'Ignore patterns must be RegExps or strings.'
+                        );
+                    }
+                })
+            );
+        });
 }
 
 exports.VALID = VALID;
 exports.INVALID = INVALID;
 exports.testDirectory = testDirectory;
+exports.testFiles = testFiles;
