@@ -4,6 +4,7 @@ open BatOption
 
 module Option = BatOption
 let bind x f = Option.bind f x
+let id x = x
 
 let blank_s = "_"
 
@@ -21,22 +22,25 @@ let rec blank_def (t: typesDef) =
 
 
 let rec blank_exp (e: exp node) =
-  match e.value with
-  | Id l ->
-    l
-    |> List.exists (function
-      | Variable v -> v = blank_s
-      | _ -> false
-    )
-  | BinaryOp (_, (a, b)) ->
-    blank_exp a || blank_exp b
-  | Unaryexp (_, a) ->
-    blank_exp a
-  | FuncCall (_, l) ->
-    List.exists (fun x -> blank_exp x) l
-  | Append (a, b) ->
-    blank_exp a || blank_exp b
-  | _ -> false
+  let test =
+    match e.value with
+    | Id l ->
+      l
+      |> List.exists (function
+        | Variable v -> v = blank_s
+        | _ -> false
+      )
+    | BinaryOp (_, (a, b)) ->
+      blank_exp a || blank_exp b
+    | Unaryexp (_, a) ->
+      blank_exp a
+    | FuncCall (_, l) ->
+      List.exists (fun x -> blank_exp x) l
+    | Append (a, b) ->
+      blank_exp a || blank_exp b
+    | _ -> false in
+  (* if test then print_string (e.position) *)
+  test
 
 let rec blank_kind (k: kind) =
   k
@@ -103,18 +107,24 @@ let rec blank_stm (s: stmt node) =
       || List.exists blank_stm l
     )
   | Simple s -> blank_simple s
+  | Return e -> e |> Option.map blank_exp |> Option.default false
   | _ -> false
 
 let illegal_blanks (prog: program) =
   let p, d = prog in
-  d
-  |> List.map (fun x ->
-    match x.value with
-    | Var l ->
-      l
-      |> List.exists (fun (_, _, exps) ->
-        exps
-        |> List.exists (fun x -> blank_exp x)
-      )
-    | _ -> false
-  )
+  let blanks =
+    d
+    |> List.map (fun x ->
+      match x.value with
+      | Var l ->
+        l
+        |> List.exists (fun (_, _, exps) ->
+          exps
+          |> List.exists (fun x -> blank_exp x)
+        )
+      | Fct (n, args, _, l) ->
+        n = blank_s
+        || List.exists blank_stm l
+      | _ -> false
+    ) in
+  blanks |> List.exists id
