@@ -122,16 +122,27 @@ let rec blank_stm (s: stmt node) : string list =
   | Loop l ->
     (match l with
     | While (e, l) ->
-      e |> Option.map blank_exp |> Option.default false
+      e
+      |> Option.map blank_exp
+      |> Option.default []
     | For (s1, e, s2, l) ->
-      blank_simple s1
-      || blank_simple s2
-      || e |> Option.map blank_exp |> Option.default false
-      || List.exists blank_stm l
-    )
+      let a =
+        blank_simple s1
+        |> List.append (blank_simple s2) in
+      let b =
+        e
+        |> Option.map blank_exp
+        |> Option.default [] in
+      let c =
+        l
+        |> List.map blank_stm
+        |> List.flatten in
+      a
+      |> List.append b
+      |> List.append c)
   | Simple s -> blank_simple s
-  | Return e -> e |> Option.map blank_exp |> Option.default false
-  | _ -> false
+  | Return e -> e |> Option.map blank_exp |> Option.default []
+  | _ -> []
 
 let illegal_blanks (prog: program) =
   let p, d = prog in
