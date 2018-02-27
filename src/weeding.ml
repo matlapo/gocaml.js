@@ -81,17 +81,27 @@ let rec blank_stm (s: stmt node) =
       s = blank_s || blank_def ts
     )
   | If (s, e, l, el) ->
-      s
-      |> bind (fun x -> Some (blank_simple x))
+    s
+    |> bind (fun x -> Some (blank_simple x))
+    |> Option.default false
+    || e
+      |> bind (fun x -> Some (blank_exp x))
       |> Option.default false
-      || e
-         |> bind (fun x -> Some (blank_exp x))
-         |> Option.default false
-      || l
-         |> List.exists blank_stm
-      || el
-         |> Option.map (fun x -> List.exists blank_stm x)
-         |> Option.default false
+    || l
+      |> List.exists blank_stm
+    || el
+      |> Option.map (fun x -> List.exists blank_stm x)
+      |> Option.default false
+  | Loop l ->
+    (match l with
+    | While (e, l) ->
+      e |> Option.map blank_exp |> Option.default false
+    | For (s1, e, s2, l) ->
+      blank_simple s1
+      || blank_simple s2
+      || e |> Option.map blank_exp |> Option.default false
+      || List.exists blank_stm l
+    )
   | Simple s -> blank_simple s
   | _ -> false
 
