@@ -238,6 +238,7 @@ type_def:
   | d = count_dimensions_array base = identifier_with_parenthesis { ArrayT (base, d) }
   | i = count_dimensions_slice base = identifier_with_parenthesis { SliceT (base, i) }
   | TSTRUCT TOPENINGBRACE s = type_def_list TCLOSINGBRACE { StructT s }
+  | TSTRUCT TOPENINGBRACE TCLOSINGBRACE { StructT [] }
   | base = identifier_with_parenthesis { TypeT base }
   ;
 
@@ -262,7 +263,9 @@ stm:
   | TFOR TOPENINGBRACE s = stm_list TCLOSINGBRACE
     { { position = $symbolstartpos; value = Loop (While (None, s)) } }
   | TFOR init = simpleStm TSEMICOLON cond = exp TSEMICOLON inc = simpleStm TOPENINGBRACE s = stm_list TCLOSINGBRACE
-    { { position = $symbolstartpos; value = Loop (For (init, cond, inc, s)) } }
+    { { position = $symbolstartpos; value = Loop (For (init, Some cond, inc, s)) } }
+  | TFOR init = simpleStm TSEMICOLON TSEMICOLON inc = simpleStm TOPENINGBRACE s = stm_list TCLOSINGBRACE
+    { { position = $symbolstartpos; value = Loop (For (init, None, inc, s)) } }
   | TRETURN e = exp { { position = $symbolstartpos; value = Return (Some e) } }
   | TRETURN { { position = $symbolstartpos; value = Return None } }
   | simple = simpleStm { { position = $symbolstartpos; value = Simple simple } }
@@ -295,7 +298,7 @@ simpleStm:
   | var = kind_list TASSIGN e = exp_list { { position = $symbolstartpos; value = Assign (Regular, (var, e)) } }
   | var = kind a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, ([var], [e])) } }
   | v = kind_list TCOLEQUAL e = exp_list { { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
-  |  { { position = $symbolstartpos; value = Empty } }
+  | { { position = $symbolstartpos; value = Empty } }
   ;
 
 kind_list:

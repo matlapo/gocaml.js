@@ -79,7 +79,7 @@ type simpleStm =
 type case = exp node option * stmt node list
 and loop =
     | While of exp node option * stmt node list
-    | For of simpleStm node * exp node * simpleStm node * stmt node list
+    | For of simpleStm node * exp node option * simpleStm node * stmt node list
 and stmt =
     | Block of stmt node list
     | Print of exp node list
