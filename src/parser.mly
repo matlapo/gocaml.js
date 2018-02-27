@@ -102,17 +102,14 @@
 keyword:
   | TIMPORT    {}
   | TSELECT    {}
-  | TWTF       {}
   | TCHAN      {}
+  | TLEFTARROW {}
   | TCONST     {}
   | TDEFER     {}
-  | TDGEQUAL   {}
-  | TDSEQUAL   {}
   | TFALL      {}
   | TGO        {}
   | TGOTO      {}
   | TIFACE     {}
-  | TLEFTARROW {}
   | TMAP       {}
   | TRANGE     {}
   | TDOTS      {}
@@ -339,6 +336,9 @@ assign_type:
   | TOREQUAL { OrEqual }
   | THATEQUAL { HatEqual }
   | TPERCENTEQUAL { PercentEqual }
+  | TWTF { AndHatEqual }
+  | TDGEQUAL { DoubleGreaterEqual }
+  | TDSEQUAL { DoubleSmallerEqual }
   ;
 
 exp:

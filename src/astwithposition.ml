@@ -67,6 +67,9 @@ type assign =
     | PercentEqual
     | DoublePlus
     | DoubleMinus
+    | AndHatEqual
+    | DoubleGreaterEqual
+    | DoubleSmallerEqual
 
 type simpleStm =
     | Assign of assign * (kind list * exp node list)

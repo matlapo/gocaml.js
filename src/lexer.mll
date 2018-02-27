@@ -97,7 +97,7 @@ let divequal  = "/="
 let multequal = "*="
 let aequal    = "&="
 let oequal    = "|="
-let hequal    = "ˆ="
+let hequal    = "^="
 let perequal  = "%="
 let smaller   = "<"
 let greater   = ">"
@@ -111,8 +111,8 @@ let dgequal   = ">>="
 let dplus     = "++"
 let dminus    = "--"
 let colequal  = ":="
-let andh      = "&ˆ"
-let wtf       = "&ˆ="
+let andh      = "&^"
+let wtf       = "&^="
 
 (* others *)
 let comment   = "//" [^'\n']*
@@ -148,10 +148,35 @@ rule read =
     }
   | ws        { read lexbuf }
   | nl        { next_line lexbuf; if !possible_semicolon then (possible_semicolon := false; TSEMICOLON) else read lexbuf }
+  | wtf       { possible_semicolon := false; TWTF }
   | print     { possible_semicolon := false; TPRINT }
   | println   { possible_semicolon := false; TPRINTLN }
   | append    { possible_semicolon := false; TAPPEND }
   | var       { possible_semicolon := false; TVAR }
+  | percent   { possible_semicolon := false; TMOD }
+  | andh      { possible_semicolon := false; TANDHAT }
+  | band      { possible_semicolon := false; TBITAND }
+  | dgequal   { possible_semicolon := false; TDGEQUAL }
+  | smalleq   { possible_semicolon := false; TSMALLEREQ }
+  | dsmaller  { possible_semicolon := false; TDSMALLER }
+  | dsequal   { possible_semicolon := false; TDSEQUAL }
+  | dequal    { possible_semicolon := false; TEQUALS }
+  | nequal    { possible_semicolon := false; TNOTEQUAL }
+  | land      { possible_semicolon := false; TAND }
+  | lor       { possible_semicolon := false; TOR }
+  | bor       { possible_semicolon := false; TBITOR }
+  | greater   { possible_semicolon := false; TGREATER }
+  | smaller   { possible_semicolon := false; TSMALLER }
+  | greateq   { possible_semicolon := false; TGREATEREQ }
+  | dgreater  { possible_semicolon := false; TDGREATER }
+  | pequal    { possible_semicolon := false; TPLUSEQUAL }
+  | mequal    { possible_semicolon := false; TMINUSEQUAL }
+  | multequal { possible_semicolon := false; TMULTEQUAL }
+  | divequal  { possible_semicolon := false; TDIVEQUAL }
+  | aequal    { possible_semicolon := false; TANDEQUAL }
+  | oequal    { possible_semicolon := false; TOREQUAL }
+  | hequal    { possible_semicolon := false; THATEQUAL }
+  | perequal  { possible_semicolon := false; TPERCENTEQUAL }
   | if        { possible_semicolon := false; TIF }
   | else      { possible_semicolon := false; TELSE }
   | break     { possible_semicolon := true; TBREAK }
@@ -183,43 +208,17 @@ rule read =
   | runeval   { possible_semicolon := true; TRUNEVAL (Lexing.lexeme lexbuf) }
   | hexval    { possible_semicolon := true; TINTVAL (int_of_hex (Lexing.lexeme lexbuf)) }
   | octoval   { possible_semicolon := true; TINTVAL (int_of_oct (Lexing.lexeme lexbuf)) }
+  | dplus     { possible_semicolon := true; TDPLUS }
+  | dminus    { possible_semicolon := true; TDMINUS }
   | plus      { possible_semicolon := false; TPLUS }
   | minus     { possible_semicolon := false; TMINUS }
   | times     { possible_semicolon := false; TTIMES }
   | div       { possible_semicolon := false; TDIV }
   | not       { possible_semicolon := false; TNOT }
-  | percent   { possible_semicolon := false; TMOD }
-  | caret     { possible_semicolon := false; TCARET }
-  | dequal    { possible_semicolon := false; TEQUALS }
-  | sequal    { possible_semicolon := false; TASSIGN }
-  | nequal    { possible_semicolon := false; TNOTEQUAL }
-  | land      { possible_semicolon := false; TAND }
-  | lor       { possible_semicolon := false; TOR }
-  | band      { possible_semicolon := false; TBITAND }
-  | bor       { possible_semicolon := false; TBITOR }
-  | pequal    { possible_semicolon := false; TPLUSEQUAL }
-  | mequal    { possible_semicolon := false; TMINUSEQUAL }
-  | multequal { possible_semicolon := false; TMULTEQUAL }
-  | divequal  { possible_semicolon := false; TDIVEQUAL }
-  | aequal    { possible_semicolon := false; TANDEQUAL }
-  | oequal    { possible_semicolon := false; TOREQUAL }
-  | hequal    { possible_semicolon := false; THATEQUAL }
-  | perequal  { possible_semicolon := false; TPERCENTEQUAL }
-  | greater   { possible_semicolon := false; TGREATER }
-  | smaller   { possible_semicolon := false; TSMALLER }
-  | greateq   { possible_semicolon := false; TGREATEREQ }
-  | smalleq   { possible_semicolon := false; TSMALLEREQ }
-  | dsmaller  { possible_semicolon := false; TDSMALLER }
-  | dgreater  { possible_semicolon := false; TDGREATER }
   | larrow    { possible_semicolon := false; TLEFTARROW }
-  | dgequal   { possible_semicolon := false; TDGEQUAL }
-  | dsequal   { possible_semicolon := false; TDSEQUAL }
-  | dplus     { possible_semicolon := true; TDPLUS }
-  | dminus    { possible_semicolon := true; TDMINUS }
   | colequal  { possible_semicolon := false; TCOLEQUAL }
-  | andh      { possible_semicolon := false; TANDHAT }
-  | wtf       { possible_semicolon := false; TWTF }
   | colon     { possible_semicolon := false; TCOLON }
+  | caret     { possible_semicolon := false; TCARET }
   | semicolon { possible_semicolon := false; TSEMICOLON }
   | comma     { possible_semicolon := false; TCOMMA }
   | period    { possible_semicolon := false; TPERIOD }
@@ -230,6 +229,7 @@ rule read =
   | cpar      { possible_semicolon := true; TCLOSINGBRACE }
   | oparent   { possible_semicolon := false; TOPENINGPAR }
   | cparent   { possible_semicolon := true; TCLOSINGPAR }
+  | sequal    { possible_semicolon := false; TASSIGN }
   | ident     { possible_semicolon := true; TIDENTIFIER (Lexing.lexeme lexbuf) }
   | eof       { EOF }
   | _         { raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf)) }
