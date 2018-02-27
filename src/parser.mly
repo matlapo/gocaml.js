@@ -189,7 +189,6 @@ arg:
 stm_list:
   | s = stm TSEMICOLON l = stm_list { s::l }
   | s = stm { [s] }
-  | { [] }
   ;
 
 //rules for type declarations
