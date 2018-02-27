@@ -6,9 +6,16 @@ module Option = BatOption
 let bind x f = Option.bind f x
 let id x = x
 
+(* Helpers for finding invalid blank (i.e '_') usage *)
 let blank_s = "_"
 let blank_error x = Printf.sprintf "Error: _ not allowed in this context: line %d" x
 let helper n s = if s = blank_s then [ blank_error n ] else []
+
+(* Helpers for finding missing default cases in switch statements *)
+let default_error x = Printf.sprintf "Error: missing default case for this switch statement: line %d" x
+let default_many_error x = Printf.sprintf "Error: multiple defaults in switch statement: line %d" x
+
+(* Helpers for finding invalid use of continue/break *)
 
 let rec blank_def line (t: typesDef) =
   match t with
@@ -231,3 +238,18 @@ let illegal_blanks (prog: program) =
   match blanks with
   | [] -> ""
   | x::_ -> x
+
+let check_default (s: stmt node) =
+  match s.value with
+  | Switch (_, _, cs) ->
+    let d =
+      cs
+      |> List.fold_left (fun acc (e, _) -> if Option.is_none e then acc + 1 else acc) 0 in
+    if d = 1 then []
+    else if d = 0 then [default_error s.position.pos_lnum]
+    else [default_many_error s.position.pos_lnum]
+  | _ -> []
+
+(* let rec check_br_cont (s: stmt node) =
+  match s.value with
+  | Block  *)
