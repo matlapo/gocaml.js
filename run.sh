@@ -30,7 +30,7 @@ outfile=$(echo "$2" | cut -d. -f1)
 
 if [ "codegen" = "$1" ];
 then
-	./src/comp.native < "$2" 1> "$outfile.c"
+	./src/comp.byte < "$2" 1> "$outfile.c"
 else
-	./src/_build/comp.native "$1" "$2" < "$2"
+	./src/_build/comp.byte "$1" "$2" < "$2"
 fi

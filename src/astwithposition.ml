@@ -72,8 +72,8 @@ type assign =
 type simpleStm =
     | Assign of assign * (kind list * exp node list)
     | ExpStatement of exp node
-    | DoublePlus of string
-    | DoubleMinus of string
+    | DoublePlus of kind
+    | DoubleMinus of kind
     | ShortDeclaration of (kind list * (exp node) list)
     | Empty
 
