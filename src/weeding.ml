@@ -70,15 +70,19 @@ and blank_kind (k: kind) : string list =
 let blank_simple (s: simpleStm node) =
   match s.value with
   | Assign (_, (l, e)) ->
-    List.exists blank_kind l
-    || List.exists blank_exp e
+    e
+    |> List.map blank_exp
+    |> List.flatten
+    |> List.append (List.map blank_kind l |> List.flatten)
   | ExpStatement e -> blank_exp e
-  | DoublePlus s -> s = blank_s
-  | DoubleMinus s -> s = blank_s
-  | ShortDeclaration (k, l) ->
-    List.exists blank_kind k
-    || List.exists blank_exp l
-  | Empty -> false
+  | DoublePlus s -> if s = blank_s then [ blank_error 0 ] else []
+  | DoubleMinus s -> if s = blank_s then [ blank_error 0 ] else []
+  | ShortDeclaration (l, e) ->
+    e
+    |> List.map blank_exp
+    |> List.flatten
+    |> List.append (List.map blank_kind l |> List.flatten)
+  | Empty -> []
 
 let rec blank_stm (s: stmt node) =
   match s.value with
