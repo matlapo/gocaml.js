@@ -158,6 +158,34 @@ let rec blank_stm (stm: stmt node) =
       |> List.append c)
   | Simple s -> blank_simple s
   | Return e -> e |> Option.map blank_exp |> Option.default []
+  | Switch (s, e, cs) ->
+    let s =
+      s
+      |> Option.map blank_simple
+      |> Option.default [] in
+    let e =
+      e
+      |> Option.map blank_exp
+      |> Option.default [] in
+    cs
+    |> List.map (fun x ->
+      let (exps, stms) = x in
+      let exps =
+        exps
+        |> Option.map (fun x ->
+          x
+          |> List.map blank_exp
+          |> List.flatten
+        )
+        |> Option.default [] in
+      stms
+      |> List.map blank_stm
+      |> List.flatten
+      |> List.append exps
+    )
+    |> List.flatten
+    |> List.append e
+    |> List.append s
   | _ -> []
 
 let illegal_blanks (prog: program) =
