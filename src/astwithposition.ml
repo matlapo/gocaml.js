@@ -93,26 +93,12 @@ and stmt =
     | If of (simpleStm node) option * exp node option * (stmt node) list * (stmt node list) option
     | Loop of loop
     | LeftArrow of (string * string)
+    | Return of exp node option
+    | Switch of (simpleStm node) option * exp node option * case list
+    | Simple of simpleStm node
     | Break
-    | Chan
-    | Const
     | Continue
     | Default
-    | Defer
-    | Fallthrough
-    | Func
-    | Go
-    | Goto
-    | Import
-    | Iface
-    | Map
-    | Range
-    | Return of exp node option
-    | Select
-    | Struct
-    | Switch of (simpleStm node) option * exp node option * case list
-    | Type
-    | Simple of simpleStm node
 
 type package = string
 

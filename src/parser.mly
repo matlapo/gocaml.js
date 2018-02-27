@@ -247,6 +247,8 @@ stm:
     { { position = $symbolstartpos; value = Switch (Some s, Some e, cases) } }
   | TSWITCH s = simpleStm TSEMICOLON TOPENINGBRACE cases = case_list TCLOSINGBRACE
     { { position = $symbolstartpos; value = Switch (Some s, None, cases) } }
+  | TBREAK { { position = $symbolstartpos; value = Break } }
+  | TCONTINUE { { position = $symbolstartpos; value = Continue } }
   ;
 
 case_list:
