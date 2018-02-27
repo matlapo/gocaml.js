@@ -250,6 +250,16 @@ let check_default (s: stmt node) =
     else [default_many_error s.position.pos_lnum]
   | _ -> []
 
-(* let rec check_br_cont (s: stmt node) =
-  match s.value with
-  | Block  *)
+(* let test (s: stmt node) =
+  let helper (s: stmt node) (seen: bool) =
+    match s.value with
+    | Continue -> seen
+    | Loop loop ->
+      match loop with
+      | While (_, s) ->
+        s
+        |> List.map (fun x -> helper s true)
+        |> List.fold_left (fun acc x -> acc )
+    | _ -> false
+  in
+  5 *)
