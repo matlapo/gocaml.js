@@ -147,7 +147,7 @@ var_decls:
 
 var_formats:
   | v1 = var_format TSEMICOLON v2 = var_formats { v1::v2 }
-  | v = var_format TSEMICOLON { [v] }
+  | { [] }
   ;
 
 var_format:
@@ -189,7 +189,6 @@ args_list:
 stm_list:
   | TOPENINGBRACE s = stm_list TCLOSINGBRACE { s }
   | s = stm TSEMICOLON l = stm_list { s::l }
-  | s = stm TSEMICOLON { [s] }
   | { [] }
   ;
 
@@ -201,7 +200,7 @@ type_decls:
 
 type_formats:
   | v1 = type_format TSEMICOLON v2 = type_formats { v1::v2 }
-  | v = type_format TSEMICOLON { [v] }
+  | { [] }
   ;
 
 type_format:
