@@ -250,7 +250,7 @@ type_def_list:
 
 //rules for statements and expressions
 stm:
-  | TOPENINGBRACE s = stm TCLOSINGBRACE { s }
+  | TOPENINGBRACE ss = stm_list TCLOSINGBRACE { { position = $symbolstartpos; value = Block ss } }
   | TPRINT TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Print e } }
   | TPRINTLN TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Println e } }
   | TVAR d = var_decls { { position = $symbolstartpos; value = Declaration d } }
@@ -294,9 +294,15 @@ simpleStm:
   | e = exp { { position = $symbolstartpos; value = ExpStatement e } }
   | var = TIDENTIFIER TDPLUS { { position = $symbolstartpos; value = DoublePlus var } }
   | var = TIDENTIFIER TDMINUS { { position = $symbolstartpos; value = DoubleMinus var } }
-  | var = kind a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, (var, e)) } }
-  | v = identifier_list TCOLEQUAL e = exp_list { { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
+  | var = kind_list TASSIGN e = exp_list { { position = $symbolstartpos; value = Assign (Regular, (var, e)) } }
+  | var = kind a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, ([var], [e])) } }
+  | v = kind_list TCOLEQUAL e = exp_list { { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
   |  { { position = $symbolstartpos; value = Empty } }
+  ;
+
+kind_list:
+  | k = kind TCOMMA ks = kind_list { k::ks }
+  | k = kind { [k] }
   ;
 
 kind:
@@ -324,7 +330,6 @@ else_ifs:
   ;
 
 assign_type:
-  | TASSIGN { Regular }
   | TPLUSEQUAL { PlusEqual }
   | TMINUSEQUAL { MinusEqual }
   | TMULTEQUAL { TimesEqual }

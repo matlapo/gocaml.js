@@ -71,11 +71,11 @@ type assign =
     | DoubleMinus
 
 type simpleStm =
-    | Assign of assign * (kind * exp node)
+    | Assign of assign * (kind list * exp node list)
     | ExpStatement of exp node
     | DoublePlus of string
     | DoubleMinus of string
-    | ShortDeclaration of (string list * (exp node) list)
+    | ShortDeclaration of (kind list * (exp node) list)
     | Empty
 
 type case = exp node option * stmt node list
@@ -83,6 +83,7 @@ and loop =
     | While of exp node option * stmt node list
     | For of simpleStm node * exp node * simpleStm node * stmt node list
 and stmt =
+    | Block of stmt node list
     | Print of exp node list
     | Println of exp node list
     | Declaration of (string list * typesRef option * (exp node) list) list
