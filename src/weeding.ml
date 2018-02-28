@@ -278,6 +278,10 @@ let illegal_blanks (prog: program) =
           s
           |> List.map check_cont_break
           |> List.flatten in
+        let default =
+          s
+          |> List.map check_default
+          |> List.flatten in
         let name = helper x.position.pos_lnum name in
         let args =
           args
@@ -296,6 +300,7 @@ let illegal_blanks (prog: program) =
         |> List.append s
         |> List.append args
         |> List.append continue
+        |> List.append default
       | _ -> []
     )
     |> List.flatten in
