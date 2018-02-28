@@ -1,11 +1,13 @@
 type 'a node = {position: Lexing.position; value: 'a}
 
+(* Represents the definition of a new type *)
 type typesDef =
     | TypeT of string
     | StructT of (string list * typesDef) list
     | ArrayT of string * (int64 list) (* The list of int64 is the size of each dimension *)
     | SliceT of string * int64 (* The int64 is the number of dimensions *)
 
+(* Represents the reference to an existing type *)
 type typesRef =
     | TypeR of string
     | ArrayR of string * (int64 list) (* The list of int64 is the size of each dimension *)
@@ -50,6 +52,7 @@ type exp =
     | Unaryexp of unary * exp node
     | FuncCall of string * exp node list (* can also represent a typecast operation *)
     | Append of exp node * exp node
+(* Represents a reference to a variable *)
 and kind = kind_elem list
 and kind_elem =
     | Variable of string
@@ -69,6 +72,7 @@ type assign =
     | DoubleGreaterEqual
     | DoubleSmallerEqual
 
+(* Exactly like GoLang simpleStm *)
 type simpleStm =
     | Assign of assign * (kind list * exp node list)
     | ExpStatement of exp node
@@ -77,12 +81,14 @@ type simpleStm =
     | ShortDeclaration of (kind list * (exp node) list)
     | Empty
 
+(* Represents a case of a switch *)
 type case = exp node list option * stmt node list
 and loop =
     | While of exp node option * stmt node list
     | For of simpleStm node * exp node option * simpleStm node * stmt node list
 and elseif = (stmt node) list
 and stmt =
+    (* Random block {} *)
     | Block of stmt node list
     | Print of exp node list
     | Println of exp node list

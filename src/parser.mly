@@ -99,6 +99,7 @@
 %start <Astwithposition.program> prog
 %%
 
+// Reserved keyword (we don't use them anywhere)
 keyword:
   | TIMPORT    {}
   | TSELECT    {}
@@ -116,7 +117,7 @@ keyword:
   ;
 
 // Helpers
-identifier_with_parenthesis: (* TODO: add this everywhere *)
+identifier_with_parenthesis:
   | t = TIDENTIFIER { t }
   | TOPENINGPAR t = identifier_with_parenthesis TCLOSINGPAR { t }
   ;
@@ -136,13 +137,13 @@ package:
   | TPACKAGE id = TIDENTIFIER TSEMICOLON { id }
   ;
 
-decls:
-  | d1 = decl_node TSEMICOLON d2 = decls { d1::d2 }
-  | d = decl_node TSEMICOLON { [d] }
-  ;
+// ########################################
+// ### rules for top-level declarations ###
+// ########################################
 
-decl_node:
-  | vb = decl_type { { position = $symbolstartpos; value = vb } }
+decls:
+  | d1 = decl_type TSEMICOLON d2 = decls { { position = $symbolstartpos; value = d1 }::d2 }
+  | d = decl_type TSEMICOLON { [{ position = $symbolstartpos; value = d }] }
   ;
 
 //top-level declarations
@@ -153,51 +154,57 @@ decl_type:
   | TTYPE t = type_decls { Type t }
   ;
 
-//rules for variable declarations
+// #######################################
+// ### rules for variable declarations ###
+// #######################################
+
+// Support distributed declarations
 var_decls:
   | TOPENINGPAR ds = var_formats TCLOSINGPAR { ds }
   | d = var_format { [d] }
   ;
 
+// List of variables declaration in a distributed declaration
 var_formats:
   | v1 = var_format TSEMICOLON v2 = var_formats { v1::v2 }
   | { [] }
   ;
 
+// List of variables declaration in a distributed declaration
 var_format:
   | vars = identifier_list t = type_ref { (vars, Some t, []) }
   | vars = identifier_list TASSIGN exps = exp_list { (vars, None, exps) }
   | vars = identifier_list t = type_ref TASSIGN exps = exp_list { (vars, Some t, exps) }
   ;
 
+// Reference to an existing type
 type_ref:
   | d = count_dimensions_array base = identifier_with_parenthesis { ArrayR (base, d) }
   | i = count_dimensions_slice base = identifier_with_parenthesis { SliceR (base, Int64.add i Int64.one) }
   | base = identifier_with_parenthesis { TypeR base }
   ;
 
+// Returns the size of each dimension of an array based on the number of square brackets
 count_dimensions_array:
   | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE l = count_dimensions_array { i::l }
   | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE { [i] }
   ;
 
+// Returns the number of dimension of a slice based on the number of square brackets
 count_dimensions_slice:
   | TOPENINGSQUARE TCLOSINGSQUARE i = count_dimensions_slice { Int64.add i Int64.one }
   | TOPENINGSQUARE TCLOSINGSQUARE { Int64.zero }
   ;
 
-exp_list:
-  | e = exp TCOMMA l = exp_list { e::l }
-  | e = exp { [e] }
-  | { [] }
-  ;
-
-//rules for function declarations
+// #######################################
+// ### rules for function declarations ###
+// #######################################
 fct_args:
   | { [] }
   | args = args_list { args }
   ;
 
+// Matches the return type of a function
 fct_return:
   | { None }
   | t = type_ref { Some t }
@@ -207,30 +214,34 @@ args_list:
   | a = arg TCOMMA l = args_list { a@l }
   | a = arg { a }
 
+// Takes a list of arguments having the same type (Ex: fun(a, b int)) and turning it into fun(a int, b int)
 arg:
   | vars = identifier_list t = type_ref { List.map (fun x -> (x, Some t)) vars }
   ;
 
-stm_list:
-  | s = stm TSEMICOLON l = stm_list { s::l }
-  | s = stm { [s] }
-  ;
 
-//rules for type declarations
+// ###################################
+// ### rules for type declarations ###
+// ###################################
+
+// Support distributed declarations
 type_decls:
   | t = type_format { [t] }
   | TOPENINGPAR ts = type_formats TCLOSINGPAR { ts }
   ;
 
+// Type declaration list in a distributed declaration
 type_formats:
   | v1 = type_format TSEMICOLON v2 = type_formats { v1::v2 }
   | { [] }
   ;
 
+// Type declaration in a distributed declaration
 type_format:
   | name = TIDENTIFIER t = type_def { (name, t) }
   ;
 
+// Definition of a type (recursively for structs)
 type_def:
   | d = count_dimensions_array base = identifier_with_parenthesis { ArrayT (base, d) }
   | i = count_dimensions_slice base = identifier_with_parenthesis { SliceT (base, i) }
@@ -239,12 +250,21 @@ type_def:
   | base = identifier_with_parenthesis { TypeT base }
   ;
 
+//
 type_def_list:
   | ids = identifier_list t = type_def TSEMICOLON tdl = type_def_list { (ids, t)::tdl }
   | ids = identifier_list t = type_def TSEMICOLON { [(ids, t)] }
   ;
 
-//rules for statements and expressions
+// ############################
+// ### rules for statements ###
+// ############################
+
+stm_list:
+  | s = stm TSEMICOLON l = stm_list { s::l }
+  | s = stm { [s] }
+  ;
+
 stm:
   | TOPENINGBRACE ss = stm_list TCLOSINGBRACE { { position = $symbolstartpos; value = Block ss } }
   | TPRINT TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Print e } }
@@ -278,17 +298,20 @@ stm:
   | TCONTINUE { { position = $symbolstartpos; value = Continue } }
   ;
 
+// Defines a list of cases in a switch
 case_list:
   | c1 = case c2 = case_list { c1::c2 }
   | c = case  { [c] }
   ;
 
+// Defines a switch case
 case:
   | TCASE e = exp TCOLON s = stm_list { (Some [e], s) }
   | TCASE e = exp TCOMMA es = exp_list TCOLON s = stm_list { (Some (e::es), s) }
   | TDEFAULT TCOLON s = stm_list { (None, s) }
   ;
 
+// Defines a golang simplestm (see https://golang.org/ref/spec#SimpleStmt)
 simpleStm:
   | e = exp { { position = $symbolstartpos; value = ExpStatement e } }
   | k = kind TDPLUS { { position = $symbolstartpos; value = DoublePlus k } }
@@ -297,25 +320,6 @@ simpleStm:
   | var = kind a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, ([var], [e])) } }
   | v = kind_list TCOLEQUAL e = exp_list { { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
   | { { position = $symbolstartpos; value = Empty } }
-  ;
-
-kind_list:
-  | k = kind TCOMMA ks = kind_list { k::ks }
-  | k = kind { [k] }
-  ;
-
-kind:
-  | var = kind_elem TPERIOD vars = kind { var::vars }
-  | var = kind_elem { [var] }
-
-kind_elem:
-  | var = TIDENTIFIER { Variable var }
-  | var = TIDENTIFIER i = array_element { Array (var, i) }
-  ;
-
-array_element:
-  | TOPENINGSQUARE e = exp TCLOSINGSQUARE l = array_element { e::l }
-  | TOPENINGSQUARE e = exp TCLOSINGSQUARE { [e] }
   ;
 
 else_ifs:
@@ -340,6 +344,37 @@ assign_type:
   | TWTF { AndHatEqual }
   | TDGEQUAL { DoubleGreaterEqual }
   | TDSEQUAL { DoubleSmallerEqual }
+  ;
+
+// ####################################
+// ### rules for variable reference ###
+// ####################################
+kind_list:
+  | k = kind TCOMMA ks = kind_list { k::ks }
+  | k = kind { [k] }
+  ;
+
+kind:
+  | var = kind_elem TPERIOD vars = kind { var::vars }
+  | var = kind_elem { [var] }
+
+kind_elem:
+  | var = TIDENTIFIER { Variable var }
+  | var = TIDENTIFIER i = array_element { Array (var, i) }
+  ;
+
+array_element:
+  | TOPENINGSQUARE e = exp TCLOSINGSQUARE l = array_element { e::l }
+  | TOPENINGSQUARE e = exp TCLOSINGSQUARE { [e] }
+  ;
+
+// #############################
+// ### rules for expressions ###
+// #############################
+exp_list:
+  | e = exp TCOMMA l = exp_list { e::l }
+  | e = exp { [e] }
+  | { [] }
   ;
 
 exp:
