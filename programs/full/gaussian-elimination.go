@@ -68,14 +68,14 @@ func main() {
 		row2 []float64
 	)
 
-	append(row1, 2.0)
-	append(row1, 1.0)
-	append(row1, 3.0)
-	append(matrix22, row1)
-	append(row2, 1.0)
-	append(row2, 2.0)
-	append(row2, 5.0)
-	append(matrix22, row2)
+	row1 = append(row1, 2.0)
+	row1 = append(row1, 1.0)
+	row1 = append(row1, 3.0)
+	matrix22 = append(matrix22, row1)
+	row1 = append(row2, 1.0)
+	row1 = append(row2, 2.0)
+	row1 = append(row2, 5.0)
+	matrix22 = append(matrix22, row2)
 
 	println("Initial Matrix")
 	printMatrix(matrix22)
