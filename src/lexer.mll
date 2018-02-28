@@ -22,8 +22,6 @@
 
   let count_new_lines str = (String.split_on_char '\n' str |> List.length) - 1
 
-  (* Indicate that the last matched comment needs a semicolon if it is on the
-     end of a line. The variable is mutable to keep a global state. *)
   let possible_semicolon = ref false
 }
 
@@ -70,10 +68,10 @@ let println   = "println"
 let append    = "append"
 
 (* literals *)
-let intval       = '0' | ['1'-'9'] digit*
+let intval       = '0' | (['1'-'9'] digit*)
 let octoval      = '0' ['0'-'7']*
 let hexval       = '0'('x'|'X') ['0'-'9''A'-'F''a'-'f']*
-let floatval     = intval '.' digit+ | '.' digit+ | digit+ '.'
+let floatval     = (digit+ '.' digit+) | ('.' digit+) | (intval '.')
 let stringval    = '"' (ws | [^'\\''"'] | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | "\\\"" | "\\\\")* '"'
 let runeval      = ''' (ws | [^'\\''''] | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | "\\'" | "\\\\") '''
 let rawstrval    = '`' [^'`']* '`'
@@ -131,6 +129,8 @@ let cparent   = ")"
 let osquare   = "["
 let csquare   = "]"
 
+let scnl = ws* (comment|mcomment)* nl
+
 rule read =
   parse
   (* Normal rules *)
@@ -138,8 +138,8 @@ rule read =
   | mcomment as cnl {
       (* Increase the line count by the number of new lines in the comment *)
       next_line_count (count_new_lines cnl) lexbuf;
-      (* If there should be a new line and there is at least one newline in the
-         comment, insert the new line *)
+      (* If there is at least one newline in the comment and there should be a
+         newline, insert the new line *)
       if (count_new_lines cnl) > 0 && !possible_semicolon then
         (possible_semicolon := false; TSEMICOLON)
       else
@@ -201,8 +201,8 @@ rule read =
   | struct    { possible_semicolon := false; TSTRUCT }
   | switch    { possible_semicolon := false; TSWITCH }
   | type      { possible_semicolon := false; TTYPE }
-  | intval    { possible_semicolon := true; TINTVAL (int_of_string (Lexing.lexeme lexbuf)) }
   | floatval  { possible_semicolon := true; TFLOATVAL (float_of_string (Lexing.lexeme lexbuf)) }
+  | intval    { possible_semicolon := true; TINTVAL (int_of_string (Lexing.lexeme lexbuf)) }
   | stringval { possible_semicolon := true; TSTRINGVAL (Lexing.lexeme lexbuf) }
   | rawstrval { possible_semicolon := true; TRAWSTRVAL (Lexing.lexeme lexbuf) }
   | runeval   { possible_semicolon := true; TRUNEVAL (Lexing.lexeme lexbuf) }
