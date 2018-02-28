@@ -81,13 +81,14 @@ type case = exp node list option * stmt node list
 and loop =
     | While of exp node option * stmt node list
     | For of simpleStm node * exp node option * simpleStm node * stmt node list
+and elseif = (stmt node) list
 and stmt =
     | Block of stmt node list
     | Print of exp node list
     | Println of exp node list
     | Declaration of (string list * typesRef option * (exp node) list) list
     | TypeDeclaration of (string * typesDef) list
-    | If of (simpleStm node) option * exp node option * (stmt node) list * (stmt node list) option
+    | If of (simpleStm node) option * exp node option * (stmt node) list * elseif option
     | Loop of loop
     | Return of exp node option
     | Switch of (simpleStm node) option * exp node option * case list

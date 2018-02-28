@@ -106,19 +106,11 @@ and string_of_stmt lvl { value = s; _} = match s with
       "\n"
       decls
       ^ "\n"
-  | If (sstm, exp, stmts1, stmts2) -> indent lvl ^ "if " ^ none_or_print (fun s -> string_of_simple_stmt s ^ "; ") sstm
+  | If (sstm, exp, stmts1, else_stmts) -> indent lvl ^ "if " ^ none_or_print (fun s -> string_of_simple_stmt s ^ "; ") sstm
     ^ none_or_print string_of_exp exp ^ " {\n"
     ^ string_of_stmts (lvl + 1) stmts1 ^ indent lvl ^ "}"
-    ^ none_or_print
-        (fun stmts2 ->
-          let stmts_str = string_of_stmts (lvl + 1) stmts2 in
-            if String.trim stmts_str <> "" then
-              " else {\n" ^ stmts_str ^ indent lvl ^ "}"
-            else
-              ""
-        )
-        stmts2
-      ^ "\n"
+    ^ none_or_print (fun stmts -> " else {\n" ^ string_of_stmts (lvl + 1) stmts ^ indent lvl ^ "}") else_stmts
+    ^ "\n"
   | Loop (While (exp, stmts)) -> indent lvl ^ "for " ^ none_or_print string_of_exp exp ^ " {\n"
     ^ string_of_stmts (lvl + 1) stmts
     ^ indent lvl ^ "}\n"
