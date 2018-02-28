@@ -5,6 +5,6 @@ func main() {
 	print("''")
 	print('\b')
 	print('a')
-	println('\a', '\b', '\f', '\n', '\r', '\t', '\v', '\\', '\'')
-	print("\a \b \f \n \r \t \v \\ \' \"")
+	println('\a', '\b', '\f', '\n', '\r', '\t', '\v', '\\', '\'', '"')
+	print("\a \b \f \n \r \t \v \\ ' \"")
 }
