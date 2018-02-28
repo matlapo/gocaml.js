@@ -250,7 +250,6 @@ type_def:
   | base = identifier_with_parenthesis { TypeT base }
   ;
 
-//
 type_def_list:
   | ids = identifier_list t = type_def TSEMICOLON tdl = type_def_list { (ids, t)::tdl }
   | ids = identifier_list t = type_def TSEMICOLON { [(ids, t)] }
