@@ -45,10 +45,11 @@ let rec blank_exp (e: exp node) : string list =
       blank_exp a
       |> List.append (blank_exp b)
     | Unaryexp (_, a) -> blank_exp a
-    | FuncCall (_, l) ->
+    | FuncCall (n, l) ->
       l
       |> List.map blank_exp
       |> List.flatten
+      |> List.append (helper e.position.pos_lnum n)
     | Append (a, b) ->
       blank_exp a
       |> List.append (blank_exp b)
