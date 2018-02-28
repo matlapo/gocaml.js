@@ -12,7 +12,6 @@ let blank_error x = Printf.sprintf "Error: _ not allowed in this context: line %
 let helper n s = if s = blank_s then [ blank_error n ] else []
 
 (* Helpers for finding missing default cases in switch statements *)
-let default_error x = Printf.sprintf "Error: missing default case for this switch statement: line %d" x
 let default_many_error x = Printf.sprintf "Error: multiple defaults in switch statement: line %d" x
 
 (* Helpers for finding invalid use of continue/break *)
@@ -203,9 +202,8 @@ let check_default (s: stmt node) =
     let d =
       cs
       |> List.fold_left (fun acc (e, _) -> if Option.is_none e then acc + 1 else acc) 0 in
-    if d = 1 then []
-    else if d = 0 then [default_error s.position.pos_lnum]
-    else [default_many_error s.position.pos_lnum]
+    if d > 1 then [default_many_error s.position.pos_lnum]
+    else []
   | _ -> []
 
 let check_cont_break (s: stmt node) =
@@ -285,11 +283,10 @@ let illegal_blanks (prog: program) =
         let name = helper x.position.pos_lnum name in
         let args =
           args
-          |> List.map (fun (arg, r) ->
+          |> List.map (fun (_, r) ->
             r
             |> Option.map (blank_ref x.position.pos_lnum)
             |> Option.default []
-            |> List.append (helper x.position.pos_lnum arg)
           )
           |> List.flatten in
         let s =
