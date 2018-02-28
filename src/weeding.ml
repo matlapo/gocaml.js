@@ -16,6 +16,8 @@ let default_error x = Printf.sprintf "Error: missing default case for this switc
 let default_many_error x = Printf.sprintf "Error: multiple defaults in switch statement: line %d" x
 
 (* Helpers for finding invalid use of continue/break *)
+let continue_error x = Printf.sprintf "Error: invalid usage of keyword 'continue': line %d" x
+let break_error x = Printf.sprintf "Error: invalid usage of keyword 'break': line %d" x
 
 let rec blank_def line (t: typesDef) =
   match t with
@@ -195,6 +197,63 @@ let rec blank_stm (stm: stmt node) =
     |> List.append s
   | _ -> []
 
+let check_default (s: stmt node) =
+  match s.value with
+  | Switch (_, _, cs) ->
+    let d =
+      cs
+      |> List.fold_left (fun acc (e, _) -> if Option.is_none e then acc + 1 else acc) 0 in
+    if d = 1 then []
+    else if d = 0 then [default_error s.position.pos_lnum]
+    else [default_many_error s.position.pos_lnum]
+  | _ -> []
+
+let check_cont_break (s: stmt node) =
+  let rec helper (s: stmt node) (seenLoop: bool) (seenSwitch: bool) =
+    match s.value with
+    | Continue -> if seenLoop = true then [] else [continue_error s.position.pos_lnum]
+    | Break ->
+      if seenLoop = true || seenSwitch = true then []
+      else [break_error s.position.pos_lnum]
+    | Loop loop ->
+      (match loop with
+      | While (_, s) ->
+        s
+        |> List.map (fun x -> helper x true true)
+        |> List.flatten
+      | For (_, _, _, s) ->
+        s
+        |> List.map (fun x -> helper x true true)
+        |> List.flatten
+      )
+    | Block s ->
+        s
+        |> List.map (fun x -> helper x seenLoop seenSwitch)
+        |> List.flatten
+    | If (_, _, s, e) ->
+      let e =
+        e
+        |> Option.map (fun x ->
+          x
+          |> List.map (fun x -> helper x seenLoop seenSwitch)
+          |> List.flatten
+        )
+        |> Option.default [] in
+      s
+      |> List.map (fun x -> helper x seenLoop seenSwitch)
+      |> List.flatten
+      |> List.append e
+    | Switch (_, _, cs) ->
+      cs
+      |> List.map (fun (e, s) ->
+        s
+        |> List.map (fun x -> helper x seenLoop true)
+        |> List.flatten
+      )
+      |> List.flatten
+    | _ -> []
+  in helper s false false
+
 let illegal_blanks (prog: program) =
   let p, d = prog in
   let blanks =
@@ -215,6 +274,14 @@ let illegal_blanks (prog: program) =
         )
         |> List.flatten
       | Fct (name, args, _, s) ->
+        let continue =
+          s
+          |> List.map check_cont_break
+          |> List.flatten in
+        let default =
+          s
+          |> List.map check_default
+          |> List.flatten in
         let name = helper x.position.pos_lnum name in
         let args =
           args
@@ -232,34 +299,11 @@ let illegal_blanks (prog: program) =
         name
         |> List.append s
         |> List.append args
+        |> List.append continue
+        |> List.append default
       | _ -> []
     )
     |> List.flatten in
   match blanks with
   | [] -> ""
   | x::_ -> x
-
-let check_default (s: stmt node) =
-  match s.value with
-  | Switch (_, _, cs) ->
-    let d =
-      cs
-      |> List.fold_left (fun acc (e, _) -> if Option.is_none e then acc + 1 else acc) 0 in
-    if d = 1 then []
-    else if d = 0 then [default_error s.position.pos_lnum]
-    else [default_many_error s.position.pos_lnum]
-  | _ -> []
-
-(* let test (s: stmt node) =
-  let helper (s: stmt node) (seen: bool) =
-    match s.value with
-    | Continue -> seen
-    | Loop loop ->
-      match loop with
-      | While (_, s) ->
-        s
-        |> List.map (fun x -> helper s true)
-        |> List.fold_left (fun acc x -> acc )
-    | _ -> false
-  in
-  5 *)
