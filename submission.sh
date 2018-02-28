@@ -12,7 +12,7 @@ cp full/* 1-scan+parse/valid
 # Invalid programs
 cp scanner/1.1-code-representation/invalid/unicode.go 1-scan+parse/invalid
 cp parser/1.2-keywords/invalid/func-append.go 1-scan+parse/invalid
-#cp parser/1.4-comments/invalid/nested.go 1-scan+parse/invalid
+cp parser/1.2-keywords/invalid/var-package.go 1-scan+parse/invalid
 cp parser/1.4-comments/invalid/nested2.go 1-scan+parse/invalid
 cp parser/1.5-literals/invalid/* 1-scan+parse/invalid
 rm 1-scan+parse/invalid/*-too-big.go
@@ -23,5 +23,6 @@ cp parser/2.3-top-level-declaration/invalid/* 1-scan+parse/invalid
 cp parser/2.4-variable-declarations/invalid/* 1-scan+parse/invalid
 cp parser/2.7-types/invalid/* 1-scan+parse/invalid
 cp parser/2.8-statements/invalid/* 1-scan+parse/invalid
+cp parser/2.9-expressions/invalid/* 1-scan+parse/invalid
 
 cd ..
