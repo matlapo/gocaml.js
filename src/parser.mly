@@ -9,7 +9,7 @@
 %token TPRINTLN
 %token TAPPEND
 %token TELSE
-%token <int> TINTVAL
+%token <int64> TINTVAL
 %token <float> TFLOATVAL
 %token <string> TSTRINGVAL
 %token <string> TRAWSTRVAL
@@ -172,7 +172,7 @@ var_format:
 
 type_ref:
   | d = count_dimensions_array base = identifier_with_parenthesis { ArrayR (base, d) }
-  | i = count_dimensions_slice base = identifier_with_parenthesis { SliceR (base, i + 1) }
+  | i = count_dimensions_slice base = identifier_with_parenthesis { SliceR (base, Int64.add i Int64.one) }
   | base = identifier_with_parenthesis { TypeR base }
   ;
 
@@ -182,8 +182,8 @@ count_dimensions_array:
   ;
 
 count_dimensions_slice:
-  | TOPENINGSQUARE TCLOSINGSQUARE i = count_dimensions_slice { i + 1 }
-  | TOPENINGSQUARE TCLOSINGSQUARE { 0 }
+  | TOPENINGSQUARE TCLOSINGSQUARE i = count_dimensions_slice { Int64.add i Int64.one }
+  | TOPENINGSQUARE TCLOSINGSQUARE { Int64.zero }
   ;
 
 exp_list:

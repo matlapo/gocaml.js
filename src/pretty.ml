@@ -43,7 +43,7 @@ let string_of_unary_op op = match op with
 
 let rec string_of_exp {value = e; _} = match e with
   | Id k -> string_of_kind k
-  | Int i -> string_of_int i
+  | Int i -> Int64.to_string i
   | Float f -> string_of_float f
   | String s -> s
   | RawStr s -> s
@@ -63,11 +63,11 @@ and string_of_kind_elem e = match e with
 and string_of_kind k = List.fold_left (fun a e -> a ^ string_of_kind_elem e) "" k
 
 let string_of_array_indexes indexes =
-  List.fold_left (fun a i -> a ^ "[" ^ string_of_int i ^ "]") "" indexes
+  List.fold_left (fun a i -> a ^ "[" ^ Int64.to_string i ^ "]") "" indexes
 
 let rec string_of_slice_dimensions d =
-  if d < 1 then "" else
-  "[]" ^ string_of_slice_dimensions (d - 1)
+  if Int64.compare d Int64.one < 0 then "" else
+  "[]" ^ string_of_slice_dimensions (Int64.sub d Int64.one)
 
 let string_of_typeref lvl t = match t with
   | TypeR s -> indent lvl ^ s
