@@ -9,7 +9,7 @@ The best compiler of the history of compilers, maybe ever.
 * Mathieu Lapointe (260685906)
 
 # Notes for the Grader
-For our own convienience, we use a different directory structure for our test programs than what is required. Please run `./submission.sh` to copy generate the correct test folder for correction.
+For our own convienience, we use a different directory structure for our test programs than what is required. Please run `./submission.sh` to copy generate the correct test folder for grading. **Please do not commit these changes as it effectively deletes most of our tests.**
 
 Since the Trottier SOCS machine have a version of OCaml that dates from 2014, this project won't build on them. To build the project, you will need to
 * Install OPAM

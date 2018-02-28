@@ -26,4 +26,10 @@ rm 1-scan+parse/invalid/bad-bracket-slice2.go
 cp parser/2.8-statements/invalid/* 1-scan+parse/invalid
 cp parser/2.9-expressions/invalid/* 1-scan+parse/invalid
 
+# Remove other folders
+rm -r extra
+rm -r full
+rm -r parser
+rm -r scanner
+
 cd ..
