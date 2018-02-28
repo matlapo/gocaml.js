@@ -277,7 +277,8 @@ let check_cont_break (s: stmt node) =
   in helper s false false
 
 let decl_var_check line (s: string list) (e: exp node list) =
-  if List.length s = List.length e then []
+  if List.length e = 0 then []
+  else if List.length s = List.length e then []
   else [variable_decl_error line]
 
 let rec assign_check (s: stmt node): string list =
@@ -324,6 +325,51 @@ let rec assign_check (s: stmt node): string list =
     )
     |> List.flatten
   | _ -> []
+
+(* let rec check_fcn_call (s: stmt node): string list =
+  match s.value with
+  | Simple simp ->
+    (match simp.value with
+    | Assign (_, (a, b)) ->
+      if List.length a = List.length b then [] else [variable_decl_error s.position.pos_lnum]
+    | _ -> [])
+  | Block l ->
+    l
+    |> List.map assign_check
+    |> List.flatten
+  | If (_, _, s, e) ->
+    let e =
+      e
+      |> Option.map (fun x ->
+        x
+        |> List.map assign_check
+        |> List.flatten
+      )
+      |> Option.default [] in
+    s
+    |> List.map assign_check
+    |> List.flatten
+    |> List.append e
+  | Loop loop ->
+    (match loop with
+    | While (_, s) ->
+      s
+      |> List.map assign_check
+      |> List.flatten
+    | For (_, _, _, s) ->
+      s
+      |> List.map assign_check
+      |> List.flatten
+    )
+  | Switch (_, _, cs) ->
+    cs
+    |> List.map (fun (e, s) ->
+      s
+      |> List.map assign_check
+      |> List.flatten
+    )
+    |> List.flatten
+  | _ -> [] *)
 
 (*
 this is the mother weeding function, it uses all the function defined
