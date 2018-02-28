@@ -293,6 +293,8 @@ let rec assign_check (s: stmt node): string list =
     (match simp.value with
     | Assign (_, (a, b)) ->
       if List.length a = List.length b then [] else [variable_decl_error s.position.pos_lnum]
+    | ShortDeclaration (a, b) ->
+      if List.length a = List.length b then [] else [variable_decl_error s.position.pos_lnum]
     | _ -> [])
   | Block l ->
     l
