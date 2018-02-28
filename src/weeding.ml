@@ -6,6 +6,15 @@ module Option = BatOption
 let bind x f = Option.bind f x
 let id x = x
 
+(*
+########################### WEEDING ###########################
+Most functions take an AST node and return a string list
+which represents a list of errors found. The top level function
+found at the bottom of this file will collect all these
+strings and send to stderr the first one in the list
+##############################################################
+*)
+
 (* Helpers for finding invalid blank (i.e '_') usage *)
 let blank_s = "_"
 let blank_error x = Printf.sprintf "Error: _ not allowed in this context: line %d" x
@@ -18,6 +27,7 @@ let default_many_error x = Printf.sprintf "Error: multiple defaults in switch st
 let continue_error x = Printf.sprintf "Error: invalid usage of keyword 'continue': line %d" x
 let break_error x = Printf.sprintf "Error: invalid usage of keyword 'break': line %d" x
 
+(* finds an invalid blank id in a type definition *)
 let rec blank_def line (t: typesDef) =
   match t with
   | TypeT s -> helper line s
@@ -32,12 +42,14 @@ let rec blank_def line (t: typesDef) =
     )
     |> List.flatten
 
+(* finds an invalid blank id in a type reference *)
 let blank_ref line (t: typesRef) =
   match t with
   | TypeR s -> helper line s
   | ArrayR (s, _) -> helper line s
   | SliceR (s, _) -> helper line s
 
+(* finds an invalid blank id in an expression node *)
 let rec blank_exp (e: exp node) : string list =
     match e.value with
     | Id l -> blank_kind e.position.pos_lnum l
@@ -67,6 +79,7 @@ and blank_kind line (k: kind) : string list =
   )
   |> List.flatten
 
+(* finds an invalid blank id in a simple statement node *)
 let blank_simple (simp: simpleStm node) =
   match simp.value with
   | Assign (a, (l, e)) ->
@@ -89,6 +102,7 @@ let blank_simple (simp: simpleStm node) =
   | DoublePlus s -> blank_kind simp.position.pos_lnum s
   | Empty -> []
 
+(* finds an invalid blank id in a statement node *)
 let rec blank_stm (stm: stmt node) =
   match stm.value with
   | Block l ->
@@ -197,6 +211,7 @@ let rec blank_stm (stm: stmt node) =
     |> List.append s
   | _ -> []
 
+(* makes sure that a switch statement has at most one default case *)
 let check_default (s: stmt node) =
   match s.value with
   | Switch (_, _, cs) ->
@@ -207,6 +222,11 @@ let check_default (s: stmt node) =
     else []
   | _ -> []
 
+(*
+visits all the statement nodes and check if it contains a continue/break statement.
+It also keeps track of if it encountered a loop-node or switch-node because continue/break
+statements must be direct or indirect children of those 2 types of node
+*)
 let check_cont_break (s: stmt node) =
   let rec helper (s: stmt node) (seenLoop: bool) (seenSwitch: bool) =
     match s.value with
@@ -253,6 +273,11 @@ let check_cont_break (s: stmt node) =
     | _ -> []
   in helper s false false
 
+(*
+this is the mother weeding function, it uses all the function defined 
+above to collect their error messages (if any!) and output the first one
+in the resulting merged list
+*)
 let illegal_blanks (prog: program) =
   let p, d = prog in
   let blanks =
