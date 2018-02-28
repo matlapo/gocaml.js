@@ -26,7 +26,7 @@ func rand(min int, max int) {
 }
 
 // Computes a^d mod n
-func powMod(a, d, n) {
+func powMod(a, d, n int) {
 	if d == 0 {
 		return 1
 	}

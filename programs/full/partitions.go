@@ -14,12 +14,12 @@ func get(c [][]int, a int, b int) int {
 func set(c [][]int, a int, b int, value int) {
 	for len(c) <= a {
 		var tmp []int
-		append(c, tmp)
+		c = append(c, tmp)
 	}
 
 	for len(c[a]) <= b {
 		var tmp []int
-		append(b, -1)
+		c[a] = append(c[a], -1)
 	}
 
 	c[a][b] = value

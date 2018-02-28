@@ -70,9 +70,9 @@ let append    = "append"
 (* literals *)
 let intval       = '0' | ['1'-'9'] digit*
 let octoval      = '0' ['0'-'7']*
-let hexval       = '0''x' ['0'-'9''A'-'F''a'-'f']*
+let hexval       = '0'('x'|'X') ['0'-'9''A'-'F''a'-'f']*
 let floatval     = intval '.' digit+ | '.' digit+ | digit+ '.'
-let stringval    = '"' (ws | [^'\\''"'] | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | "\\'" | "\\\"" | "\\\\")* '"'
+let stringval    = '"' (ws | [^'\\''"'] | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | "\\\"" | "\\\\")* '"'
 let runeval      = ''' (ws | [^'\\''''] | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | "\\'" | "\\\\") '''
 let rawstrval    = '`' [^'`']* '`'
 

@@ -49,6 +49,8 @@ func hexDigit(n int) string {
 		return "e"
 	case 15:
 		return "f"
+	default:
+		return "?"
 	}
 }
 
