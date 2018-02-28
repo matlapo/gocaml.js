@@ -68,10 +68,10 @@ let println   = "println"
 let append    = "append"
 
 (* literals *)
-let intval       = '0' | ['1'-'9'] digit*
+let intval       = '0' | (['1'-'9'] digit*)
 let octoval      = '0' ['0'-'7']*
 let hexval       = '0'('x'|'X') ['0'-'9''A'-'F''a'-'f']*
-let floatval     = intval '.' digit+ | '.' digit+ | digit+ '.'
+let floatval     = (digit+ '.' digit+) | ('.' digit+) | (intval '.')
 let stringval    = '"' (ws | [^'\\''"'] | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | "\\\"" | "\\\\")* '"'
 let runeval      = ''' (ws | [^'\\''''] | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | "\\'" | "\\\\") '''
 let rawstrval    = '`' [^'`']* '`'
@@ -201,8 +201,8 @@ rule read =
   | struct    { possible_semicolon := false; TSTRUCT }
   | switch    { possible_semicolon := false; TSWITCH }
   | type      { possible_semicolon := false; TTYPE }
-  | intval    { possible_semicolon := true; TINTVAL (int_of_string (Lexing.lexeme lexbuf)) }
   | floatval  { possible_semicolon := true; TFLOATVAL (float_of_string (Lexing.lexeme lexbuf)) }
+  | intval    { possible_semicolon := true; TINTVAL (int_of_string (Lexing.lexeme lexbuf)) }
   | stringval { possible_semicolon := true; TSTRINGVAL (Lexing.lexeme lexbuf) }
   | rawstrval { possible_semicolon := true; TRAWSTRVAL (Lexing.lexeme lexbuf) }
   | runeval   { possible_semicolon := true; TRUNEVAL (Lexing.lexeme lexbuf) }
