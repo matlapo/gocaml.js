@@ -30,7 +30,7 @@ let digit     = ['0'-'9']
 
 (* invisiable characters *)
 let ws        = [' ' '\t']
-let nl        = ['\n']
+let nl        = '\r'? '\n'
 
 (* keywords *)
 let var       = "var"

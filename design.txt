@@ -1,8 +1,0 @@
-# Problems
-## Multiline comments
-Description: Multiline comments needs negative lookahead to not match '*/'
-Solution: None 
-
-## Semicolon injection
-Description: Need to insert semicolons at the right moment
-Solution: Scanner buffer manipulation to add semicolon just in time
