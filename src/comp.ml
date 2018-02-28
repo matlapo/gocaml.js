@@ -9,7 +9,7 @@ let print_error lb msg =
     fprintf stderr "%s (%i:%i)\n" msg line lcur
 
 let scan input =
-  let lexer_buffer = Lexing.from_channel input in
+  let lexer_buffer = Lexing.from_string input in
   try
     let _ = Parsertokens.prog Lexertokens.read lexer_buffer in
       print_string "OK\n";
@@ -19,7 +19,7 @@ let scan input =
     exit 1
 
 let tokens input =
-  let lexer_buffer = Lexing.from_channel input in
+  let lexer_buffer = Lexing.from_string input in
   try
     let tokens = Parsertokens.prog Lexertokens.read lexer_buffer in
       print_string (tokens ^ "\n");
@@ -34,7 +34,7 @@ let tokens input =
     exit 1
 
 let parse input =
-  let lexer_buffer = Lexing.from_channel input in
+  let lexer_buffer = Lexing.from_string input in
   try
     let ast = Parser.prog Lexer.read lexer_buffer in
       match Weeding.illegal_blanks ast with
@@ -54,7 +54,7 @@ let parse input =
     exit 1
 
 let pretty input =
-  let lexer_buffer = Lexing.from_channel input in
+  let lexer_buffer = Lexing.from_string input in
   try
     let ast = Parser.prog Lexer.read lexer_buffer in
       match Weeding.illegal_blanks ast with
@@ -74,17 +74,27 @@ let pretty input =
     print_error lexer_buffer ("Error: Unexpected " ^ token);
     exit 1
 
+let in_to_string ic =
+  let rec r ic o =
+    try
+      r ic (String.concat "" [o; (input_char ic |> Utils.string_of_char)])
+    with End_of_file -> o
+  in
+    r ic ""
+
 let () =
   let argv = Sys.argv in
   if Array.length argv = 3 then
     let mode = argv.(1) in
     let filename = argv.(2) in
     let input_file = open_in filename in
-    if mode = "scan" then scan input_file
-    else if mode = "tokens" then tokens input_file
-    else if mode = "parse" then parse input_file
-    else if mode = "pretty" then pretty input_file
-    else if mode = "typecheck" then parse input_file
+    let file_content = in_to_string input_file in
+    let file_content = String.concat "" [file_content; "\n"] in
+    if mode = "scan" then scan file_content
+    else if mode = "tokens" then tokens file_content
+    else if mode = "parse" then parse file_content
+    else if mode = "pretty" then pretty file_content
+    else if mode = "typecheck" then parse file_content
     else printf "%s is not a valid compiler mode\n" mode; exit 1;
   else
     print_string "You must pass two argument: scan|tokens <source file path>\n";
