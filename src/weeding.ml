@@ -293,6 +293,8 @@ let rec assign_check (s: stmt node): string list =
     (match simp.value with
     | Assign (_, (a, b)) ->
       if List.length a = List.length b then [] else [variable_decl_error s.position.pos_lnum]
+    | ShortDeclaration (a, b) ->
+      if List.length a = List.length b then [] else [variable_decl_error s.position.pos_lnum]
     | _ -> [])
   | Block l ->
     l
@@ -330,6 +332,11 @@ let rec assign_check (s: stmt node): string list =
       |> List.flatten
     )
     |> List.flatten
+  | Declaration l ->
+      l
+      |> List.map (fun (sl, o, e) ->
+        decl_var_check s.position.pos_lnum sl e
+      ) |> List.flatten
   | _ -> []
 
 let rec check_fcn_call (s: stmt node): string list =
