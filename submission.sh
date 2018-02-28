@@ -19,5 +19,7 @@ cp parser/1.6-identifiers/invalid/* 1-scan+parse/invalid
 cp parser/1.7-semicolons/invalid/* 1-scan+parse/invalid
 cp parser/2.2-package-declaration/invalid/* 1-scan+parse/invalid
 cp parser/2.3-top-level-declaration/invalid/* 1-scan+parse/invalid
+cp parser/2.7-types/invalid/* 1-scan+parse/invalid
+cp parser/2.8-statements/invalid/* 1-scan+parse/invalid
 
 cd ..
