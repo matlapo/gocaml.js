@@ -7,7 +7,7 @@
 %token TPRINTLN
 %token TAPPEND
 %token TELSE
-%token <int> TINTVAL
+%token <int64> TINTVAL
 %token <float> TFLOATVAL
 %token <string> TSTRINGVAL
 %token <string> TRAWSTRVAL
@@ -124,7 +124,7 @@ value:
   | TSTRUCT           { "TSTRUCT" }
   | TSWITCH           { "TSWITCH" }
   | TTYPE             { "TTYPE" }
-  | i = TINTVAL       { "TINTVAL(" ^ string_of_int i ^ ")"  }
+  | i = TINTVAL       { "TINTVAL(" ^ Int64.to_string i ^ ")"  }
   | f = TFLOATVAL     { "TFLOATVAL(" ^ string_of_float f ^ ")" }
   | s = TSTRINGVAL    { "TSTRINGVAL(" ^ s ^ ")" }
   | s = TRAWSTRVAL    { "TRAWSTRVAL(" ^ s ^ ")" }

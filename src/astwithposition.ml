@@ -3,13 +3,13 @@ type 'a node = {position: Lexing.position; value: 'a}
 type typesDef =
     | TypeT of string
     | StructT of (string list * typesDef) list
-    | ArrayT of string * (int list) (* The list of int is the size of each dimension *)
-    | SliceT of string * int (* The int is the number of dimensions *)
+    | ArrayT of string * (int64 list) (* The list of int64 is the size of each dimension *)
+    | SliceT of string * int64 (* The int64 is the number of dimensions *)
 
 type typesRef =
     | TypeR of string
-    | ArrayR of string * (int list) (* The list of int is the size of each dimension *)
-    | SliceR of string * int (* The int is the number of dimensions *)
+    | ArrayR of string * (int64 list) (* The list of int64 is the size of each dimension *)
+    | SliceR of string * int64 (* The int64 is the number of dimensions *)
 
 type binary =
     | Plus
@@ -40,7 +40,7 @@ type unary =
 
 type exp =
     | Id of kind
-    | Int of int
+    | Int of int64
     | Float of float
     | String of string
     | RawStr of string

@@ -14,7 +14,7 @@ let bytes_insert_byte bytes b p =
 
 let string_of_char c = Printf.sprintf "%c" c
 
-let num_of_char c = match c with
+let num_of_char c = Int64.of_int (match c with
     | '1' -> 1
     | '2' -> 2
     | '3' -> 3
@@ -36,7 +36,7 @@ let num_of_char c = match c with
     | 'E' -> 14
     | 'f'
     | 'F' -> 15
-    | _ -> 0
+    | _ -> 0)
 
 let list_of_string s =
     let rec rs s a =
@@ -51,15 +51,15 @@ let list_of_string s =
 let int_of_hex h =
     let digits = list_of_string h in
     let rec process_digit p r t = match r with
-        | d::l -> process_digit (p + 1) l (t + (num_of_char d) * (16.0 ** (float_of_int p) |> int_of_float))
+        | d::l -> process_digit (p + 1) l (Int64.mul (Int64.add t (num_of_char d)) (16.0 ** (float_of_int p) |> Int64.of_float))
         | [] -> t
     in
-        process_digit 0 digits 0
+        process_digit 0 digits Int64.zero
 
-let int_of_oct h =
-    let digits = list_of_string h in
+let int_of_oct o =
+    let digits = list_of_string o in
     let rec process_digit p r t = match r with
-        | d::l -> process_digit (p + 1) l (t + (num_of_char d) * (8.0 ** (float_of_int p) |> int_of_float))
+        | d::l -> process_digit (p + 1) l (Int64.mul (Int64.add t (num_of_char d)) (8.0 ** (float_of_int p) |> Int64.of_float))
         | [] -> t
     in
-        process_digit 0 digits 0
+        process_digit 0 digits Int64.zero
