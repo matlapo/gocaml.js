@@ -30,6 +30,9 @@ let break_error x = Printf.sprintf "Error: invalid usage of keyword 'break': lin
 (* Helpers for detecting if LHS != RHS for variable declaration *)
 let variable_decl_error x = Printf.sprintf "Error: number of variables does not match number of expressions: line %d" x
 
+(* Helpers for function call expression *)
+let function_call_error x = Printf.sprintf "Error: only function call are allowed as expression statement: line %d" x
+
 (* finds an invalid blank id in a type definition *)
 let rec blank_def line (t: typesDef) =
   match t with
@@ -326,50 +329,52 @@ let rec assign_check (s: stmt node): string list =
     |> List.flatten
   | _ -> []
 
-(* let rec check_fcn_call (s: stmt node): string list =
+let rec check_fcn_call (s: stmt node): string list =
   match s.value with
   | Simple simp ->
     (match simp.value with
-    | Assign (_, (a, b)) ->
-      if List.length a = List.length b then [] else [variable_decl_error s.position.pos_lnum]
+    | ExpStatement e ->
+      (match e.value with
+      | FuncCall _ -> []
+      | _ -> [function_call_error e.position.pos_lnum])
     | _ -> [])
   | Block l ->
     l
-    |> List.map assign_check
+    |> List.map check_fcn_call
     |> List.flatten
   | If (_, _, s, e) ->
     let e =
       e
       |> Option.map (fun x ->
         x
-        |> List.map assign_check
+        |> List.map check_fcn_call
         |> List.flatten
       )
       |> Option.default [] in
     s
-    |> List.map assign_check
+    |> List.map check_fcn_call
     |> List.flatten
     |> List.append e
   | Loop loop ->
     (match loop with
     | While (_, s) ->
       s
-      |> List.map assign_check
+      |> List.map check_fcn_call
       |> List.flatten
     | For (_, _, _, s) ->
       s
-      |> List.map assign_check
+      |> List.map check_fcn_call
       |> List.flatten
     )
   | Switch (_, _, cs) ->
     cs
     |> List.map (fun (e, s) ->
       s
-      |> List.map assign_check
+      |> List.map check_fcn_call
       |> List.flatten
     )
     |> List.flatten
-  | _ -> [] *)
+  | _ -> []
 
 (*
 this is the mother weeding function, it uses all the function defined
@@ -409,6 +414,10 @@ let illegal_blanks (prog: program) =
           s
           |> List.map assign_check
           |> List.flatten in
+        let fct =
+          s
+          |> List.map check_fcn_call
+          |> List.flatten in
         let name = helper x.position.pos_lnum name in
         let args =
           args
@@ -428,6 +437,7 @@ let illegal_blanks (prog: program) =
         |> List.append continue
         |> List.append default
         |> List.append assign
+        |> List.append fct 
       | _ -> []
     )
     |> List.flatten in
