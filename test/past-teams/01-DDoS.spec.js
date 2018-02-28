@@ -64,13 +64,14 @@ describe('DDoS', () => {
             }
         );
 
-        testDirectory(
-            'programs/extra/past-teams/DDoS/programs/invalid_extra/types',
-            'typecheck',
-            {
-                validity: INVALID
-            }
-        );
+        // Temporarily disabled
+        // testDirectory(
+        //     'programs/extra/past-teams/DDoS/programs/invalid_extra/types',
+        //     'typecheck',
+        //     {
+        //         validity: INVALID
+        //     }
+        // );
     });
 
     testDirectory(
