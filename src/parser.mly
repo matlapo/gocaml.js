@@ -284,7 +284,8 @@ case_list:
   ;
 
 case:
-  | TCASE es = exp_list TCOLON s = stm_list { (Some es, s) }
+  | TCASE e = exp TCOLON s = stm_list { (Some [e], s) }
+  | TCASE e = exp TCOMMA es = exp_list TCOLON s = stm_list { (Some (e::es), s) }
   | TDEFAULT TCOLON s = stm_list { (None, s) }
   ;
 
