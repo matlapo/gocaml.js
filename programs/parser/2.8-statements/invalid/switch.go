@@ -1,3 +1,4 @@
+// A switch statement cannot contain two default clauses
 package main
 
 func main() {

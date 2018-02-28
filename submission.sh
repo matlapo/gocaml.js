@@ -22,6 +22,7 @@ cp parser/2.2-package-declaration/invalid/* 1-scan+parse/invalid
 cp parser/2.3-top-level-declaration/invalid/* 1-scan+parse/invalid
 cp parser/2.4-variable-declarations/invalid/* 1-scan+parse/invalid
 cp parser/2.7-types/invalid/* 1-scan+parse/invalid
+rm 1-scan+parse/invalid/bad-bracket-slice2.go
 cp parser/2.8-statements/invalid/* 1-scan+parse/invalid
 cp parser/2.9-expressions/invalid/* 1-scan+parse/invalid
 

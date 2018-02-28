@@ -1,3 +1,4 @@
+// An assignment needs to have the same number of operands on both sides
 package main
 
 func main() {
