@@ -27,6 +27,9 @@ let default_many_error x = Printf.sprintf "Error: multiple defaults in switch st
 let continue_error x = Printf.sprintf "Error: invalid usage of keyword 'continue': line %d" x
 let break_error x = Printf.sprintf "Error: invalid usage of keyword 'break': line %d" x
 
+(* Helpers for detecting if LHS != RHS for variable declaration *)
+let variable_decl_error x = Printf.sprintf "Error: number of variables does not match number of expressions: line %d" x
+
 (* finds an invalid blank id in a type definition *)
 let rec blank_def line (t: typesDef) =
   match t with
@@ -273,8 +276,57 @@ let check_cont_break (s: stmt node) =
     | _ -> []
   in helper s false false
 
+let decl_var_check line (s: string list) (e: exp node list) =
+  if List.length s = List.length e then []
+  else [variable_decl_error line]
+
+let rec assign_check (s: stmt node): string list =
+  match s.value with
+  | Simple simp ->
+    (match simp.value with
+    | Assign (_, (a, b)) ->
+      if List.length a = List.length b then [] else [variable_decl_error s.position.pos_lnum]
+    | _ -> [])
+  | Block l ->
+    l
+    |> List.map assign_check
+    |> List.flatten
+  | If (_, _, s, e) ->
+    let e =
+      e
+      |> Option.map (fun x ->
+        x
+        |> List.map assign_check
+        |> List.flatten
+      )
+      |> Option.default [] in
+    s
+    |> List.map assign_check
+    |> List.flatten
+    |> List.append e
+  | Loop loop ->
+    (match loop with
+    | While (_, s) ->
+      s
+      |> List.map assign_check
+      |> List.flatten
+    | For (_, _, _, s) ->
+      s
+      |> List.map assign_check
+      |> List.flatten
+    )
+  | Switch (_, _, cs) ->
+    cs
+    |> List.map (fun (e, s) ->
+      s
+      |> List.map assign_check
+      |> List.flatten
+    )
+    |> List.flatten
+  | _ -> []
+
 (*
-this is the mother weeding function, it uses all the function defined 
+this is the mother weeding function, it uses all the function defined
 above to collect their error messages (if any!) and output the first one
 in the resulting merged list
 *)
@@ -286,15 +338,16 @@ let illegal_blanks (prog: program) =
       match x.value with
       | Var l ->
         l
-        |> List.map (fun (_, r, exps) ->
-          let exps =
+        |> List.map (fun (v, r, exps) ->
+          let exp =
             exps
             |> List.map (fun x -> blank_exp x)
             |> List.flatten in
           r
           |> Option.map (blank_ref x.position.pos_lnum)
           |> Option.default []
-          |> List.append exps
+          |> List.append exp
+          |> List.append (decl_var_check x.position.pos_lnum v exps)
         )
         |> List.flatten
       | Fct (name, args, _, s) ->
@@ -305,6 +358,10 @@ let illegal_blanks (prog: program) =
         let default =
           s
           |> List.map check_default
+          |> List.flatten in
+        let assign =
+          s
+          |> List.map assign_check
           |> List.flatten in
         let name = helper x.position.pos_lnum name in
         let args =
@@ -324,6 +381,7 @@ let illegal_blanks (prog: program) =
         |> List.append args
         |> List.append continue
         |> List.append default
+        |> List.append assign
       | _ -> []
     )
     |> List.flatten in
