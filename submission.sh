@@ -15,6 +15,7 @@ cp parser/1.2-keywords/invalid/func-append.go 1-scan+parse/invalid
 #cp parser/1.4-comments/invalid/nested.go 1-scan+parse/invalid
 cp parser/1.4-comments/invalid/nested2.go 1-scan+parse/invalid
 cp parser/1.5-literals/invalid/* 1-scan+parse/invalid
+rm 1-scan+parse/invalid/*-too-big.go
 cp parser/1.6-identifiers/invalid/* 1-scan+parse/invalid
 cp parser/1.7-semicolons/invalid/* 1-scan+parse/invalid
 cp parser/2.2-package-declaration/invalid/* 1-scan+parse/invalid
