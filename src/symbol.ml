@@ -42,8 +42,7 @@ let table_var x =
   |> List.flatten
 
 (* do we need this? *)
-let table_type (x: (string * typesDef) list) = []
-let table_func ((name, args, ret, body): (string * argument list * typesRef option * stmt node list)) =
+let table_func (name, args, ret, body) =
   let rec helper_list l =
     l
     |> List.map helper
@@ -75,6 +74,6 @@ let build_table (prog: program) =
   |> List.fold_left (fun table d ->
     (match d.value with
     | Var x -> table_var x
-    | Type x -> table_type x
+    | Type x -> []
     | Fct x -> table_func x)::table
   ) []
