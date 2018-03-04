@@ -388,7 +388,7 @@ let rec check_post_loop (s: stmt node): string list =
   | _ -> []
 
 (*
-this is the mother weeding function, it uses all the function defined
+this is the parent weeding function, it uses all the function defined
 above to collect their error messages (if any!) and output the first one
 in the resulting merged list
 *)
