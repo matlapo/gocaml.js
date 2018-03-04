@@ -207,8 +207,9 @@ let check_cont_break s =
       else [break_error s.position.pos_lnum]
     | Loop loop ->
       (match loop with
-      | While (_, s) -> map_flat (fun x -> helper x true true) s
-      | For (_, _, _, s) -> map_flat (fun x -> helper x true true) s)
+      | While (_, s) -> s
+      | For (_, _, _, s) -> s)
+      |> map_flat (fun x -> helper x true true)
     | Block s -> map_flat (fun x -> helper x seenLoop seenSwitch) s
     | If (_, _, s, e) ->
       let e =
@@ -232,7 +233,7 @@ let decl_var_check line s e =
   else if List.length s = List.length e then []
   else [variable_decl_error line]
 
-let rec assign_check (s: stmt node): string list =
+let rec assign_check s =
   match s.value with
   | Simple simp ->
     (match simp.value with
@@ -241,50 +242,27 @@ let rec assign_check (s: stmt node): string list =
     | ShortDeclaration (a, b) ->
       if List.length a = List.length b then [] else [variable_decl_error s.position.pos_lnum]
     | _ -> [])
-  | Block l ->
-    l
-    |> List.map assign_check
-    |> List.flatten
+  | Block l -> map_flat assign_check l
   | If (_, _, s, e) ->
-    let e =
-      e
-      |> Option.map (fun x ->
-        x
-        |> List.map assign_check
-        |> List.flatten
-      )
-      |> Option.default [] in
+    let e = map_default (map_flat assign_check) e in
     s
-    |> List.map assign_check
-    |> List.flatten
+    |> map_flat assign_check
     |> List.append e
   | Loop loop ->
     (match loop with
-    | While (_, s) ->
-      s
-      |> List.map assign_check
-      |> List.flatten
-    | For (_, _, _, s) ->
-      s
-      |> List.map assign_check
-      |> List.flatten
-    )
+    | While (_, s) -> s
+    | For (_, _, _, s) -> s)
+    |> map_flat assign_check
   | Switch (_, _, cs) ->
     cs
-    |> List.map (fun (e, s) ->
-      s
-      |> List.map assign_check
-      |> List.flatten
-    )
-    |> List.flatten
+    |> map_flat (fun (_, s) -> (map_flat assign_check s))
   | Declaration l ->
       l
-      |> List.map (fun (sl, o, e) ->
-        decl_var_check s.position.pos_lnum sl e
-      ) |> List.flatten
+      |> map_flat (fun (sl, o, e) ->
+        decl_var_check s.position.pos_lnum sl e)
   | _ -> []
 
-let rec check_fcn_call (s: stmt node): string list =
+let rec check_fcn_call s =
   match s.value with
   | Simple simp ->
     (match simp.value with
@@ -293,88 +271,45 @@ let rec check_fcn_call (s: stmt node): string list =
       | FuncCall _ -> []
       | _ -> [function_call_error e.position.pos_lnum])
     | _ -> [])
-  | Block l ->
-    l
-    |> List.map check_fcn_call
-    |> List.flatten
+  | Block l -> map_flat check_fcn_call l
   | If (_, _, s, e) ->
-    let e =
-      e
-      |> Option.map (fun x ->
-        x
-        |> List.map check_fcn_call
-        |> List.flatten
-      )
-      |> Option.default [] in
+    let e = map_default (map_flat check_fcn_call) e in
     s
-    |> List.map check_fcn_call
-    |> List.flatten
+    |> map_flat check_fcn_call
     |> List.append e
   | Loop loop ->
     (match loop with
-    | While (_, s) ->
-      s
-      |> List.map check_fcn_call
-      |> List.flatten
-    | For (_, _, _, s) ->
-      s
-      |> List.map check_fcn_call
-      |> List.flatten
-    )
+    | While (_, s) -> s
+    | For (_, _, _, s) -> s)
+    |> map_flat check_fcn_call
   | Switch (_, _, cs) ->
     cs
-    |> List.map (fun (e, s) ->
-      s
-      |> List.map check_fcn_call
-      |> List.flatten
-    )
-    |> List.flatten
+    |> map_flat (fun (_, s) -> (map_flat check_fcn_call s))
   | _ -> []
 
 let rec check_post_loop (s: stmt node): string list =
   match s.value with
-  | Block l ->
-    l
-    |> List.map check_post_loop
-    |> List.flatten
+  | Block l -> map_flat check_post_loop l
   | If (_, _, s, e) ->
-    let e =
-      e
-      |> Option.map (fun x ->
-        x
-        |> List.map check_post_loop
-        |> List.flatten
-      )
-      |> Option.default [] in
+    let e = map_default (map_flat check_post_loop) e in
     s
-    |> List.map check_post_loop
-    |> List.flatten
+    |> map_flat check_post_loop
     |> List.append e
   | Loop loop ->
     (match loop with
-    | While (_, s) ->
-      s
-      |> List.map check_post_loop
-      |> List.flatten
+    | While (_, s) -> map_flat check_post_loop s
     | For (_, _, p, s) ->
       let p =
         match p.value with
         | ShortDeclaration _ -> [loop_error p.position.pos_lnum]
         | _ -> [] in
       s
-      |> List.map check_post_loop
-      |> List.flatten
+      |> map_flat check_post_loop
       |> List.append p
-
     )
   | Switch (_, _, cs) ->
     cs
-    |> List.map (fun (e, s) ->
-      s
-      |> List.map check_post_loop
-      |> List.flatten
-    )
-    |> List.flatten
+    |> map_flat (fun (_, s) -> (map_flat check_post_loop s))
   | _ -> []
 
 (*
@@ -382,7 +317,7 @@ this is the parent weeding function, it uses all the function defined
 above to collect their error messages (if any!) and output the first one
 in the resulting merged list
 *)
-let illegal_blanks (p, d) =
+let weed (p, d) =
   let blanks =
     d
     |> map_flat (fun x ->

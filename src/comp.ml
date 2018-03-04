@@ -37,7 +37,7 @@ let parse input =
   let lexer_buffer = Lexing.from_string input in
   try
     let ast = Parser.prog Lexer.read lexer_buffer in
-      match Weeding.illegal_blanks ast with
+      match Weeding.weed ast with
       | "" ->
         print_string "OK\n";
         exit 0;
@@ -57,7 +57,7 @@ let pretty input =
   let lexer_buffer = Lexing.from_string input in
   try
     let ast = Parser.prog Lexer.read lexer_buffer in
-      match Weeding.illegal_blanks ast with
+      match Weeding.weed ast with
       | "" ->
         Pretty.pretty_print ast;
         print_newline ();
