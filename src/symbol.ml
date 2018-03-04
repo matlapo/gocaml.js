@@ -28,41 +28,34 @@ module Option = BatOption
 let bind x f = Option.bind f x
 let id x = x
 
-(* let def_to_ref x name =
-  match x with
-  | StructT s -> TypeR s
-  | S *)
+let map_flat f l =
+  l
+  |> List.map f
+  |> List.flatten
 
 let table_var x =
   let helper (names, otype, _) =
     names
     |> List.map (fun x -> (x, otype)) in
-  x
-  |> List.map helper
-  |> List.flatten
+  map_flat helper x
 
-(* do we need this? *)
 let table_func (name, args, ret, body) =
-  let rec helper_list l =
-    l
-    |> List.map helper
-    |> List.flatten
-  and helper s =
+  let rec helper s =
     match s.value with
-    | Block b -> helper_list b
+    | Block b -> map_flat helper b
     | Declaration x -> table_var x
     | If (_, _, s, e) ->
       e
-      |> Option.map helper_list
+      |> Option.map (map_flat helper)
       |> Option.default []
-      |> List.append (helper_list s)
+      |> List.append (map_flat helper s)
     | Loop l ->
       (match l with
-      | While (_, l) -> helper_list l
-      | For (_, _, _, l) -> helper_list l)
+      | While (_, l) -> map_flat helper l
+      | For (_, _, _, l) -> map_flat helper l)
     | Switch (_, _, l) ->
       l
-      |> List.map (fun (_, x) -> helper_list x)
+      |> List.map (fun (_, x) -> map_flat helper x)
       |> List.flatten
     | _ -> []
   in
