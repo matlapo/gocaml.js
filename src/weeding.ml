@@ -6,6 +6,16 @@ module Option = BatOption
 let bind x f = Option.bind f x
 let id x = x
 
+let map_flat f l =
+  l
+  |> List.map f
+  |> List.flatten
+
+let map_default f o =
+  o
+  |> Option.map f
+  |> Option.default []
+
 (*
 ########################### WEEDING ###########################
 Most functions take an AST node and return a string list
@@ -68,8 +78,7 @@ let rec blank_exp (e: exp node) : string list =
     | Unaryexp (_, a) -> blank_exp a
     | FuncCall (n, l) ->
       l
-      |> List.map blank_exp
-      |> List.flatten
+      |> map_flat blank_exp
       |> List.append (helper e.position.pos_lnum n)
     | Append (a, b) ->
       blank_exp a
@@ -92,20 +101,15 @@ and blank_kind line (k: kind) : string list =
 let blank_simple (simp: simpleStm node) =
   match simp.value with
   | Assign (a, (l, e)) ->
-    let e =
-      e
-      |> List.map blank_exp
-      |> List.flatten in
+    let e = map_flat blank_exp e in
     let l =
       match a with
       | Regular -> []
-      | _ -> l |> List.map (blank_kind simp.position.pos_lnum) |> List.flatten in
+      | _ -> map_flat (blank_kind simp.position.pos_lnum) l in
     List.append e l
   | ExpStatement e -> blank_exp e
   | ShortDeclaration (l, e) ->
-    e
-    |> List.map blank_exp
-    |> List.flatten
+    map_flat blank_exp e
     |> List.append (List.map (blank_kind simp.position.pos_lnum) l |> List.flatten)
   | DoubleMinus s -> blank_kind simp.position.pos_lnum s
   | DoublePlus s -> blank_kind simp.position.pos_lnum s
@@ -114,54 +118,29 @@ let blank_simple (simp: simpleStm node) =
 (* finds an invalid blank id in a statement node *)
 let rec blank_stm (stm: stmt node) =
   match stm.value with
-  | Block l ->
-    l
-    |> List.map blank_stm
-    |> List.flatten
-  | Print l ->
-    l
-    |> List.map blank_exp
-    |> List.flatten
-  | Println l ->
-    l
-    |> List.map blank_exp
-    |> List.flatten
+  | Block l -> map_flat blank_stm l
+  | Print l -> map_flat blank_exp l
+  | Println l -> map_flat blank_exp l
   | Declaration l ->
     l
-    |> List.map (fun (s, d, es) ->
-      let d =
-        d
-        |> Option.map (blank_ref stm.position.pos_lnum)
-        |> Option.default [] in
-      List.map blank_exp es
-      |> List.flatten
+    |> map_flat (fun (s, d, es) ->
+      let d = map_default (blank_ref stm.position.pos_lnum) d in
+      map_flat blank_exp es
       |> List.append d
     )
-    |> List.flatten
   | TypeDeclaration l ->
     l
-    |> List.map (fun (s, ts) ->
+    |> map_flat (fun (s, ts) ->
       blank_def stm.position.pos_lnum ts
       |> List.append (helper stm.position.pos_lnum s)
     )
-    |> List.flatten
   | If (s, e, l, el) ->
-    let s =
-      s
-      |> Option.map blank_simple
-      |> Option.default [] in
-    let e =
-      e
-      |> Option.map blank_exp
-      |> Option.default [] in
-    let l =
-      l
-      |> List.map blank_stm
-      |> List.flatten in
+    let s = map_default blank_simple s in
+    let e = map_default blank_exp e in
+    let l = map_flat blank_stm l in
     let el =
       el
-      |> Option.map (fun x -> List.map blank_stm x)
-      |> Option.default []
+      |> map_default (fun x -> List.map blank_stm x)
       |> List.flatten in
     s
     |> List.append e
@@ -169,53 +148,29 @@ let rec blank_stm (stm: stmt node) =
     |> List.append el
   | Loop l ->
     (match l with
-    | While (e, l) ->
-      e
-      |> Option.map blank_exp
-      |> Option.default []
+    | While (e, l) -> map_default blank_exp e
     | For (s1, e, s2, l) ->
       let a =
         blank_simple s1
         |> List.append (blank_simple s2) in
-      let b =
-        e
-        |> Option.map blank_exp
-        |> Option.default [] in
-      let c =
-        l
-        |> List.map blank_stm
-        |> List.flatten in
+      let b = map_default blank_exp e in
+      let c = map_flat blank_stm l in
       a
       |> List.append b
       |> List.append c)
   | Simple s -> blank_simple s
-  | Return e -> e |> Option.map blank_exp |> Option.default []
+  | Return e -> map_default blank_exp e
   | Switch (s, e, cs) ->
-    let s =
-      s
-      |> Option.map blank_simple
-      |> Option.default [] in
-    let e =
-      e
-      |> Option.map blank_exp
-      |> Option.default [] in
+    let s = map_default blank_simple s in
+    let e = map_default blank_exp e in
     cs
-    |> List.map (fun x ->
+    |> map_flat (fun x ->
       let (exps, stms) = x in
-      let exps =
-        exps
-        |> Option.map (fun x ->
-          x
-          |> List.map blank_exp
-          |> List.flatten
-        )
-        |> Option.default [] in
+      let exps = map_default (map_flat blank_exp) exps in
       stms
-      |> List.map blank_stm
-      |> List.flatten
+      |> map_flat blank_stm
       |> List.append exps
     )
-    |> List.flatten
     |> List.append e
     |> List.append s
   | _ -> []

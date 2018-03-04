@@ -59,9 +59,9 @@ let table_func (name, args, ret, body) =
       |> List.flatten
     | _ -> []
   in
-  (name, ret)::(List.append args (List.map helper body |> List.flatten))
+  (name, ret)::(List.append args (map_flat helper body))
 
-let build_table (prog: program) =
+let build_table prog =
   let _, decl = prog in
   decl
   |> List.fold_left (fun table d ->
