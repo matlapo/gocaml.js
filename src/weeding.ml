@@ -6,11 +6,19 @@ module Option = BatOption
 let bind x f = Option.bind f x
 let id x = x
 
+(*
+used everywhere in this file, applies a function
+to a list and flattens the result.
+*)
 let map_flat f l =
   l
   |> List.map f
   |> List.flatten
 
+(*
+also used everywhere, applies a function to a list
+and if value is Some v then evaluates to v else evals to []
+*)
 let map_default f o =
   o
   |> Option.map f
@@ -47,7 +55,7 @@ let function_call_error x = Printf.sprintf "Error: only function call are allowe
 let loop_error x = Printf.sprintf "Error cannot declare in post statement of for loop: line %d" x
 
 (* finds an invalid blank id in a type definition *)
-let rec blank_def line (t: typesDef) =
+let rec blank_def line t =
   match t with
   | TypeT s -> helper line s
   | ArrayT (s, _) -> helper line s
@@ -62,14 +70,14 @@ let rec blank_def line (t: typesDef) =
     |> List.flatten
 
 (* finds an invalid blank id in a type reference *)
-let blank_ref line (t: typesRef) =
+let blank_ref line t =
   match t with
   | TypeR s -> helper line s
   | ArrayR (s, _) -> helper line s
   | SliceR (s, _) -> helper line s
 
 (* finds an invalid blank id in an expression node *)
-let rec blank_exp (e: exp node) : string list =
+let rec blank_exp e =
     match e.value with
     | Id l -> blank_kind e.position.pos_lnum l
     | BinaryOp (_, (a, b)) ->
@@ -84,9 +92,9 @@ let rec blank_exp (e: exp node) : string list =
       blank_exp a
       |> List.append (blank_exp b)
     | _ -> []
-and blank_kind line (k: kind) : string list =
+and blank_kind line k =
   k
-  |> List.map (fun x ->
+  |> map_flat (fun x ->
     match x with
     | Variable s -> helper line s
     | Array (s, l) ->
@@ -95,10 +103,9 @@ and blank_kind line (k: kind) : string list =
       |> List.append [helper line s]
       |> List.flatten
   )
-  |> List.flatten
 
 (* finds an invalid blank id in a simple statement node *)
-let blank_simple (simp: simpleStm node) =
+let blank_simple simp =
   match simp.value with
   | Assign (a, (l, e)) ->
     let e = map_flat blank_exp e in
@@ -116,7 +123,7 @@ let blank_simple (simp: simpleStm node) =
   | Empty -> []
 
 (* finds an invalid blank id in a statement node *)
-let rec blank_stm (stm: stmt node) =
+let rec blank_stm stm =
   match stm.value with
   | Block l -> map_flat blank_stm l
   | Print l -> map_flat blank_exp l
@@ -176,14 +183,14 @@ let rec blank_stm (stm: stmt node) =
   | _ -> []
 
 (* makes sure that a switch statement has at most one default case *)
-let check_default (s: stmt node) =
+(* TODO not recursive *)
+let check_default s =
   match s.value with
   | Switch (_, _, cs) ->
     let d =
       cs
       |> List.fold_left (fun acc (e, _) -> if Option.is_none e then acc + 1 else acc) 0 in
-    if d > 1 then [default_many_error s.position.pos_lnum]
-    else []
+    if d > 1 then [default_many_error s.position.pos_lnum] else []
   | _ -> []
 
 (*
@@ -191,7 +198,7 @@ visits all the statement nodes and check if it contains a continue/break stateme
 It also keeps track of if it encountered a loop-node or switch-node because continue/break
 statements must be direct or indirect children of those 2 types of node
 *)
-let check_cont_break (s: stmt node) =
+let check_cont_break s =
   let rec helper (s: stmt node) (seenLoop: bool) (seenSwitch: bool) =
     match s.value with
     | Continue -> if seenLoop = true then [] else [continue_error s.position.pos_lnum]
@@ -200,44 +207,27 @@ let check_cont_break (s: stmt node) =
       else [break_error s.position.pos_lnum]
     | Loop loop ->
       (match loop with
-      | While (_, s) ->
-        s
-        |> List.map (fun x -> helper x true true)
-        |> List.flatten
-      | For (_, _, _, s) ->
-        s
-        |> List.map (fun x -> helper x true true)
-        |> List.flatten
-      )
-    | Block s ->
-        s
-        |> List.map (fun x -> helper x seenLoop seenSwitch)
-        |> List.flatten
+      | While (_, s) -> map_flat (fun x -> helper x true true) s
+      | For (_, _, _, s) -> map_flat (fun x -> helper x true true) s)
+    | Block s -> map_flat (fun x -> helper x seenLoop seenSwitch) s
     | If (_, _, s, e) ->
       let e =
         e
-        |> Option.map (fun x ->
-          x
-          |> List.map (fun x -> helper x seenLoop seenSwitch)
-          |> List.flatten
-        )
-        |> Option.default [] in
+        |> map_default (fun x ->
+          map_flat (fun x -> helper x seenLoop seenSwitch) x
+        ) in
       s
-      |> List.map (fun x -> helper x seenLoop seenSwitch)
-      |> List.flatten
+      |> map_flat (fun x -> helper x seenLoop seenSwitch)
       |> List.append e
     | Switch (_, _, cs) ->
       cs
-      |> List.map (fun (e, s) ->
-        s
-        |> List.map (fun x -> helper x seenLoop true)
-        |> List.flatten
+      |> map_flat (fun (e, s) ->
+        map_flat (fun x -> helper x seenLoop true) s
       )
-      |> List.flatten
     | _ -> []
   in helper s false false
 
-let decl_var_check line (s: string list) (e: exp node list) =
+let decl_var_check line s e =
   if List.length e = 0 then []
   else if List.length s = List.length e then []
   else [variable_decl_error line]
@@ -392,60 +382,34 @@ this is the parent weeding function, it uses all the function defined
 above to collect their error messages (if any!) and output the first one
 in the resulting merged list
 *)
-let illegal_blanks (prog: program) =
-  let p, d = prog in
+let illegal_blanks (p, d) =
   let blanks =
     d
-    |> List.map (fun x ->
+    |> map_flat (fun x ->
       match x.value with
       | Var l ->
         l
-        |> List.map (fun (v, r, exps) ->
-          let exp =
-            exps
-            |> List.map (fun x -> blank_exp x)
-            |> List.flatten in
+        |> map_flat (fun (v, r, exps) ->
+          let exp = map_flat blank_exp exps in
           r
-          |> Option.map (blank_ref x.position.pos_lnum)
-          |> Option.default []
+          |> map_default (blank_ref x.position.pos_lnum)
           |> List.append exp
           |> List.append (decl_var_check x.position.pos_lnum v exps)
         )
-        |> List.flatten
       | Fct (name, args, _, s) ->
-        let continue =
-          s
-          |> List.map check_cont_break
-          |> List.flatten in
-        let default =
-          s
-          |> List.map check_default
-          |> List.flatten in
-        let assign =
-          s
-          |> List.map assign_check
-          |> List.flatten in
-        let fct =
-          s
-          |> List.map check_fcn_call
-          |> List.flatten in
-        let post =
-          s
-          |> List.map check_post_loop
-          |> List.flatten in
+        (* TODO make better filter structure *)
+        let continue = map_flat check_cont_break s in
+        let default = map_flat check_default s in
+        let assign = map_flat assign_check s in
+        let fct = map_flat check_fcn_call s in
+        let post = map_flat check_post_loop s in
         let name = helper x.position.pos_lnum name in
         let args =
           args
-          |> List.map (fun (_, r) ->
-            r
-            |> Option.map (blank_ref x.position.pos_lnum)
-            |> Option.default []
-          )
-          |> List.flatten in
-        let s =
-          s
-          |> List.map blank_stm
-          |> List.flatten in
+          |> map_flat (fun (_, r) ->
+            map_default (blank_ref x.position.pos_lnum) r
+          ) in
+        let s = map_flat blank_stm s in
         name
         |> List.append s
         |> List.append args
@@ -455,8 +419,8 @@ let illegal_blanks (prog: program) =
         |> List.append fct
         |> List.append post
       | _ -> []
-    )
-    |> List.flatten in
+    ) in
+    (* TODO this should eval to string list, not string *)
   match blanks with
   | [] -> ""
   | x::_ -> x
