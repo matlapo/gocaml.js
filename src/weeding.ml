@@ -287,7 +287,7 @@ let rec check_fcn_call s =
     |> map_flat (fun (_, s) -> (map_flat check_fcn_call s))
   | _ -> []
 
-let rec check_post_loop (s: stmt node): string list =
+let rec check_post_loop s =
   match s.value with
   | Block l -> map_flat check_post_loop l
   | If (_, _, s, e) ->
@@ -318,44 +318,39 @@ above to collect their error messages (if any!) and output the first one
 in the resulting merged list
 *)
 let weed (p, d) =
-  let blanks =
-    d
-    |> map_flat (fun x ->
-      match x.value with
-      | Var l ->
-        l
-        |> map_flat (fun (v, r, exps) ->
-          let exp = map_flat blank_exp exps in
-          r
-          |> map_default (blank_ref x.position.pos_lnum)
-          |> List.append exp
-          |> List.append (decl_var_check x.position.pos_lnum v exps)
-        )
-      | Fct (name, args, _, s) ->
-        (* TODO make better filter structure *)
-        let continue = map_flat check_cont_break s in
-        let default = map_flat check_default s in
-        let assign = map_flat assign_check s in
-        let fct = map_flat check_fcn_call s in
-        let post = map_flat check_post_loop s in
-        let name = helper x.position.pos_lnum name in
-        let args =
-          args
-          |> map_flat (fun (_, r) ->
-            map_default (blank_ref x.position.pos_lnum) r
-          ) in
-        let s = map_flat blank_stm s in
-        name
-        |> List.append s
-        |> List.append args
-        |> List.append continue
-        |> List.append default
-        |> List.append assign
-        |> List.append fct
-        |> List.append post
-      | _ -> []
-    ) in
-    (* TODO this should eval to string list, not string *)
-  match blanks with
-  | [] -> ""
-  | x::_ -> x
+  d
+  |> map_flat (fun x ->
+    match x.value with
+    | Var l ->
+      l
+      |> map_flat (fun (v, r, exps) ->
+        let exp = map_flat blank_exp exps in
+        r
+        |> map_default (blank_ref x.position.pos_lnum)
+        |> List.append exp
+        |> List.append (decl_var_check x.position.pos_lnum v exps)
+      )
+    | Fct (name, args, _, s) ->
+      (* TODO make better filter structure *)
+      let continue = map_flat check_cont_break s in
+      let default = map_flat check_default s in
+      let assign = map_flat assign_check s in
+      let fct = map_flat check_fcn_call s in
+      let post = map_flat check_post_loop s in
+      let name = helper x.position.pos_lnum name in
+      let args =
+        args
+        |> map_flat (fun (_, r) ->
+          map_default (blank_ref x.position.pos_lnum) r
+        ) in
+      let s = map_flat blank_stm s in
+      name
+      |> List.append s
+      |> List.append args
+      |> List.append continue
+      |> List.append default
+      |> List.append assign
+      |> List.append fct
+      |> List.append post
+    | _ -> []
+  )

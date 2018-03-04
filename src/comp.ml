@@ -38,10 +38,10 @@ let parse input =
   try
     let ast = Parser.prog Lexer.read lexer_buffer in
       match Weeding.weed ast with
-      | "" ->
+      | [] ->
         print_string "OK\n";
         exit 0;
-      | _ as w ->
+      | w::_ ->
         print_error lexer_buffer w;
         exit 1;
   with
@@ -58,11 +58,11 @@ let pretty input =
   try
     let ast = Parser.prog Lexer.read lexer_buffer in
       match Weeding.weed ast with
-      | "" ->
+      | [] ->
         Pretty.pretty_print ast;
         print_newline ();
         exit 0;
-      | _ as w ->
+      | w::_ ->
         print_error lexer_buffer w;
         exit 1;
   with
