@@ -93,7 +93,7 @@ let merge (old_scope: scope) (new_scope: scope) : scope =
 
 let new_scope parent = { bindings = []; types = []; parent = Some parent }
 
-let check_ops (a: typesRef) (b:typesRef) (l: base_types list): string option =
+let check_ops (a: typesRef) (b:typesRef) (l: base_types list) comparable: string option =
   l
   |> List.map (fun t ->
     let t = to_string t in
@@ -106,7 +106,7 @@ let check_ops (a: typesRef) (b:typesRef) (l: base_types list): string option =
   |> List.find_opt is_some
   |> (fun x ->
     match x with
-    | Some x -> x
+    | Some x -> if comparable then Some base_bool else x
     | None -> print_string "Error: ..."; None
   )
 
@@ -137,28 +137,28 @@ let rec typecheck_exp (e: exp gen_node) (scope: scope): (exp tnode) option =
       |> bind (fun a ->
         typecheck_exp b scope
         |> bind (fun b ->
-          let types =
+          let types, comparable =
             match bin with
-            | Plus -> [Int; Float; String]
+            | Plus -> [Int; Float; String], false
             | Minus
             | Times
-            | Div -> [Int; Float]
+            | Div -> [Int; Float], false
             | Equals
-            | NotEquals -> [Int; Float; String; Bool; Rune]
+            | NotEquals -> [Int; Float; String; Bool; Rune], true
             | And
-            | Or -> [Bool]
+            | Or -> [Bool], true
             | Smaller
             | Greater
             | SmallerEq
-            | GreaterEq -> [Int; Float] (* TODO ordered? *)
+            | GreaterEq -> [Int; Float], true (* TODO ordered? *)
             | DGreater
             | DSmaller
             | AndHat
             | BAnd
             | BOr
             | Caret
-            | Mod -> [Int] in
-          check_ops a.typ b.typ types
+            | Mod -> [Int], false in
+          check_ops a.typ b.typ types comparable
           |> bind (fun x ->
           to_tnode e (TypeR x) |> some
           )
