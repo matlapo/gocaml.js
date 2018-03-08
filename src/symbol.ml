@@ -104,7 +104,11 @@ let check_ops (a: typesRef) (b:typesRef) (l: base_types list): string option =
     | _ -> None (* TODO not sure what are the rules for this *)
   )
   |> List.find_opt is_some
-  |> bind id
+  |> (fun x ->
+    match x with
+    | Some x -> x
+    | None -> print_string "Error: ..."; None
+  )
 
 
 (* converts a exp node to exp enode (node with type) *)
@@ -135,17 +139,10 @@ let rec typecheck_exp (e: exp gen_node) (scope: scope): (exp tnode) option =
         |> bind (fun b ->
           match bin with
           | Plus ->
-            (match a.typ, b.typ with
-            | TypeR x, TypeR y ->
-              if x = base_int then
-                (if y = base_int then
-                  to_tnode e (TypeR base_int) |> some
-                else
-                  (print_string (binary_different_types base_int base_string);
-                  None))
-              (* else if x = base_string then *)
-              else None
-            | _ -> None)
+            check_ops a.typ b.typ [Int; String]
+            |> bind (fun x ->
+              to_tnode e (TypeR x) |> some
+            )
           | _ -> None
         )
       )
