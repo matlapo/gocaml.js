@@ -63,24 +63,27 @@ let merge (old_scope: scope) (new_scope: scope) : scope =
     types = List.append old_scope.types new_scope.types
   }
 
+
 let rec typecheck_stm (s: stmt gen_node) (current: scope) : stmt snode =
   match s with
   | Position e ->
     (match e.value with
     | Block l ->
       let new_scope = { bindings = []; types = []; parent = Some current } in
-      let (stms, new_scope) =
-        l
-        |> List.fold_left (fun (s_nodes, context) g_node ->
-          let s = typecheck_stm g_node context in
-          let merged = merge context s.scope in
-          let s_nodes = List.append s_nodes [Scoped s] in
-          (s_nodes, merged)
-        ) ([], new_scope) in
+      let (stms, new_scope) = type_context_check l new_scope in
       { position = e.position; scope = new_scope; value = Block stms }
     | _ -> failwith "")
   | Typed e -> failwith ""
   | Scoped e -> e
+
+and type_context_check (l: stmt gen_node list) (scope: scope) =
+    l
+    |> List.fold_left (fun (s_nodes, context) g_node ->
+      let s = typecheck_stm g_node context in
+      let merged = merge context s.scope in
+      let s_nodes = List.append s_nodes [Scoped s] in
+      (s_nodes, merged)
+    ) ([], scope)
 
 (* converts a exp node to exp enode (node with type) *)
 (* type rules are not implemented, just trying to get "best" structure for everything *)
