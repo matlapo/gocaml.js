@@ -63,27 +63,7 @@ let merge (old_scope: scope) (new_scope: scope) : scope =
     types = List.append old_scope.types new_scope.types
   }
 
-
-let rec typecheck_stm (s: stmt gen_node) (current: scope) : stmt snode =
-  match s with
-  | Position e ->
-    (match e.value with
-    | Block l ->
-      let new_scope = { bindings = []; types = []; parent = Some current } in
-      let (stms, new_scope) = type_context_check l new_scope in
-      { position = e.position; scope = new_scope; value = Block stms }
-    | _ -> failwith "")
-  | Typed e -> failwith ""
-  | Scoped e -> e
-
-and type_context_check (l: stmt gen_node list) (scope: scope) =
-    l
-    |> List.fold_left (fun (s_nodes, context) g_node ->
-      let s = typecheck_stm g_node context in
-      let merged = merge context s.scope in
-      let s_nodes = List.append s_nodes [Scoped s] in
-      (s_nodes, merged)
-    ) ([], scope)
+let new_scope parent = { bindings = []; types = []; parent = Some parent }
 
 (* converts a exp node to exp enode (node with type) *)
 (* type rules are not implemented, just trying to get "best" structure for everything *)
@@ -115,3 +95,39 @@ let rec typecheck_exp (e: exp gen_node) (scope: scope): (exp tnode) option =
     | _ -> None)
   | Typed e -> Some e
   | Scoped e -> None
+
+let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option =
+  match s with
+  | Position e ->
+    (match e.value with
+    | Block l ->
+      let new_scope = new_scope current in
+      type_context_check l new_scope
+      |> bind (fun (stms, new_scope) ->
+        Some { position = e.position; scope = new_scope; value = Block (List.map (fun x -> Scoped x) stms) }
+      )
+    | Print l ->
+      let tnodes =
+        l
+        |> List.map (fun x -> typecheck_exp x current)
+        |> List.filter is_some in
+      if List.length l <> List.length tnodes then None
+      else
+        Some { position = e.position; scope = current; value = Print (List.map (fun x -> Typed (Option.get x)) tnodes) }
+    | _ -> failwith "")
+  | Typed e -> failwith ""
+  | Scoped e -> Some e
+
+and type_context_check (l: stmt gen_node list) (scope: scope): (stmt snode list * scope) option =
+    l
+    |> List.fold_left (fun acc g_node ->
+      acc
+      |> bind (fun (s_nodes, context) ->
+        typecheck_stm g_node context
+        |> bind (fun s ->
+          let merged = merge context s.scope in
+          let s_nodes = List.append s_nodes [s] in
+          Some (s_nodes, merged)
+        )
+      )
+    ) (Some ([], scope))
