@@ -18,6 +18,7 @@ open BatOption
 module Option = BatOption
 let bind x f = Option.bind f x
 let id x = x
+let inline (<|) f x = f x
 
 let map_flat f l =
   l
@@ -29,13 +30,28 @@ let compare_length n l = n = List.length l
 let some x = Some x
 
 let id_undeclared id = Printf.sprintf "Variable %s is used before being declared" id
-let binary_different_types = Printf.sprintf "Expecting both expressions to be of type bool but got type yolo"
+let binary_different_types t1 t2 = Printf.sprintf "Expecting both expressions to be of type %s but got type %s and %s" t1 t1 t2
+
+type base_types =
+  | Int
+  | Float
+  | String
+  | Bool
+  | Rune
 
 let base_int = "int"
 let base_float = "float"
 let base_string = "string"
 let base_bool = "bool"
 let base_rune = "rune"
+
+let to_string (b: base_types) =
+  match b with
+  | Int -> base_int
+  | Float -> base_float
+  | String -> base_string
+  | Bool -> base_bool
+  | Rune -> base_rune
 
 let base_types =
   [
@@ -66,8 +82,8 @@ let rec lookup (scope: scope) (name: string): typesRef option =
     | Some p -> lookup p name
     | None -> print_string (id_undeclared name); None
 
-let type_exists (r: typesRef): typesDef option = None
-let resolve (t: typesRef) (scope: scope) = None
+(* let type_exists (r: typesRef): typesDef option = None *)
+(* let resolve (scope: scope) (t: typesRef) =  *)
 
 let merge (old_scope: scope) (new_scope: scope) : scope =
   { old_scope with
@@ -76,6 +92,20 @@ let merge (old_scope: scope) (new_scope: scope) : scope =
   }
 
 let new_scope parent = { bindings = []; types = []; parent = Some parent }
+
+let check_ops (a: typesRef) (b:typesRef) (l: base_types list): string option =
+  l
+  |> List.map (fun t ->
+    let t = to_string t in
+    match a, b with
+    | TypeR x, TypeR y ->
+      if x = t && y = t then Some t
+      else None
+    | _ -> None (* TODO not sure what are the rules for this *)
+  )
+  |> List.find_opt is_some
+  |> bind id
+
 
 (* converts a exp node to exp enode (node with type) *)
 (* type rules are not implemented, just trying to get "best" structure for everything *)
@@ -107,7 +137,13 @@ let rec typecheck_exp (e: exp gen_node) (scope: scope): (exp tnode) option =
           | Plus ->
             (match a.typ, b.typ with
             | TypeR x, TypeR y ->
-              if x = base_int && y = base_int then None (* TODO *)
+              if x = base_int then
+                (if y = base_int then
+                  to_tnode e (TypeR base_int) |> some
+                else
+                  (print_string (binary_different_types base_int base_string);
+                  None))
+              (* else if x = base_string then *)
               else None
             | _ -> None)
           | _ -> None
