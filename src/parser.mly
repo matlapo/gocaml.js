@@ -142,8 +142,8 @@ package:
 // ########################################
 
 decls:
-  | d1 = decl_type TSEMICOLON d2 = decls { { position = $symbolstartpos; value = d1 }::d2 }
-  | d = decl_type TSEMICOLON { [{ position = $symbolstartpos; value = d }] }
+  | d1 = decl_type TSEMICOLON d2 = decls { Position { position = $symbolstartpos; value = d1 }::d2 }
+  | d = decl_type TSEMICOLON { [ Position { position = $symbolstartpos; value = d }] }
   ;
 
 //top-level declarations
@@ -265,36 +265,36 @@ stm_list:
   ;
 
 stm:
-  | TOPENINGBRACE ss = stm_list TCLOSINGBRACE { { position = $symbolstartpos; value = Block ss } }
-  | TPRINT TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Print e } }
-  | TPRINTLN TOPENINGPAR e = exp_list TCLOSINGPAR { { position = $symbolstartpos; value = Println e } }
-  | TVAR d = var_decls { { position = $symbolstartpos; value = Declaration d } }
-  | TTYPE t = type_decls { { position = $symbolstartpos; value = TypeDeclaration t } }
+  | TOPENINGBRACE ss = stm_list TCLOSINGBRACE { Position { position = $symbolstartpos; value = Block ss } }
+  | TPRINT TOPENINGPAR e = exp_list TCLOSINGPAR { Position { position = $symbolstartpos; value = Print e } }
+  | TPRINTLN TOPENINGPAR e = exp_list TCLOSINGPAR { Position { position = $symbolstartpos; value = Println e } }
+  | TVAR d = var_decls { Position { position = $symbolstartpos; value = Declaration d } }
+  | TTYPE t = type_decls { Position { position = $symbolstartpos; value = TypeDeclaration t } }
   | TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
-    { { position = $symbolstartpos; value =  If (None, Some cond, s, l) } }
+    { Position { position = $symbolstartpos; value =  If (None, Some cond, s, l) } }
   | TIF simp = simpleStm TSEMICOLON cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
-    { { position = $symbolstartpos; value =  If (Some simp, Some cond, s, l) } }
+    { Position { position = $symbolstartpos; value =  If (Some simp, Some cond, s, l) } }
   | TFOR cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE
-    { { position = $symbolstartpos; value = Loop (While (Some cond, s)) } }
+    { Position { position = $symbolstartpos; value = Loop (While (Some cond, s)) } }
   | TFOR TOPENINGBRACE s = stm_list TCLOSINGBRACE
-    { { position = $symbolstartpos; value = Loop (While (None, s)) } }
+    { Position { position = $symbolstartpos; value = Loop (While (None, s)) } }
   | TFOR init = simpleStm TSEMICOLON cond = exp TSEMICOLON inc = simpleStm TOPENINGBRACE s = stm_list TCLOSINGBRACE
-    { { position = $symbolstartpos; value = Loop (For (init, Some cond, inc, s)) } }
+    { Position { position = $symbolstartpos; value = Loop (For (init, Some cond, inc, s)) } }
   | TFOR init = simpleStm TSEMICOLON TSEMICOLON inc = simpleStm TOPENINGBRACE s = stm_list TCLOSINGBRACE
-    { { position = $symbolstartpos; value = Loop (For (init, None, inc, s)) } }
-  | TRETURN e = exp { { position = $symbolstartpos; value = Return (Some e) } }
-  | TRETURN { { position = $symbolstartpos; value = Return None } }
-  | simple = simpleStm { { position = $symbolstartpos; value = Simple simple } }
+    { Position { position = $symbolstartpos; value = Loop (For (init, None, inc, s)) } }
+  | TRETURN e = exp { Position { position = $symbolstartpos; value = Return (Some e) } }
+  | TRETURN { Position { position = $symbolstartpos; value = Return None } }
+  | simple = simpleStm { Position { position = $symbolstartpos; value = Simple simple } }
   | TSWITCH e = exp TOPENINGBRACE cases = case_list TCLOSINGBRACE
-    { { position = $symbolstartpos; value = Switch (None, Some e, cases) } }
+    { Position { position = $symbolstartpos; value = Switch (None, Some e, cases) } }
   | TSWITCH TOPENINGBRACE cases = case_list TCLOSINGBRACE
-    { { position = $symbolstartpos; value = Switch (None, None, cases) } }
+    { Position { position = $symbolstartpos; value = Switch (None, None, cases) } }
   | TSWITCH s = simpleStm TSEMICOLON e = exp TOPENINGBRACE cases = case_list TCLOSINGBRACE
-    { { position = $symbolstartpos; value = Switch (Some s, Some e, cases) } }
+    { Position { position = $symbolstartpos; value = Switch (Some s, Some e, cases) } }
   | TSWITCH s = simpleStm TSEMICOLON TOPENINGBRACE cases = case_list TCLOSINGBRACE
-    { { position = $symbolstartpos; value = Switch (Some s, None, cases) } }
-  | TBREAK { { position = $symbolstartpos; value = Break } }
-  | TCONTINUE { { position = $symbolstartpos; value = Continue } }
+    { Position { position = $symbolstartpos; value = Switch (Some s, None, cases) } }
+  | TBREAK { Position { position = $symbolstartpos; value = Break } }
+  | TCONTINUE { Position { position = $symbolstartpos; value = Continue } }
   ;
 
 // Defines a list of cases in a switch
@@ -312,20 +312,20 @@ case:
 
 // Defines a golang simplestm (see https://golang.org/ref/spec#SimpleStmt)
 simpleStm:
-  | e = exp { { position = $symbolstartpos; value = ExpStatement e } }
-  | k = kind TDPLUS { { position = $symbolstartpos; value = DoublePlus k } }
-  | k = kind TDMINUS { { position = $symbolstartpos; value = DoubleMinus k } }
-  | var = kind_list TASSIGN e = exp_list { { position = $symbolstartpos; value = Assign (Regular, (var, e)) } }
-  | var = kind a = assign_type e = exp { { position = $symbolstartpos; value = Assign (a, ([var], [e])) } }
-  | v = kind_list TCOLEQUAL e = exp_list { { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
-  | { { position = $symbolstartpos; value = Empty } }
+  | e = exp { Position { position = $symbolstartpos; value = ExpStatement e } }
+  | k = kind TDPLUS { Position { position = $symbolstartpos; value = DoublePlus k } }
+  | k = kind TDMINUS { Position { position = $symbolstartpos; value = DoubleMinus k } }
+  | var = kind_list TASSIGN e = exp_list { Position { position = $symbolstartpos; value = Assign (Regular, (var, e)) } }
+  | var = kind a = assign_type e = exp { Position { position = $symbolstartpos; value = Assign (a, ([var], [e])) } }
+  | v = kind_list TCOLEQUAL e = exp_list { Position { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
+  | { Position { position = $symbolstartpos; value = Empty } }
   ;
 
 else_ifs:
   | TELSE TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
-    { Some [{ position = $symbolstartpos; value = If (None, Some cond, s, l) }] }
+    { Some [ Position { position = $symbolstartpos; value = If (None, Some cond, s, l) }] }
   | TELSE TIF simp = simpleStm TSEMICOLON cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
-    { Some [{ position = $symbolstartpos; value = If (Some simp, Some cond, s, l) }] }
+    { Some [ Position { position = $symbolstartpos; value = If (Some simp, Some cond, s, l) }] }
   | TELSE TOPENINGBRACE s = stm_list TCLOSINGBRACE
     { Some s }
   | { None }
@@ -379,60 +379,60 @@ exp_list:
 exp:
   | TOPENINGPAR e = exp TCLOSINGPAR { e }
   | name = TIDENTIFIER TOPENINGPAR e = exp_list TCLOSINGPAR
-    { { position = $symbolstartpos; value = FuncCall (name, e) } }
+    { Position { position = $symbolstartpos; value = FuncCall (name, e) } }
   | TAPPEND TOPENINGPAR e1 = exp TCOMMA e2 = exp TCLOSINGPAR
-    { { position = $symbolstartpos; value = Append (e1, e2) } }
-  | id = kind { { position = $symbolstartpos; value = Id id } }
-  | i = TINTVAL { { position = $symbolstartpos; value = Int i } }
-  | f = TFLOATVAL { { position = $symbolstartpos; value = Float f } }
-  | s = TSTRINGVAL { { position = $symbolstartpos; value = String s } }
-  | s = TRAWSTRVAL { { position = $symbolstartpos; value = RawStr s } }
-  | s = TRUNEVAL { { position = $symbolstartpos; value = Rune s } }
-  | b = TBOOLVAL { { position = $symbolstartpos; value = Bool b } }
+    { Position { position = $symbolstartpos; value = Append (e1, e2) } }
+  | id = kind { Position { position = $symbolstartpos; value = Id id } }
+  | i = TINTVAL { Position { position = $symbolstartpos; value = Int i } }
+  | f = TFLOATVAL { Position { position = $symbolstartpos; value = Float f } }
+  | s = TSTRINGVAL { Position { position = $symbolstartpos; value = String s } }
+  | s = TRAWSTRVAL { Position { position = $symbolstartpos; value = RawStr s } }
+  | s = TRUNEVAL { Position { position = $symbolstartpos; value = Rune s } }
+  | b = TBOOLVAL { Position { position = $symbolstartpos; value = Bool b } }
   | e1 = exp TPLUS e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (Plus, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (Plus, (e1, e2)) } }
   | e1 = exp TMINUS e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (Minus, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (Minus, (e1, e2)) } }
   | e1 = exp TTIMES e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (Times, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (Times, (e1, e2)) } }
   | e1 = exp TDIV e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (Div, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (Div, (e1, e2)) } }
   | e1 = exp TMOD e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (Mod, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (Mod, (e1, e2)) } }
   | e1 = exp TEQUALS e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (Equals, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (Equals, (e1, e2)) } }
   | e1 = exp TNOTEQUAL e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (NotEquals, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (NotEquals, (e1, e2)) } }
   | e1 = exp TAND e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (And, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (And, (e1, e2)) } }
   | e1 = exp TOR e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (Or, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (Or, (e1, e2)) } }
   | e1 = exp TSMALLER e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (Smaller, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (Smaller, (e1, e2)) } }
   | e1 = exp TGREATER e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (Greater, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (Greater, (e1, e2)) } }
   | e1 = exp TSMALLEREQ e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (SmallerEq, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (SmallerEq, (e1, e2)) } }
   | e1 = exp TGREATEREQ e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (GreaterEq, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (GreaterEq, (e1, e2)) } }
   | e1 = exp TDSMALLER e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (DSmaller, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (DSmaller, (e1, e2)) } }
   | e1 = exp TDGREATER e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (DGreater, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (DGreater, (e1, e2)) } }
   | e1 = exp TANDHAT e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (AndHat, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (AndHat, (e1, e2)) } }
   | e1 = exp TCARET e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (Caret, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (Caret, (e1, e2)) } }
   | e1 = exp TBITAND e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (BAnd, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (BAnd, (e1, e2)) } }
   | e1 = exp TBITOR e2 = exp
-    { { position = $symbolstartpos; value = BinaryOp (BOr, (e1, e2)) } }
+    { Position { position = $symbolstartpos; value = BinaryOp (BOr, (e1, e2)) } }
   | TNOT e = exp
-    { { position = $symbolstartpos; value = Unaryexp (Not, e) } }
+    { Position { position = $symbolstartpos; value = Unaryexp (Not, e) } }
   | TPLUS e = exp
-    { { position = $symbolstartpos; value = Unaryexp (UPlus, e) } } %prec TUPLUS
+    { Position { position = $symbolstartpos; value = Unaryexp (UPlus, e) } } %prec TUPLUS
   | TMINUS e = exp
-    { { position = $symbolstartpos; value = Unaryexp (UMinus, e) } } %prec TUMINUS
+    { Position { position = $symbolstartpos; value = Unaryexp (UMinus, e) } } %prec TUMINUS
   | TCARET e = exp
-    { { position = $symbolstartpos; value = Unaryexp (UCaret, e) } } %prec TUCARET
+    { Position { position = $symbolstartpos; value = Unaryexp (UCaret, e) } } %prec TUCARET
   ;

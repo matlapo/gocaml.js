@@ -1,6 +1,6 @@
 open Astwithposition
 
-let string_of_list printer separator l = List.fold_left (fun a e -> a ^ (if a <> "" then separator else "") ^ (printer e)) "" l
+(* let string_of_list printer separator l = List.fold_left (fun a e -> a ^ (if a <> "" then separator else "") ^ (printer e)) "" l
 
 let string_of_string_list = string_of_list (fun s -> s)
 
@@ -182,6 +182,6 @@ let string_of_decl {value = decl; _} = match decl with
     ^ string_of_stmts 1 stmts
     ^ "}\n\n"
 
-let string_of_prog (package, decls) = "package " ^ package ^ "\n\n" ^ string_of_list (fun d -> string_of_decl d) "" decls
+let string_of_prog (package, decls) = "package " ^ package ^ "\n\n" ^ string_of_list (fun d -> string_of_decl d) "" decls *)
 
-let pretty_print ast = print_string (string_of_prog ast)
+let pretty_print ast = print_string "TO FIX WHEN I'M SURE THIS WORKS" (* print_string (string_of_prog ast) *)

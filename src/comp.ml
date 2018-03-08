@@ -1,5 +1,7 @@
 open Printf
 open Lexing
+open Weeding
+open Symbol
 
 (* prints the error message msg with the associate lexer buffer *)
 let print_error lb msg =
