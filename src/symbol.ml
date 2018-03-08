@@ -137,13 +137,31 @@ let rec typecheck_exp (e: exp gen_node) (scope: scope): (exp tnode) option =
       |> bind (fun a ->
         typecheck_exp b scope
         |> bind (fun b ->
-          match bin with
-          | Plus ->
-            check_ops a.typ b.typ [Int; String]
-            |> bind (fun x ->
-              to_tnode e (TypeR x) |> some
-            )
-          | _ -> None
+          let types =
+            match bin with
+            | Plus -> [Int; Float; String]
+            | Minus
+            | Times
+            | Div -> [Int; Float]
+            | Equals
+            | NotEquals -> [Int; Float; String; Bool; Rune]
+            | And
+            | Or -> [Bool]
+            | Smaller
+            | Greater
+            | SmallerEq
+            | GreaterEq -> [Int; Float] (* TODO ordered? *)
+            | DGreater
+            | DSmaller
+            | AndHat
+            | BAnd
+            | BOr
+            | Caret
+            | Mod -> [Int] in
+          check_ops a.typ b.typ types
+          |> bind (fun x ->
+          to_tnode e (TypeR x) |> some
+          )
         )
       )
     | _ -> None)
