@@ -60,8 +60,9 @@ let rec lookup (scope: scope) (name: string): typesRef option =
   match binding with
   | Some t -> Some t
   | None ->
-    scope.parent
-    |> bind (fun x -> lookup x name)
+    match scope.parent with
+    | Some p -> lookup p name
+    | None -> print_string (id_undeclared name); None
 
 let type_exists (r: typesRef): typesDef option = None
 let resolve (t: typesRef) (scope: scope) = None
@@ -85,7 +86,8 @@ let rec typecheck_exp (e: exp gen_node) (scope: scope): (exp tnode) option =
         ids
         |> List.map (fun id ->
           match id with
-          | Variable
+          | Variable v -> lookup scope v
+          | Array (n, _) -> lookup scope n (* TODO *)
         )
 
       in
