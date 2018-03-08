@@ -24,6 +24,8 @@ let map_flat f l =
   |> List.map f
   |> List.flatten
 
+let some x = Some x
+
 let id_undeclared id = Printf.sprintf "Variable %s is used before being declared" id
 let binary_different_types = Printf.sprintf "Expecting both expressions to be of type bool but got type yolo"
 
@@ -49,15 +51,40 @@ let top_level =
     parent = None
   }
 
-let lookup table name: typesRef = TypeR "not implemented"
-
-let some x = Some x
-
 let to_tnode (e: exp node) t = { position = e.position; typ = t; value = e.value }
+
+let lookup table name: typesRef = TypeR "not implemented"
+let type_exists (r: typesRef): typesDef option = None
+let resolve (t: typesRef) (scope: scope) = None
+
+let merge (old_scope: scope) (new_scope: scope) : scope =
+  { old_scope with
+    bindings = List.append old_scope.bindings new_scope.bindings;
+    types = List.append old_scope.types new_scope.types
+  }
+
+let rec typecheck_stm (s: stmt gen_node) (current: scope) : stmt snode =
+  match s with
+  | Position e ->
+    (match e.value with
+    | Block l ->
+      let new_scope = { bindings = []; types = []; parent = Some current } in
+      let (stms, new_scope) =
+        l
+        |> List.fold_left (fun (s_nodes, context) g_node ->
+          let s = typecheck_stm g_node context in
+          let merged = merge context s.scope in
+          let s_nodes = List.append s_nodes [Scoped s] in
+          (s_nodes, merged)
+        ) ([], new_scope) in
+      { position = e.position; scope = new_scope; value = Block stms }
+    | _ -> failwith "")
+  | Typed e -> failwith ""
+  | Scoped e -> e
 
 (* converts a exp node to exp enode (node with type) *)
 (* type rules are not implemented, just trying to get "best" structure for everything *)
-let rec typecheck_exp (e: exp gen_node) sym: (exp tnode) option =
+let rec typecheck_exp (e: exp gen_node) (scope: scope): (exp tnode) option =
   match e with
   | Position e ->
     (match e.value with
@@ -68,9 +95,9 @@ let rec typecheck_exp (e: exp gen_node) sym: (exp tnode) option =
     | Bool b -> to_tnode e (TypeR base_bool) |> some
     | Rune r -> to_tnode e (TypeR base_rune) |> some
     | BinaryOp (bin, (a, b)) ->
-      typecheck_exp a sym
+      typecheck_exp a scope
       |> bind (fun a ->
-        typecheck_exp b sym
+        typecheck_exp b scope
         |> bind (fun b ->
           match bin with
           | Plus ->
@@ -85,35 +112,3 @@ let rec typecheck_exp (e: exp gen_node) sym: (exp tnode) option =
     | _ -> None)
   | Typed e -> Some e
   | Scoped e -> None
-
-(* let table_func (name, args, ret, body): table =
-  let rec helper s =
-    match s.value with
-    | Block b -> map_flat helper b
-    | Declaration x -> table_var x
-    | If (_, _, s, e) ->
-      e
-      |> Option.map (map_flat helper)
-      |> Option.default []
-      |> List.append (map_flat helper s)
-    | Loop l ->
-      (match l with
-      | While (_, l) -> map_flat helper l
-      | For (_, _, _, l) -> map_flat helper l)
-    | Switch (_, _, l) ->
-      l
-      |> List.map (fun (_, x) -> map_flat helper x)
-      |> List.flatten
-    | _ -> []
-  in
-  (name, ret)::(List.append args (map_flat helper body)) *)
-
-(* let build_table prog =
-  let _, decl = prog in
-  decl
-  |> List.fold_left (fun context d ->
-    match d.value with
-    | Var v -> { context with bindings = List.append context.bindings [] }
-    | Type t -> context
-    | Fct f -> context
-  ) *)
