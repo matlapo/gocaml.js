@@ -53,7 +53,16 @@ let top_level =
 
 let to_tnode (e: exp node) t = { position = e.position; typ = t; value = e.value }
 
-let lookup table name: typesRef = TypeR "not implemented"
+let rec lookup (scope: scope) (name: string): typesRef option =
+  let binding =
+    scope.bindings
+    |> List.assoc_opt name in
+  match binding with
+  | Some t -> Some t
+  | None ->
+    scope.parent
+    |> bind (fun x -> lookup x name)
+
 let type_exists (r: typesRef): typesDef option = None
 let resolve (t: typesRef) (scope: scope) = None
 
@@ -71,6 +80,16 @@ let rec typecheck_exp (e: exp gen_node) (scope: scope): (exp tnode) option =
   match e with
   | Position e ->
     (match e.value with
+    (* | Id ids ->
+      let test =
+        ids
+        |> List.map (fun id ->
+          match id with
+          | Variable
+        )
+
+      in
+      failwith "" *)
     | Int i -> to_tnode e (TypeR base_int) |> some
     | Float f -> to_tnode e (TypeR base_float) |> some
     | RawStr s
