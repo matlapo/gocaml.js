@@ -11,12 +11,21 @@ type typesRef =
     | ArrayR of string * (int64 list) (* The list of int64 is the size of each dimension *)
     | SliceR of string * int64 (* The int64 is the number of dimensions *)
 
+type scope =
+  {
+    bindings: (string * typesRef) list;
+    types: typesDef list;
+    parent: scope option (* top level scope doesn't have a parent *)
+  }
+
 type 'a node = { position: Lexing.position; value: 'a }
 type 'a tnode = { position: Lexing.position; typ: typesRef; value: 'a }
+type 'a snode = { position: Lexing.position; scope: scope; value: 'a }
 
 type 'a gen_node =
   | Position of 'a node
   | Typed of 'a tnode
+  | Scoped of 'a snode
 
 type binary =
     | Plus

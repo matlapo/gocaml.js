@@ -33,14 +33,6 @@ let base_string = "string"
 let base_bool = "bool"
 let base_rune = "rune"
 
-(* definition of a symbol table *)
-type scope =
-  {
-    bindings: (string * typesRef) list;
-    types: typesDef list;
-    scopes: scope list
-  }
-
 let base_types =
   [
     TypeT base_int;
@@ -53,8 +45,8 @@ let base_types =
 let top_level =
   {
     bindings = [];
-    types = base_types;
-    scopes = []
+    types = [];
+    parent = None
   }
 
 let lookup table name: typesRef = TypeR "not implemented"
@@ -92,6 +84,7 @@ let rec typecheck_exp (e: exp gen_node) sym: (exp tnode) option =
       )
     | _ -> None)
   | Typed e -> Some e
+  | Scoped e -> None
 
 (* let table_func (name, args, ret, body): table =
   let rec helper s =
