@@ -24,6 +24,8 @@ let map_flat f l =
   |> List.map f
   |> List.flatten
 
+let compare_length n l = n = List.length l
+
 let some x = Some x
 
 let id_undeclared id = Printf.sprintf "Variable %s is used before being declared" id
@@ -81,17 +83,15 @@ let rec typecheck_exp (e: exp gen_node) (scope: scope): (exp tnode) option =
   match e with
   | Position e ->
     (match e.value with
-    (* | Id ids ->
+    | Id ids ->
       let test =
         ids
         |> List.map (fun id ->
           match id with
           | Variable v -> lookup scope v
           | Array (n, _) -> lookup scope n (* TODO *)
-        )
-
-      in
-      failwith "" *)
+        ) in
+      if List.length test <> List.length ids then None else None (* TODO what's the resulting type? *)
     | Int i -> to_tnode e (TypeR base_int) |> some
     | Float f -> to_tnode e (TypeR base_float) |> some
     | RawStr s
