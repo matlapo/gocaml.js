@@ -93,6 +93,7 @@ let merge (old_scope: scope) (new_scope: scope) : scope =
 
 let new_scope parent = { bindings = []; types = []; parent = Some parent }
 
+(* before calling this function, need to resolve the types to get base types *)
 let check_ops (a: typesRef) (b:typesRef) (l: base_types list) comparable: string option =
   l
   |> List.map (fun t ->
@@ -108,6 +109,22 @@ let check_ops (a: typesRef) (b:typesRef) (l: base_types list) comparable: string
     match x with
     | Some x -> if comparable then Some base_bool else x
     | None -> print_string "Error: ..."; None
+  )
+
+(* similar to above but for unary ops, might be able to refactor this into one larger function *)
+let check_op (a: typesRef) (l: base_types list) =
+  l
+  |> List.map (fun t ->
+    let t = to_string t in
+    match a with
+    | TypeR x -> if x = t then Some t else None
+    | _ -> None
+  )
+  |> List.find_opt is_some
+  |> (fun x ->
+    match x with
+    | Some x -> x
+    | None -> print_string "some error message"; None
   )
 
 
@@ -136,7 +153,7 @@ let rec typecheck_exp (e: exp gen_node) (scope: scope): (exp tnode) option =
       typecheck_exp a scope
       |> bind (fun a ->
         typecheck_exp b scope
-        |> bind (fun b ->
+        |> bind (fun b -> (* TODO resolve the types *)
           let types, comparable =
             match bin with
             | Plus -> [Int; Float; String], false
@@ -160,8 +177,22 @@ let rec typecheck_exp (e: exp gen_node) (scope: scope): (exp tnode) option =
             | Mod -> [Int], false in
           check_ops a.typ b.typ types comparable
           |> bind (fun x ->
-          to_tnode e (TypeR x) |> some
+            to_tnode e (TypeR x) |> some
           )
+        )
+      )
+    | Unaryexp (un, a) ->
+      typecheck_exp a scope
+      |> bind (fun a ->
+        let types =
+          match un with
+          | UCaret -> [Int; Rune]
+          | UMinus
+          | UPlus -> [Int; Float; Rune]
+          | Not -> [Bool] in
+        check_op a.typ types
+        |> bind (fun x ->
+          to_tnode e (TypeR x) |> some
         )
       )
     | _ -> None)
