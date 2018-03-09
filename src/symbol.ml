@@ -12,6 +12,7 @@ open BatOption
   1. base types (or types in general) are weak representation
   2. need to resolve for underlying type
   4. context should also include info about type declarations (Done)
+  5. need to add function signatures to symbol table
 *)
 
 (* a = (name, type) list list b = decl *)
@@ -82,6 +83,26 @@ let rec lookup (scope: scope) (name: string): typesRef option =
     | Some p -> lookup p name
     | None -> print_string (id_undeclared name); None
 
+let rec lookup_array (scope: scope) (name: string) (exps: exp gen_node list) =
+  let binding =
+    scope.types
+    |> List.find_opt (fun x ->
+      match x with
+      | ArrayT (n, sizes) ->
+        if name = n && List.length sizes = List.length exps then true
+        else false
+      | _ -> false
+    ) in
+  match binding with
+  | Some t ->
+    (match t with
+    | ArrayT (n, sizes) -> ArrayR (name, sizes) |> some
+    | _ -> None)
+  | None ->
+    match scope.parent with
+    | Some p -> lookup_array p name exps
+    | None -> print_string "Something"; None
+
 (* let type_exists (r: typesRef): typesDef option = None *)
 (* let resolve (scope: scope) (t: typesRef) =  *)
 
@@ -127,22 +148,28 @@ let check_op (a: typesRef) (l: base_types list) =
     | None -> print_string "some error message"; None
   )
 
-
 (* converts a exp node to exp enode (node with type) *)
 (* type rules are not implemented, just trying to get "best" structure for everything *)
+(* TODO Support for Append and Function calls *)
 let rec typecheck_exp (e: exp gen_node) (scope: scope): (exp tnode) option =
   match e with
   | Position e ->
     (match e.value with
-    | Id ids ->
-      let test =
+    | Id ids -> (* TODO type checking for Id is incomplete *)
+      let refs =
         ids
         |> List.map (fun id ->
           match id with
           | Variable v -> lookup scope v
-          | Array (n, _) -> lookup scope n (* TODO *)
+          | Array (n, exps) ->
+            (* typecheck the exps, then lookup for the array *)
+            let exps_typed =
+              exps
+              |> List.map typecheck_exp in
+            if List.length exps_typed <> List.length exps then None
+            else lookup_array scope n exps
         ) in
-      if List.length test <> List.length ids then None else None (* TODO what's the resulting type? *)
+      if List.length refs <> List.length ids then None else None (* TODO what's the resulting type? *)
     | Int i -> to_tnode e (TypeR base_int) |> some
     | Float f -> to_tnode e (TypeR base_float) |> some
     | RawStr s
@@ -199,9 +226,20 @@ let rec typecheck_exp (e: exp gen_node) (scope: scope): (exp tnode) option =
   | Typed e -> Some e
   | Scoped e -> None
 
+
 let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option =
   match s with
   | Position e ->
+    (* helper to avoid duplicated code *)
+    let print_helper (l: exp gen_node list) (ln: bool) =
+      let tnodes =
+        l
+        |> List.map (fun x -> typecheck_exp x current)
+        |> List.filter is_some in
+      if List.length l <> List.length tnodes then None
+      else
+        let lst = (List.map (fun x -> Typed (Option.get x)) tnodes) in
+        Some { position = e.position; scope = current; value = if ln then Println lst else Print lst } in
     (match e.value with
     | Block l ->
       let new_scope = new_scope current in
@@ -209,16 +247,11 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
       |> bind (fun (stms, new_scope) ->
         Some { position = e.position; scope = new_scope; value = Block (List.map (fun x -> Scoped x) stms) }
       )
-    | Print l ->
-      let tnodes =
-        l
-        |> List.map (fun x -> typecheck_exp x current)
-        |> List.filter is_some in
-      if List.length l <> List.length tnodes then None
-      else
-        Some { position = e.position; scope = current; value = Print (List.map (fun x -> Typed (Option.get x)) tnodes) }
-    | _ -> failwith "")
-  | Typed e -> failwith ""
+    | Print l -> print_helper l false
+    | Println l -> print_helper l true
+    (* | If  *)
+    | _ -> failwith "not implemented")
+  | Typed e -> None
   | Scoped e -> Some e
 
 and type_context_check (l: stmt gen_node list) (scope: scope): (stmt snode list * scope) option =
