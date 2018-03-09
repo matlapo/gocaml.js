@@ -38,6 +38,10 @@ type base_types =
   | Bool
   | Rune
 
+type resolved_type =
+  | Base of base_types
+  | Struct of (string list * typesDef) list
+
 let base_int = "int"
 let base_float = "float"
 let base_string = "string"
@@ -70,21 +74,86 @@ let top_level =
 
 let to_tnode (e: exp node) t = { position = e.position; typ = t; value = e.value }
 
-let rec lookup (scope: scope) (name: string): typesRef option =
+let to_resolved_type (s: string) =
+  if s = base_int then Base Int |> some
+  else if s = base_float then Base Float |> some
+  else if s = base_string then Base String |> some
+  else if s = base_bool then Base Bool |> some
+  else if s = base_rune then Base Rune |> some
+  else None
+
+let rec find_base_type (l: typesDef list) (name: string) =
+  match l with
+  | [] -> None
+  | x::xs ->
+    match x with
+    | ArrayT (typ, _)
+    | SliceT (typ, _) -> to_resolved_type typ
+    | TypeT typ ->
+      to_resolved_type typ
+      |> bind (fun _ -> find_base_type xs typ)
+    | StructT (members) ->
+        members
+        |> List.map (fun (names, t) ->
+          names
+          |> List.find_opt (fun x -> x = name)
+          |> bind (fun x -> find_base_type [t] x)
+        )
+        |> List.find_opt is_some
+        |> bind id
+
+let rec resolve (scope: scope) (t: typesRef) =
+  match t with
+  | ArrayR (typ, _) -> to_resolved_type typ
+  | SliceR (typ, _) -> to_resolved_type typ
+  | TypeR s ->
+      scope.types
+      |> List.assoc_opt s
+      |> bind (fun x ->
+        match x with
+        | TypeT s -> None
+        | StructT _ -> None
+        | ArrayT _ -> None
+        | SliceT _ -> None
+      )
+
+let proto (scope: scope) (name: string): resolved_type option = None
+
+let rec new_lookup (scope: scope) (kind: kind) =
+  match kind with
+  | [] -> None
+  (* | x::[] ->
+    match x with
+    | Variable n -> lookup scope n  *)
+  | x::xs ->
+    (match x with
+    | Variable n ->
+      proto scope n
+      |> bind (fun x ->
+        (match x with
+        | Base t -> Some t
+        | Struct _ -> None
+        )
+      )
+    | _ -> None)
+
+
+let rec lookup (scope: scope) (name: string) =
+  (* find associated typeref: can be array, struct, etc *)
   let binding =
     scope.bindings
     |> List.assoc_opt name in
   match binding with
-  | Some t -> Some t
+  | Some t -> resolve scope t
   | None ->
     match scope.parent with
     | Some p -> lookup p name
     | None -> print_string (id_undeclared name); None
 
-let rec lookup_array (scope: scope) (name: string) (exps: exp gen_node list) =
-  let binding =
+let rec lookup_array (scope: scope) (name: string) (exps: exp gen_node list) = None
+  (* let binding =
     scope.types
-    |> List.find_opt (fun x ->
+    |> List.find_opt (fun (_, x) ->
       match x with
       | ArrayT (n, sizes) ->
         if name = n && List.length sizes = List.length exps then true
@@ -99,7 +168,7 @@ let rec lookup_array (scope: scope) (name: string) (exps: exp gen_node list) =
   | None ->
     match scope.parent with
     | Some p -> lookup_array p name exps
-    | None -> print_string "Not found"; None
+    | None -> print_string "Not found"; None *)
 
 (* let type_exists (r: typesRef): typesDef option = None *)
 (* let resolve (scope: scope) (t: typesRef) =  *)
