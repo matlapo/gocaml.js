@@ -26,8 +26,6 @@ let map_flat f l =
   |> List.map f
   |> List.flatten
 
-let compare_length n l = n = List.length l
-
 let some x = Some x
 
 let id_undeclared id = Printf.sprintf "Variable %s is used before being declared" id
@@ -101,7 +99,7 @@ let rec lookup_array (scope: scope) (name: string) (exps: exp gen_node list) =
   | None ->
     match scope.parent with
     | Some p -> lookup_array p name exps
-    | None -> print_string "Something"; None
+    | None -> print_string "Not found"; None
 
 (* let type_exists (r: typesRef): typesDef option = None *)
 (* let resolve (scope: scope) (t: typesRef) =  *)
@@ -151,7 +149,7 @@ let check_op (a: typesRef) (l: base_types list) =
 (* converts a exp node to exp enode (node with type) *)
 (* type rules are not implemented, just trying to get "best" structure for everything *)
 (* TODO Support for Append and Function calls *)
-let rec typecheck_exp (e: exp gen_node) (scope: scope): (exp tnode) option =
+let rec typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
   match e with
   | Position e ->
     (match e.value with
@@ -165,10 +163,12 @@ let rec typecheck_exp (e: exp gen_node) (scope: scope): (exp tnode) option =
             (* typecheck the exps, then lookup for the array *)
             let exps_typed =
               exps
-              |> List.map typecheck_exp in
+              |> List.map (typecheck_exp scope)
+              |> List.filter is_some in
             if List.length exps_typed <> List.length exps then None
             else lookup_array scope n exps
-        ) in
+        )
+        |> List.filter is_some in
       if List.length refs <> List.length ids then None else None (* TODO what's the resulting type? *)
     | Int i -> to_tnode e (TypeR base_int) |> some
     | Float f -> to_tnode e (TypeR base_float) |> some
@@ -177,9 +177,9 @@ let rec typecheck_exp (e: exp gen_node) (scope: scope): (exp tnode) option =
     | Bool b -> to_tnode e (TypeR base_bool) |> some
     | Rune r -> to_tnode e (TypeR base_rune) |> some
     | BinaryOp (bin, (a, b)) ->
-      typecheck_exp a scope
+      typecheck_exp scope a
       |> bind (fun a ->
-        typecheck_exp b scope
+        typecheck_exp scope b
         |> bind (fun b -> (* TODO resolve the types *)
           let types, comparable =
             match bin with
@@ -209,7 +209,7 @@ let rec typecheck_exp (e: exp gen_node) (scope: scope): (exp tnode) option =
         )
       )
     | Unaryexp (un, a) ->
-      typecheck_exp a scope
+      typecheck_exp scope a
       |> bind (fun a ->
         let types =
           match un with
@@ -234,7 +234,7 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
     let print_helper (l: exp gen_node list) (ln: bool) =
       let tnodes =
         l
-        |> List.map (fun x -> typecheck_exp x current)
+        |> List.map (fun x -> typecheck_exp current x)
         |> List.filter is_some in
       if List.length l <> List.length tnodes then None
       else
