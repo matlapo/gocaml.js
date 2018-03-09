@@ -82,60 +82,62 @@ let to_resolved_type (s: string) =
   else if s = base_rune then Base Rune |> some
   else None
 
-let rec find_base_type (l: typesDef list) (name: string) =
-  match l with
-  | [] -> None
-  | x::xs ->
-    match x with
-    | ArrayT (typ, _)
-    | SliceT (typ, _) -> to_resolved_type typ
-    | TypeT typ ->
-      to_resolved_type typ
-      |> bind (fun _ -> find_base_type xs typ)
-    | StructT (members) ->
-        members
-        |> List.map (fun (names, t) ->
-          names
-          |> List.find_opt (fun x -> x = name)
-          |> bind (fun x -> find_base_type [t] x)
-        )
-        |> List.find_opt is_some
-        |> bind id
+(* TODO how to resolve for type my_int *)
 
-let rec resolve (scope: scope) (t: typesRef) =
-  match t with
-  | ArrayR (typ, _) -> to_resolved_type typ
-  | SliceR (typ, _) -> to_resolved_type typ
-  | TypeR s ->
-      scope.types
-      |> List.assoc_opt s
-      |> bind (fun x ->
-        match x with
-        | TypeT s -> None
-        | StructT _ -> None
-        | ArrayT _ -> None
-        | SliceT _ -> None
+
+(* try converting a name to a base type *)
+let rec try_find_base_type (scope: scope) (x: typesDef) (name: string) =
+    let try_in_scope =
+      match x with
+      | ArrayT (typ, _)
+      | SliceT (typ, _)
+      | TypeT typ -> to_resolved_type typ
+      | StructT members ->
+          members
+          |> List.map (fun (names, t) ->
+            names
+            |> List.find_opt (fun x -> x = name)
+            |> bind (fun x -> try_find_base_type scope t name) (* this line doesn't make sense *)
+          )
+          |> List.find_opt is_some
+          |> bind id in
+    match try_in_scope with
+    | Some t as b -> b
+    | None ->
+      scope.parent
+      |> bind (fun scope ->
+        try_find_base_type scope x "WUT"
       )
 
-let proto (scope: scope) (name: string): resolved_type option = None
+let find_type (scope: scope) (elem: kind_elem): resolved_type = failwith ""
+let find_type2 (scope: scope) (t: typesDef): resolved_type = failwith ""
 
 let rec new_lookup (scope: scope) (kind: kind) =
   match kind with
   | [] -> None
-  (* | x::[] ->
-    match x with
-    | Variable n -> lookup scope n  *)
-  | x::xs ->
-    (match x with
-    | Variable n ->
-      proto scope n
-      |> bind (fun x ->
-        (match x with
-        | Base t -> Some t
-        | Struct _ -> None
+  | x::[] -> find_type scope x |> some
+  | x::y::xs ->
+    let name =
+      match y with
+      | Variable n
+      | Array (n, _) -> n in
+    (match find_type scope x with
+    | Base i as b -> Some b
+    | Struct members ->
+      members
+      |> List.map (fun (names, t) ->
+        names
+        |> List.find_opt (fun x -> x = name)
+        |> bind (fun x ->
+          if find_type scope y = find_type2 scope t then
+            new_lookup scope (y::xs)
+          else
+            None
         )
       )
-    | _ -> None)
+      |> List.find_opt is_some
+      |> bind id
+    )
 
 
 let rec lookup (scope: scope) (name: string) =
@@ -144,7 +146,7 @@ let rec lookup (scope: scope) (name: string) =
     scope.bindings
     |> List.assoc_opt name in
   match binding with
-  | Some t -> resolve scope t
+  | Some t -> None (* resolve scope t *)
   | None ->
     match scope.parent with
     | Some p -> lookup p name
