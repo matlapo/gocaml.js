@@ -2,8 +2,8 @@
 type typesDef =
     | TypeT of string
     | StructT of (string list * typesDef) list
-    | ArrayT of string * (int64 list) (* The list of int64 is the size of each dimension *)
-    | SliceT of string * int64 (* The int64 is the number of dimensions *)
+    | ArrayT of string * (int64 list) (* type of array and the list of int64 is the size of each dimension *)
+    | SliceT of string * int64 (* type of the slice and the int64 is the number of dimensions *)
 
 (* Represents the reference to an existing type *)
 type typesRef =
@@ -14,7 +14,7 @@ type typesRef =
 type scope =
   {
     bindings: (string * typesRef) list;
-    types: typesDef list;
+    types: (string * typesDef) list;
     parent: scope option (* top level scope doesn't have a parent *)
   }
 
@@ -70,7 +70,7 @@ type exp =
 and kind = kind_elem list
 and kind_elem =
     | Variable of string
-    | Array of string * (exp gen_node list)
+    | Array of string * (exp gen_node list) (* name of array + indexes *)
 
 type assign =
     | Regular
@@ -119,11 +119,11 @@ and stmt =
 
 type package = string
 
-type argument = (string * typesRef option)
+type argument = (string * typesRef option) (* arg name + type *)
 
 type decl =
     | Var of (string list * typesRef option * (exp gen_node) list) list
-    | Type of (string * typesDef) list
+    | Type of (string * typesDef) list (* name + type def *)
     | Fct of (string * argument list * typesRef option * stmt gen_node list)
 
 type program = package * decl gen_node list
