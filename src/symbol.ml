@@ -114,18 +114,29 @@ and lookup_typedef (scope: scope) (t: typesDef) =
 
 let lookup_typeref (scope: scope) (t: typesRef) =
   match t with
-  | TypeR s -> lookup_type scope s
-  | ArrayR (s, _) -> lookup_type scope s
-  | SliceR (s, _) -> lookup_type scope s
+  | TypeR typ
+  | ArrayR (typ, _)
+  | SliceR (typ, _) -> lookup_type scope typ
 
 let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
-  let name =
-    match e with
-    | Variable name -> name
-    | Array (name, _) -> name in
-  scope.bindings
-  |> List.assoc_opt name
-  |> bind (fun x -> lookup_typeref scope x)
+  match e with
+  | Variable name ->
+    scope.bindings
+    |> List.assoc_opt name
+    |> bind (fun x -> lookup_typeref scope x)
+  | Array (name, exps) ->
+    scope.bindings
+    |> List.assoc_opt name
+    |> bind (fun x ->
+      lookup_typeref scope x
+      |> bind (fun t ->
+        match x with
+        | ArrayR (_, sizes) ->
+          if List.length exps <> List.length sizes then None
+          else Some t
+        | _ -> None
+      )
+    )
 
 let rec lookup_kind (scope: scope) (kind: kind): typesDef option =
   match kind with
@@ -154,7 +165,8 @@ let rec lookup_kind (scope: scope) (kind: kind): typesDef option =
         )
         |> List.find_opt is_some
         |> bind id
-      | _ -> None
+      | ArrayT (typ, _)
+      | SliceT (typ, _) -> lookup_type scope typ
     )
 
 let merge (old_scope: scope) (new_scope: scope) : scope =
