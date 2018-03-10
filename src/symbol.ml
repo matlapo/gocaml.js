@@ -112,10 +112,20 @@ and lookup_typedef (scope: scope) (t: typesDef) =
     lookup_type scope t
     |> bind (fun x -> Some a)
 
+let lookup_typeref (scope: scope) (t: typesRef) =
+  match t with
+  | TypeR s -> lookup_type scope s
+  | ArrayR (s, _) -> lookup_type scope s
+  | SliceR (s, _) -> lookup_type scope s
+
 let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
-  match e with
-  | Variable s -> lookup_type scope s
-  | Array (s, _) -> lookup_type scope s
+  let name =
+    match e with
+    | Variable name -> name
+    | Array (name, _) -> name in
+  scope.bindings
+  |> List.assoc_opt name
+  |> bind (fun x -> lookup_typeref scope x)
 
 let rec lookup_kind (scope: scope) (kind: kind): typesDef option =
   match kind with
