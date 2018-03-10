@@ -26,6 +26,10 @@ let map_flat f l =
   |> List.map f
   |> List.flatten
 
+let rev_assoc l =
+  l
+  |> List.map (fun (a,b) -> (b,a))
+
 let some x = Some x
 
 let id_undeclared id = Printf.sprintf "Variable %s is used before being declared" id
@@ -105,9 +109,9 @@ and lookup_typedef (scope: scope) (t: typesDef) =
       |> List.map (fun t -> lookup_typedef scope t)
       |> List.filter is_some in
     if List.length l <> List.length members then None else def |> some
-  | SliceT (t, _) as a ->
+  | SliceT (t, _) as slice ->
     lookup_type scope t
-    |> bind (fun x -> Some a)
+    |> bind (fun x -> Some slice)
   | ArrayT (t, _) as a ->
     lookup_type scope t
     |> bind (fun x -> Some a)
@@ -169,6 +173,23 @@ let rec lookup_kind (scope: scope) (kind: kind): typesDef option =
       | SliceT (typ, _) -> lookup_type scope typ
     )
 
+(* this converts a typesDef to a typesRef, it doesn't eval to
+an option because this conversion should always be possible
+*)
+let type_def_to_ref (scope: scope) (t: typesDef) =
+  match t with
+  | TypeT typ -> TypeR typ
+  | ArrayT (typ, l) -> ArrayR (typ, l)
+  | SliceT (typ, l) -> SliceR (typ, l)
+  | StructT members ->
+    let ot =
+      scope.types
+      |> rev_assoc
+      |> List.assoc_opt t in
+    match ot with
+    | Some name -> TypeR name
+    | None -> failwith "couldn't find definition for struct"
+
 let merge (old_scope: scope) (new_scope: scope) : scope =
   { old_scope with
     bindings = List.append old_scope.bindings new_scope.bindings;
@@ -219,7 +240,11 @@ let rec typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
   | Position e ->
     (match e.value with
     | Id kind ->
-      let todo = lookup_kind scope kind in None (* TODO *)
+      lookup_kind scope kind
+      |> bind (fun d ->
+        let r = type_def_to_ref scope d in
+        to_tnode e r |> some
+      )
     | Int i -> to_tnode e (TypeR base_int) |> some
     | Float f -> to_tnode e (TypeR base_float) |> some
     | RawStr s
