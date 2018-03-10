@@ -74,106 +74,74 @@ let top_level =
 
 let to_tnode (e: exp node) t = { position = e.position; typ = t; value = e.value }
 
-let to_resolved_type (s: string) =
-  if s = base_int then Base Int |> some
-  else if s = base_float then Base Float |> some
-  else if s = base_string then Base String |> some
-  else if s = base_bool then Base Bool |> some
-  else if s = base_rune then Base Rune |> some
+let try_base_type (s: string) =
+  if s = base_int then s |> some
+  else if s = base_float then s |> some
+  else if s = base_string then s |> some
+  else if s = base_bool then s |> some
+  else if s = base_rune then s |> some
   else None
 
-(* TODO how to resolve for type my_int *)
+let rec lookup_type (scope: scope) (name: string) =
+  let t =
+    scope.types
+    |> List.assoc_opt name
+    |> bind (fun x -> lookup_typedef scope x) in
+  match t with
+  | Some t as found -> found
+  | None ->
+    scope.parent
+    |> bind (fun x -> lookup_type x name)
+and lookup_typedef (scope: scope) (t: typesDef) =
+  match t with
+  | TypeT s ->
+    (match try_base_type s with
+    | Some s -> TypeT s |> some
+    | None -> lookup_type scope s)
+  | StructT members as def ->
+    let l =
+      members
+      |> List.map (fun (_, t) -> t)
+      |> List.map (fun t -> lookup_typedef scope t)
+      |> List.filter is_some in
+    if List.length l <> List.length members then None else def |> some
+  | _ -> None
 
+let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
+  match e with
+  | Variable s -> lookup_type scope s
+  | Array (s, exps) -> lookup_type scope s (* check dimensions? *)
 
-(* try converting a name to a base type *)
-let rec try_find_base_type (scope: scope) (x: typesDef) (name: string) =
-    let try_in_scope =
-      match x with
-      | ArrayT (typ, _)
-      | SliceT (typ, _)
-      | TypeT typ -> to_resolved_type typ
-      | StructT members ->
-          members
-          |> List.map (fun (names, t) ->
-            names
-            |> List.find_opt (fun x -> x = name)
-            |> bind (fun x -> try_find_base_type scope t name) (* this line doesn't make sense *)
-          )
-          |> List.find_opt is_some
-          |> bind id in
-    match try_in_scope with
-    | Some t as b -> b
-    | None ->
-      scope.parent
-      |> bind (fun scope ->
-        try_find_base_type scope x "WUT"
-      )
-
-let find_type (scope: scope) (elem: kind_elem): resolved_type = failwith ""
-let find_type2 (scope: scope) (t: typesDef): resolved_type = failwith ""
-
-let rec new_lookup (scope: scope) (kind: kind) =
+let rec lookup_kind (scope: scope) (kind: kind): typesDef option =
   match kind with
   | [] -> None
-  | x::[] -> find_type scope x |> some
+  | x::[] -> lookup_kind_elem scope x
   | x::y::xs ->
-    let name =
+    let member =
       match y with
       | Variable n
       | Array (n, _) -> n in
-    (match find_type scope x with
-    | Base i as b -> Some b
-    | Struct members ->
-      members
-      |> List.map (fun (names, t) ->
-        names
-        |> List.find_opt (fun x -> x = name)
-        |> bind (fun x ->
-          if find_type scope y = find_type2 scope t then
-            new_lookup scope (y::xs)
-          else
-            None
-        )
-      )
-      |> List.find_opt is_some
-      |> bind id
+    lookup_kind_elem scope x
+    |> bind (fun def ->
+      match def with
+      | TypeT s as t -> Some t
+      | StructT members ->
+        let test2 =
+          members
+          |> List.map (fun (names, t) ->
+            names
+            |> List.find_opt (fun x -> x = member)
+            |> bind (fun x ->
+              if lookup_typedef scope t = lookup_kind_elem scope y then
+                lookup_kind scope (y::xs)
+              else
+                None
+            )
+          )
+          |> List.find_opt is_some
+          |> bind id in test2
+      | _ -> None
     )
-
-
-let rec lookup (scope: scope) (name: string) =
-  (* find associated typeref: can be array, struct, etc *)
-  let binding =
-    scope.bindings
-    |> List.assoc_opt name in
-  match binding with
-  | Some t -> None (* resolve scope t *)
-  | None ->
-    match scope.parent with
-    | Some p -> lookup p name
-    | None -> print_string (id_undeclared name); None
-
-let rec lookup_array (scope: scope) (name: string) (exps: exp gen_node list) = None
-  (* let binding =
-    scope.types
-    |> List.find_opt (fun (_, x) ->
-      match x with
-      | ArrayT (n, sizes) ->
-        if name = n && List.length sizes = List.length exps then true
-        else false
-      | _ -> false
-    ) in
-  match binding with
-  | Some t ->
-    (match t with
-    | ArrayT (n, sizes) -> ArrayR (name, sizes) |> some
-    | _ -> None)
-  | None ->
-    match scope.parent with
-    | Some p -> lookup_array p name exps
-    | None -> print_string "Not found"; None *)
-
-(* let type_exists (r: typesRef): typesDef option = None *)
-(* let resolve (scope: scope) (t: typesRef) =  *)
 
 let merge (old_scope: scope) (new_scope: scope) : scope =
   { old_scope with
