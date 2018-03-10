@@ -105,12 +105,17 @@ and lookup_typedef (scope: scope) (t: typesDef) =
       |> List.map (fun t -> lookup_typedef scope t)
       |> List.filter is_some in
     if List.length l <> List.length members then None else def |> some
-  | _ -> None
+  | SliceT (t, _) as a ->
+    lookup_type scope t
+    |> bind (fun x -> Some a)
+  | ArrayT (t, _) as a ->
+    lookup_type scope t
+    |> bind (fun x -> Some a)
 
 let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
   match e with
   | Variable s -> lookup_type scope s
-  | Array (s, exps) -> lookup_type scope s (* check dimensions? *)
+  | Array (s, _) -> lookup_type scope s
 
 let rec lookup_kind (scope: scope) (kind: kind): typesDef option =
   match kind with
@@ -126,20 +131,19 @@ let rec lookup_kind (scope: scope) (kind: kind): typesDef option =
       match def with
       | TypeT s as t -> Some t
       | StructT members ->
-        let test2 =
-          members
-          |> List.map (fun (names, t) ->
-            names
-            |> List.find_opt (fun x -> x = member)
-            |> bind (fun x ->
-              if lookup_typedef scope t = lookup_kind_elem scope y then
-                lookup_kind scope (y::xs)
-              else
-                None
-            )
+        members
+        |> List.map (fun (names, t) ->
+          names
+          |> List.find_opt (fun x -> x = member)
+          |> bind (fun x ->
+            if lookup_typedef scope t = lookup_kind_elem scope y then
+              lookup_kind scope (y::xs)
+            else
+              None
           )
-          |> List.find_opt is_some
-          |> bind id in test2
+        )
+        |> List.find_opt is_some
+        |> bind id
       | _ -> None
     )
 
@@ -192,23 +196,8 @@ let rec typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
   match e with
   | Position e ->
     (match e.value with
-    | Id ids -> (* TODO type checking for Id is incomplete *)
-      let refs =
-        ids
-        |> List.map (fun id ->
-          match id with
-          | Variable v -> lookup scope v
-          | Array (n, exps) ->
-            (* typecheck the exps, then lookup for the array *)
-            let exps_typed =
-              exps
-              |> List.map (typecheck_exp scope)
-              |> List.filter is_some in
-            if List.length exps_typed <> List.length exps then None
-            else lookup_array scope n exps
-        )
-        |> List.filter is_some in
-      if List.length refs <> List.length ids then None else None (* TODO what's the resulting type? *)
+    | Id kind ->
+      let todo = lookup_kind scope kind in None (* TODO *)
     | Int i -> to_tnode e (TypeR base_int) |> some
     | Float f -> to_tnode e (TypeR base_float) |> some
     | RawStr s
