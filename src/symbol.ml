@@ -2,20 +2,6 @@ open Astwithposition
 open Utils
 open BatOption
 
-(*
-  Interesting functions
-  List.assoc_opt -> find
-  List.mem_assoc
-
-  #### TO SOLVE ####
-  0. really ugly AST duplication and type conversion (Done)
-  1. base types (or types in general) are weak representation
-  2. need to resolve for underlying type
-  4. context should also include info about type declarations (Done)
-  5. need to add function signatures to symbol table
-*)
-
-(* a = (name, type) list list b = decl *)
 module Option = BatOption
 let bind x f = Option.bind f x
 let id x = x
@@ -245,7 +231,9 @@ let rec typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
         let r = type_def_to_ref scope d in
         to_tnode e r |> some
       )
-    | Int i -> to_tnode e (TypeR base_int) |> some
+    | Int i ->
+      print_string "DEBUG INT\n";
+      to_tnode e (TypeR base_int) |> some
     | Float f -> to_tnode e (TypeR base_float) |> some
     | RawStr s
     | String s -> to_tnode e (TypeR base_string) |> some
@@ -301,7 +289,6 @@ let rec typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
   | Typed e -> Some e
   | Scoped e -> None
 
-
 let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option =
   match s with
   | Position e ->
@@ -342,3 +329,36 @@ and type_context_check (l: stmt gen_node list) (scope: scope): (stmt snode list 
         )
       )
     ) (Some ([], scope))
+
+let typecheck (p: program) = None
+  (* let package, decls = p in
+  decls
+  |> List.map (fun decl ->
+    match decl with
+    | Position x ->
+      (match x.value with
+      | Var l ->
+        print_string "HELLO\n";
+        let vars =
+          l
+          |> List.map (fun (vars, otype, exps) ->
+            let l =
+              exps
+              |> List.map (fun x -> typecheck_exp top_level x)
+              |> List.filter is_some in
+            if List.length l <> List.length exps then None
+            else
+              let test =
+                l
+                |> List.map Option.get
+                |> List.map (fun exp -> (vars, otype, exp))
+                |> some in test
+          )
+          |> List.filter is_some in
+        if List.length vars <> List.length l then None
+        else Some (Var (Option.get vars))
+      | _ -> print_string "BAD"; None)
+    | _ -> print_string "BAD"; None
+  )
+  |> List.find_opt is_none
+  |> bind id *)
