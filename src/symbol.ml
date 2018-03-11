@@ -28,10 +28,6 @@ type base_types =
   | Bool
   | Rune
 
-type resolved_type =
-  | Base of base_types
-  | Struct of (string list * typesDef) list
-
 let base_int = "int"
 let base_float = "float"
 let base_string = "string"
@@ -82,6 +78,7 @@ let rec lookup_type (scope: scope) (name: string) =
   | None ->
     scope.parent
     |> bind (fun x -> lookup_type x name)
+
 and lookup_typedef (scope: scope) (t: typesDef) =
   match t with
   | TypeT s ->
@@ -108,25 +105,32 @@ let lookup_typeref (scope: scope) (t: typesRef) =
   | ArrayR (typ, _)
   | SliceR (typ, _) -> lookup_type scope typ
 
+(* TODO: Split into both kinds *)
 let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
-  match e with
-  | Variable name ->
-    scope.bindings
-    |> List.assoc_opt name
-    |> bind (fun x -> lookup_typeref scope x)
-  | Array (name, exps) ->
-    scope.bindings
-    |> List.assoc_opt name
-    |> bind (fun x ->
-      lookup_typeref scope x
-      |> bind (fun t ->
-        match x with
-        | ArrayR (_, sizes) ->
-          if List.length exps <> List.length sizes then None
-          else Some t
-        | _ -> None
-      )
-    )
+  let try_in_scope =
+    match e with
+    | Variable name ->
+      scope.bindings 
+      |> List.assoc_opt name
+      |> bind (fun x -> lookup_typeref scope x)
+    | Array (name, exps) ->  (* TODO: Check if exps resolveS to int *)
+      scope.bindings
+      |> List.assoc_opt name
+      |> bind (fun x ->
+        lookup_typeref scope x
+        |> bind (fun t ->
+          match x with
+          | ArrayR (_, sizes) ->
+            if List.length exps <> List.length sizes then None
+            else Some t
+          | _ -> None
+        )
+      ) in
+    (match try_in_scope with
+    | Some t as found -> found
+    | None ->
+      scope.parent
+      |> bind (fun x -> lookup_kind_elem x e))
 
 let rec lookup_kind (scope: scope) (kind: kind): typesDef option =
   match kind with
@@ -140,18 +144,13 @@ let rec lookup_kind (scope: scope) (kind: kind): typesDef option =
     lookup_kind_elem scope x
     |> bind (fun def ->
       match def with
-      | TypeT s as t -> Some t
+      | TypeT s as t -> Some t (* TODO: doesn't make sense *)
       | StructT members ->
         members
         |> List.map (fun (names, t) ->
           names
           |> List.find_opt (fun x -> x = member)
-          |> bind (fun x ->
-            if lookup_typedef scope t = lookup_kind_elem scope y then
-              lookup_kind scope (y::xs)
-            else
-              None
-          )
+          |> bind (fun x -> lookup_kind scope (y::xs))
         )
         |> List.find_opt is_some
         |> bind id
@@ -289,6 +288,7 @@ let rec typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
   | Typed e -> Some e
   | Scoped e -> None
 
+(* TODO typecheck  *)
 let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option =
   match s with
   | Position e ->
