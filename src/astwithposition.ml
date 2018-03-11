@@ -19,7 +19,7 @@ type scope =
   }
 
 type 'a node = { position: Lexing.position; value: 'a }
-type 'a tnode = { position: Lexing.position; typ: typesRef; value: 'a }
+type 'a tnode = { position: Lexing.position; typ: typesDef; value: 'a }
 type 'a snode = { position: Lexing.position; scope: scope; value: 'a }
 
 type 'a gen_node =

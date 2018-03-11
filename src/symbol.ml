@@ -110,7 +110,7 @@ let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
   let try_in_scope =
     match e with
     | Variable name ->
-      scope.bindings 
+      scope.bindings
       |> List.assoc_opt name
       |> bind (fun x -> lookup_typeref scope x)
     | Array (name, exps) ->  (* TODO: Check if exps resolveS to int *)
@@ -122,7 +122,11 @@ let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
           match x with
           | ArrayR (_, sizes) ->
             if List.length exps <> List.length sizes then None
-            else Some t
+            else
+              (* exps
+              |> List.map (fun x -> typecheck_exp scope x)
+              |> List.filter is_some *)
+              Some t
           | _ -> None
         )
       ) in
@@ -184,12 +188,12 @@ let merge (old_scope: scope) (new_scope: scope) : scope =
 let new_scope parent = { bindings = []; types = []; parent = Some parent }
 
 (* before calling this function, need to resolve the types to get base types *)
-let check_ops (a: typesRef) (b:typesRef) (l: base_types list) comparable: string option =
+let check_ops (a: typesDef) (b:typesDef) (l: base_types list) comparable: string option =
   l
   |> List.map (fun t ->
     let t = to_string t in
     match a, b with
-    | TypeR x, TypeR y ->
+    | TypeT x, TypeT y ->
       if x = t && y = t then Some t
       else None
     | _ -> None (* TODO not sure what are the rules for this *)
@@ -202,12 +206,12 @@ let check_ops (a: typesRef) (b:typesRef) (l: base_types list) comparable: string
   )
 
 (* similar to above but for unary ops, might be able to refactor this into one larger function *)
-let check_op (a: typesRef) (l: base_types list) =
+let check_op (a: typesDef) (l: base_types list) =
   l
   |> List.map (fun t ->
     let t = to_string t in
     match a with
-    | TypeR x -> if x = t then Some t else None
+    | TypeT x -> if x = t then Some t else None
     | _ -> None
   )
   |> List.find_opt is_some
@@ -227,17 +231,16 @@ let rec typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
     | Id kind ->
       lookup_kind scope kind
       |> bind (fun d ->
-        let r = type_def_to_ref scope d in
-        to_tnode e r |> some
+        to_tnode e d |> some
       )
     | Int i ->
       print_string "DEBUG INT\n";
-      to_tnode e (TypeR base_int) |> some
-    | Float f -> to_tnode e (TypeR base_float) |> some
+      to_tnode e (TypeT base_int) |> some
+    | Float f -> to_tnode e (TypeT base_float) |> some
     | RawStr s
-    | String s -> to_tnode e (TypeR base_string) |> some
-    | Bool b -> to_tnode e (TypeR base_bool) |> some
-    | Rune r -> to_tnode e (TypeR base_rune) |> some
+    | String s -> to_tnode e (TypeT base_string) |> some
+    | Bool b -> to_tnode e (TypeT base_bool) |> some
+    | Rune r -> to_tnode e (TypeT base_rune) |> some
     | BinaryOp (bin, (a, b)) ->
       typecheck_exp scope a
       |> bind (fun a ->
@@ -266,7 +269,7 @@ let rec typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
             | Mod -> [Int], false in
           check_ops a.typ b.typ types comparable
           |> bind (fun x ->
-            to_tnode e (TypeR x) |> some
+            to_tnode e (TypeT x) |> some
           )
         )
       )
@@ -281,7 +284,7 @@ let rec typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
           | Not -> [Bool] in
         check_op a.typ types
         |> bind (fun x ->
-          to_tnode e (TypeR x) |> some
+          to_tnode e (TypeT x) |> some
         )
       )
     | _ -> None)
