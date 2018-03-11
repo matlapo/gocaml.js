@@ -60,6 +60,40 @@ let top_level =
 
 let to_tnode (e: exp node) t = { position = e.position; typ = t; value = e.value }
 
+(* before calling this function, need to resolve the types to get base types *)
+let check_ops (a: typesDef) (b:typesDef) (l: base_types list) comparable: string option =
+  l
+  |> List.map (fun t ->
+    let t = to_string t in
+    match a, b with
+    | TypeT x, TypeT y ->
+      if x = t && y = t then Some t
+      else None
+    | _ -> None (* TODO not sure what are the rules for this *)
+  )
+  |> List.find_opt is_some
+  |> (fun x ->
+    match x with
+    | Some x -> if comparable then Some base_bool else x
+    | None -> print_string "Error: ..."; None
+  )
+
+(* similar to above but for unary ops, might be able to refactor this into one larger function *)
+let check_op (a: typesDef) (l: base_types list) =
+  l
+  |> List.map (fun t ->
+    let t = to_string t in
+    match a with
+    | TypeT x -> if x = t then Some t else None
+    | _ -> None
+  )
+  |> List.find_opt is_some
+  |> (fun x ->
+    match x with
+    | Some x -> x
+    | None -> print_string "some error message"; None
+  )
+
 let try_base_type (s: string) =
   if s = base_int then s |> some
   else if s = base_float then s |> some
@@ -113,7 +147,7 @@ let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
       scope.bindings
       |> List.assoc_opt name
       |> bind (fun x -> lookup_typeref scope x)
-    | Array (name, exps) ->  (* TODO: Check if exps resolveS to int *)
+    | Array (name, exps) ->
       scope.bindings
       |> List.assoc_opt name
       |> bind (fun x ->
@@ -123,10 +157,19 @@ let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
           | ArrayR (_, sizes) ->
             if List.length exps <> List.length sizes then None
             else
-              (* exps
-              |> List.map (fun x -> typecheck_exp scope x)
-              |> List.filter is_some *)
-              Some t
+              let typed_exps =
+                exps
+                |> List.map (fun x -> typecheck_exp scope x)
+                |> List.map (fun x ->
+                  x
+                  |> bind (fun x ->
+                    lookup_typedef scope x.typ
+                    |> bind (fun x ->
+                      if x = TypeT base_int then Some x else None
+                    )
+                  )
+                ) in
+              if List.length typed_exps <> List.length exps then None else Some t
           | _ -> None
         )
       ) in
@@ -136,7 +179,7 @@ let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
       scope.parent
       |> bind (fun x -> lookup_kind_elem x e))
 
-let rec lookup_kind (scope: scope) (kind: kind): typesDef option =
+and lookup_kind (scope: scope) (kind: kind): typesDef option =
   match kind with
   | [] -> None
   | x::[] -> lookup_kind_elem scope x
@@ -162,69 +205,10 @@ let rec lookup_kind (scope: scope) (kind: kind): typesDef option =
       | SliceT (typ, _) -> lookup_type scope typ
     )
 
-(* this converts a typesDef to a typesRef, it doesn't eval to
-an option because this conversion should always be possible
-*)
-let type_def_to_ref (scope: scope) (t: typesDef) =
-  match t with
-  | TypeT typ -> TypeR typ
-  | ArrayT (typ, l) -> ArrayR (typ, l)
-  | SliceT (typ, l) -> SliceR (typ, l)
-  | StructT members ->
-    let ot =
-      scope.types
-      |> rev_assoc
-      |> List.assoc_opt t in
-    match ot with
-    | Some name -> TypeR name
-    | None -> failwith "couldn't find definition for struct"
-
-let merge (old_scope: scope) (new_scope: scope) : scope =
-  { old_scope with
-    bindings = List.append old_scope.bindings new_scope.bindings;
-    types = List.append old_scope.types new_scope.types
-  }
-
-let new_scope parent = { bindings = []; types = []; parent = Some parent }
-
-(* before calling this function, need to resolve the types to get base types *)
-let check_ops (a: typesDef) (b:typesDef) (l: base_types list) comparable: string option =
-  l
-  |> List.map (fun t ->
-    let t = to_string t in
-    match a, b with
-    | TypeT x, TypeT y ->
-      if x = t && y = t then Some t
-      else None
-    | _ -> None (* TODO not sure what are the rules for this *)
-  )
-  |> List.find_opt is_some
-  |> (fun x ->
-    match x with
-    | Some x -> if comparable then Some base_bool else x
-    | None -> print_string "Error: ..."; None
-  )
-
-(* similar to above but for unary ops, might be able to refactor this into one larger function *)
-let check_op (a: typesDef) (l: base_types list) =
-  l
-  |> List.map (fun t ->
-    let t = to_string t in
-    match a with
-    | TypeT x -> if x = t then Some t else None
-    | _ -> None
-  )
-  |> List.find_opt is_some
-  |> (fun x ->
-    match x with
-    | Some x -> x
-    | None -> print_string "some error message"; None
-  )
-
 (* converts a exp node to exp enode (node with type) *)
 (* type rules are not implemented, just trying to get "best" structure for everything *)
 (* TODO Support for Append and Function calls *)
-let rec typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
+and typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
   match e with
   | Position e ->
     (match e.value with
@@ -290,6 +274,32 @@ let rec typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
     | _ -> None)
   | Typed e -> Some e
   | Scoped e -> None
+
+
+(* this converts a typesDef to a typesRef, it doesn't eval to
+an option because this conversion should always be possible
+*)
+let type_def_to_ref (scope: scope) (t: typesDef) =
+  match t with
+  | TypeT typ -> TypeR typ
+  | ArrayT (typ, l) -> ArrayR (typ, l)
+  | SliceT (typ, l) -> SliceR (typ, l)
+  | StructT members ->
+    let ot =
+      scope.types
+      |> rev_assoc
+      |> List.assoc_opt t in
+    match ot with
+    | Some name -> TypeR name
+    | None -> failwith "couldn't find definition for struct"
+
+let merge (old_scope: scope) (new_scope: scope) : scope =
+  { old_scope with
+    bindings = List.append old_scope.bindings new_scope.bindings;
+    types = List.append old_scope.types new_scope.types
+  }
+
+let new_scope parent = { bindings = []; types = []; parent = Some parent }
 
 (* TODO typecheck  *)
 let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option =
