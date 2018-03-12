@@ -191,30 +191,33 @@ let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
       |> bind (fun x -> lookup_kind_elem x e))
 
 and lookup_kind (scope: scope) (kind: kind): typesDef option =
-  match kind with
-  | [] -> None
-  | x::[] -> lookup_kind_elem scope x
-  | x::y::xs ->
-    let member =
-      match y with
-      | Variable n
-      | Array (n, _) -> n in
-    lookup_kind_elem scope x
-    |> bind (fun def ->
-      match def with
-      | TypeT s -> None
-      | StructT members ->
-        members
-        |> List.map (fun (names, t) ->
-          names
-          |> List.find_opt (fun x -> x = member)
-          |> bind (fun _ -> lookup_kind scope (y::xs))
-        )
-        |> List.find_opt is_some
-        |> bind id
-      | ArrayT (typ, _)
-      | SliceT (typ, _) -> lookup_type scope typ
-    )
+  let rec helper (scope: scope) (kind: kind) (typ: typesDef option) =
+    match kind with
+    | [] -> None
+    | x::[] -> typ
+    | x::y::xs ->
+      let member =
+        match y with
+        | Variable n
+        | Array (n, _) -> n in
+      typ
+      |> bind (fun def ->
+        match def with
+        | StructT members ->
+          members
+          |> List.map (fun (names, t) ->
+            names
+            |> List.find_opt (fun x -> x = member)
+            |> bind (fun _ -> helper scope (y::xs) (Some t))
+          )
+          |> List.find_opt is_some
+          |> bind id
+        | _ -> None
+      ) in
+    match kind with
+    | [] -> None
+    | x::[] -> lookup_kind_elem scope x
+    | x::xs -> helper scope kind (lookup_kind_elem scope x)
 
 (* converts a exp node to exp enode (node with type) *)
 (* type rules are not implemented, just trying to get "best" structure for everything *)
