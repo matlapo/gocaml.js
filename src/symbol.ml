@@ -44,17 +44,17 @@ let to_string (b: base_types) =
 
 let base_types =
   [
-    TypeT base_int;
-    TypeT base_float;
-    TypeT base_string;
-    TypeT base_bool;
-    TypeT base_rune
+    base_int, (TypeT base_int);
+    base_float, (TypeT base_float);
+    base_string, (TypeT base_string);
+    base_bool, (TypeT base_bool);
+    base_rune, (TypeT base_rune)
   ]
 
 let top_level =
   {
     bindings = [];
-    types = [];
+    types = base_types;
     functions = [];
     parent = None
   }
@@ -232,8 +232,7 @@ and typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
       |> bind (fun d ->
         to_tnode e d |> some
       )
-    | Int i ->
-      to_tnode e (TypeT base_int) |> some
+    | Int i -> to_tnode e (TypeT base_int) |> some
     | Float f -> to_tnode e (TypeT base_float) |> some
     | RawStr s
     | String s -> to_tnode e (TypeT base_string) |> some
@@ -343,41 +342,62 @@ and type_context_check (l: stmt gen_node list) (scope: scope): (stmt snode list 
 let typecheck_fct_args (args: argument list) (scope: scope) =
   List.map (fun (_, t) -> lookup_typeref scope t)
 
-let typecheck_fct ((name: string), (args: argument list), (ret_type: typesRef option), (stmts: stmt gen_node list)) scope: scope =
+(* let typecheck_fct ((name: string), (args: argument list), (ret_type: typesRef option), (stmts: stmt gen_node list)) scope: scope =
   let ret_type_def = bind (lookup_typeref scope) ret_type in
   let args_type_def = typecheck_fct_args args scope in
-  let type_context_check
+  let type_context_check *)
 
+let typecheck_var_decl ((vars, t, exps): string list * typesRef option * (exp gen_node) list) =
+  let typed_exps =
+    exps
+    |> List.map (fun exp -> typecheck_exp top_level exp)
+    |> List.filter is_some in
+  if List.length typed_exps <> List.length exps then None
+  else
+    match t with
+    | None ->
+      let exps =
+        typed_exps
+        |> List.map Option.get
+        |> List.map (fun x -> Typed x) in
+      (vars, t, exps) |> some
+    | Some t ->
+      lookup_typeref top_level t
+      |> bind (fun typ ->
+        let exps =
+          typed_exps
+          |> List.map Option.get
+          |> List.filter (fun x -> x.typ = typ)
+          |> List.map (fun x -> Typed x) in
+        (vars, Some t, exps) |> some
+      )
 
-let typecheck (p: program) = None
-  (* let package, decls = p in
-  decls
-  |> List.map (fun decl ->
-    match decl with
-    | Position x ->
-      (match x.value with
-      | Var l ->
-        print_string "HELLO\n";
-        let vars =
-          l
-          |> List.map (fun (vars, otype, exps) ->
-            let l =
-              exps
-              |> List.map (fun x -> typecheck_exp top_level x)
-              |> List.filter is_some in
-            if List.length l <> List.length exps then None
-            else
-              let test =
-                l
-                |> List.map Option.get
-                |> List.map (fun exp -> (vars, otype, exp))
-                |> some in test
-          )
-          |> List.filter is_some in
-        if List.length vars <> List.length l then None
-        else Some (Var (Option.get vars))
-      | _ -> print_string "BAD"; None)
-    | _ -> print_string "BAD"; None
-  )
-  |> List.find_opt is_none
-  |> bind id *)
+let typecheck (p: program) =
+  let package, decls = p in
+  let typed_decls =
+    decls
+    |> List.map (fun decl ->
+      match decl with
+      | Position x ->
+        (match x.value with
+        | Var l ->
+          let ol =
+            l
+            |> List.map typecheck_var_decl
+            |> List.filter is_some in
+          if List.length ol <> List.length l then None
+          else
+            let new_vars =
+              ol
+              |> List.map Option.get in
+            Var new_vars |> some
+        | _ -> print_string "BAD"; None)
+      | _ -> print_string "BAD"; None
+    )
+    |> List.filter is_some in
+  if List.length typed_decls <> List.length decls then None
+  else
+    typed_decls
+    |> List.map Option.get
+    |> (fun x -> (package, x))
+    |> some
