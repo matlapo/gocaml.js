@@ -1,6 +1,6 @@
 open Astwithposition
 
-(* let string_of_list printer separator l = List.fold_left (fun a e -> a ^ (if a <> "" then separator else "") ^ (printer e)) "" l
+let string_of_list printer separator l = List.fold_left (fun a e -> a ^ (if a <> "" then separator else "") ^ (printer e)) "" l
 
 let string_of_string_list = string_of_list (fun s -> s)
 
@@ -41,7 +41,14 @@ let string_of_unary_op op = match op with
   | UPlus -> "+"
   | UCaret -> "^"
 
-let rec string_of_exp {value = e; _} = match e with
+let extract_gen_node_value gn = match gn with
+| Position {value = e; _} -> e
+| Typed {value = e; _} -> e
+| Scoped {value = e; _} -> e
+
+let rec string_of_exp gn =
+  let e = extract_gen_node_value gn in
+  match e with
   | Id k -> string_of_kind k
   | Int i -> Int64.to_string i
   | Float f -> string_of_float f
@@ -86,7 +93,9 @@ and string_of_typedef_with_names lvl (names, type_def) =
   string_of_string_list "," names ^ string_of_typedef lvl type_def
 
 let rec string_of_stmts lvl stmts = List.fold_left (fun a s -> a ^ string_of_stmt lvl s ^ "") "" stmts
-and string_of_stmt lvl { value = s; _} = match s with
+and string_of_stmt lvl gn =
+  let s = extract_gen_node_value gn in
+  match s with
   | Block stmts -> indent lvl ^ "{\n"
     ^ string_of_stmts (lvl + 1) stmts
     ^ indent lvl ^ "}\n"
@@ -125,11 +134,13 @@ and string_of_stmt lvl { value = s; _} = match s with
     ^ none_or_print (fun s -> string_of_simple_stmt s ^ "; ") sstmt
     ^ none_or_print string_of_exp exp ^ " {\n"
     ^ string_of_list (string_of_case lvl) "" cases ^ indent lvl ^ "}\n"
-  | Simple sstmt -> if sstmt.value = Empty then string_of_simple_stmt sstmt else indent lvl ^ string_of_simple_stmt sstmt ^ "\n"
+  | Simple sstmt -> if (extract_gen_node_value sstmt) = Empty then string_of_simple_stmt sstmt else indent lvl ^ string_of_simple_stmt sstmt ^ "\n"
   | Break -> indent lvl ^ "break\n"
   | Continue -> indent lvl ^ "continue\n"
   | Default -> indent lvl ^ "default\n"
-and string_of_simple_stmt {value = s;_} = match s with
+and string_of_simple_stmt gn =
+  let s = extract_gen_node_value gn in
+  match s with
   | ExpStatement exp -> string_of_exp exp
   | DoublePlus k -> string_of_kind k ^ "++"
   | DoubleMinus k -> string_of_kind k ^ "--"
@@ -155,7 +166,9 @@ and string_of_case lvl (exps, stmts) = indent lvl ^ "case "
     ^ none_or_print (string_of_list string_of_exp ",") exps ^ ":\n"
     ^ string_of_stmts (lvl + 1) stmts
 
-let string_of_decl {value = decl; _} = match decl with
+let string_of_decl gn =
+  let decl = extract_gen_node_value gn in
+  match decl with
   | Var vars -> List.fold_left
     (fun a (ids, t, exps) ->
       a ^
@@ -177,11 +190,11 @@ let string_of_decl {value = decl; _} = match decl with
     ^ "\n"
   | Type nts -> string_of_list (fun (name, types) -> "type " ^ string_of_typedef_with_names 0 ([name], types)) "\n" nts
   | Fct (name, args, ret, stmts) -> "func " ^ name ^ "("
-    ^ string_of_list (fun (argname, t) -> argname ^ " " ^ none_or_print (string_of_typeref 0) t) ", " args
+    ^ string_of_list (fun (argname, t) -> argname ^ " " ^ string_of_typeref 0 t) ", " args
     ^ ") " ^ none_or_print (fun r -> string_of_typeref 0 r ^ " ") ret ^ "{\n"
     ^ string_of_stmts 1 stmts
     ^ "}\n\n"
 
-let string_of_prog (package, decls) = "package " ^ package ^ "\n\n" ^ string_of_list (fun d -> string_of_decl d) "" decls *)
+let string_of_prog (package, decls) = "package " ^ package ^ "\n\n" ^ string_of_list (fun d -> string_of_decl d) "" decls
 
-let pretty_print ast = print_string "TO FIX WHEN I'M SURE THIS WORKS" (* print_string (string_of_prog ast) *)
+let pretty_print ast = print_string (string_of_prog ast)
