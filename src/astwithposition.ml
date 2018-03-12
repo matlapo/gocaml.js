@@ -13,7 +13,7 @@ type typesRef =
 
 type scope =
   {
-    bindings: (string * typesRef) list;
+    bindings: (string * typesDef) list;
     types: (string * typesDef) list;
     functions: (string * typesDef list * typesDef option) list; (* function name - argument types - return type *)
     parent: scope option (* top level scope doesn't have a parent *)
