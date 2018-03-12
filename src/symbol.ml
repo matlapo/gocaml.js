@@ -141,6 +141,12 @@ let lookup_typeref (scope: scope) (t: typesRef) =
   | ArrayR (typ, _)
   | SliceR (typ, _) -> lookup_type scope typ
 
+let part_of_list (start: int) l =
+  l
+  |> List.mapi (fun i x -> if i < start then None else Some x)
+  |> List.filter is_some
+  |> List.map Option.get
+
 (* TODO: Split into both kinds *)
 let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
   let try_in_scope =
@@ -156,22 +162,26 @@ let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
         lookup_typeref scope x
         |> bind (fun t ->
           match x with
-          | ArrayR (_, sizes) ->
-            if List.length exps <> List.length sizes then None
-            else
-              let typed_exps =
-                exps
-                |> List.map (fun x -> typecheck_exp scope x)
-                |> List.map (fun x ->
-                  x
+          | ArrayR (typ, sizes) ->
+            let typed_exps =
+              exps
+              |> List.map (fun x -> typecheck_exp scope x)
+              |> List.map (fun x ->
+                x
+                |> bind (fun x ->
+                  lookup_typedef scope x.typ
                   |> bind (fun x ->
-                    lookup_typedef scope x.typ
-                    |> bind (fun x ->
-                      if x = TypeT base_int then Some x else None
-                    )
+                    if x = TypeT base_int then Some x else None
                   )
-                ) in
-              if List.length typed_exps <> List.length exps then None else Some t
+                )
+              ) in
+            if List.length typed_exps = List.length exps then
+              if List.length exps = List.length sizes then TypeT typ |> some
+              else if List.length exps < List.length sizes then
+                let new_dimension = part_of_list (List.length exps) sizes in
+                ArrayT (typ, new_dimension) |> some
+              else None
+            else None
           | _ -> None
         )
       ) in
@@ -182,30 +192,33 @@ let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
       |> bind (fun x -> lookup_kind_elem x e))
 
 and lookup_kind (scope: scope) (kind: kind): typesDef option =
-  match kind with
-  | [] -> None
-  | x::[] -> lookup_kind_elem scope x
-  | x::y::xs ->
-    let member =
-      match y with
-      | Variable n
-      | Array (n, _) -> n in
-    lookup_kind_elem scope x
-    |> bind (fun def ->
-      match def with
-      | TypeT s as t -> Some t (* TODO: doesn't make sense *)
-      | StructT members ->
-        members
-        |> List.map (fun (names, t) ->
-          names
-          |> List.find_opt (fun x -> x = member)
-          |> bind (fun x -> lookup_kind scope (y::xs))
-        )
-        |> List.find_opt is_some
-        |> bind id
-      | ArrayT (typ, _)
-      | SliceT (typ, _) -> lookup_type scope typ
-    )
+  let rec helper (scope: scope) (kind: kind) (typ: typesDef option) =
+    match kind with
+    | [] -> None
+    | x::[] -> typ
+    | x::y::xs ->
+      let member =
+        match y with
+        | Variable n
+        | Array (n, _) -> n in
+      typ
+      |> bind (fun def ->
+        match def with
+        | StructT members ->
+          members
+          |> List.map (fun (names, t) ->
+            names
+            |> List.find_opt (fun x -> x = member)
+            |> bind (fun _ -> helper scope (y::xs) (Some t))
+          )
+          |> List.find_opt is_some
+          |> bind id
+        | _ -> None
+      ) in
+    match kind with
+    | [] -> None
+    | x::[] -> lookup_kind_elem scope x
+    | x::xs -> helper scope kind (lookup_kind_elem scope x)
 
 (* converts a exp node to exp enode (node with type) *)
 (* type rules are not implemented, just trying to get "best" structure for everything *)
@@ -285,6 +298,7 @@ let merge (old_scope: scope) (new_scope: scope) : scope =
 let new_scope parent = { bindings = []; types = []; functions = []; parent = Some parent }
 
 (* TODO typecheck the types in struct declaration *)
+(* TODO typecheck the declarations before storing new binding *)
 let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option =
   match s with
   | Position e ->
