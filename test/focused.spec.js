@@ -6,4 +6,5 @@ testDirectory('programs/parser', 'parse', {
         /-too-big\.go/ // RCB: numeric-literals-too-big
     ]
 });
-testDirectory('programs/full', 'parse', { validity: VALID });
+testDirectory('programs/typecheck', 'typecheck');
+testDirectory('programs/full', 'typecheck', { validity: VALID });

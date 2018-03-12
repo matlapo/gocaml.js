@@ -24,13 +24,17 @@ then
 
 fi
 
+# Comment and uncomment to switch between our compiler and the reference compiler
+COMPILER=./src/_build/comp.byte
+#COMPILER=~/golitec
+
 # Invoke the compiler with the provided arguments: mode ($1) and file ($2)
 
 outfile=$(echo "$2" | cut -d. -f1)
 
 if [ "codegen" = "$1" ];
 then
-	./src/comp.byte < "$2" 1> "$outfile.c"
+	$COMPILER < "$2" 1> "$outfile.c"
 else
-	./src/_build/comp.byte "$1" "$2" < "$2"
+	$COMPILER "$1" "$2" < "$2"
 fi

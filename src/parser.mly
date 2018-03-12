@@ -258,9 +258,8 @@ type_def_list:
 // ############################
 // ### rules for statements ###
 // ############################
-
 stm_list:
-  | s = stm TSEMICOLON l = stm_list { s::l }
+  | s = stm TSEMICOLON l = stm_list{ s::l }
   | s = stm { [s] }
   ;
 
@@ -299,7 +298,12 @@ stm:
 
 // Defines a list of cases in a switch
 case_list:
-  | c1 = case c2 = case_list { c1::c2 }
+  | l = case_list_nonempty { l }
+  | { [] }
+  ;
+
+case_list_nonempty:
+  | c1 = case c2 = case_list_nonempty { c1::c2 }
   | c = case  { [c] }
   ;
 
@@ -371,9 +375,13 @@ array_element:
 // ### rules for expressions ###
 // #############################
 exp_list:
-  | e = exp TCOMMA l = exp_list { e::l }
-  | e = exp { [e] }
+  | l = exp_list_nonempty { l }
   | { [] }
+  ;
+
+exp_list_nonempty:
+  | e = exp TCOMMA l = exp_list_nonempty { e::l }
+  | e = exp { [e] }
   ;
 
 exp:
