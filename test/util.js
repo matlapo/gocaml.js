@@ -34,7 +34,7 @@ function testFile(pathString, command, options) {
     it(path.basename(pathString), () => {
         expect(options.validity).toBeDefined();
 
-        const result = spawnSync('./run.sh', [command, pathString]);
+        const result = spawnSync(`${__dirname}/../run.sh`, [command, pathString], { cwd: `${__dirname}/..`});
         const output = result.output.join('');
 
         if (options.validity === VALID) {
