@@ -258,7 +258,6 @@ type_def_list:
 // ############################
 // ### rules for statements ###
 // ############################
-
 stm_list:
   | s = stm TSEMICOLON l = stm_list{ s::l }
   | s = stm { [s] }
