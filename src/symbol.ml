@@ -61,7 +61,8 @@ let top_level =
 let to_tnode (e: exp node) t = { position = e.position; typ = t; value = e.value }
 
 (* before calling this function, need to resolve the types to get base types *)
-let check_ops (a: typesDef) (b:typesDef) (l: base_types list) comparable: string option =
+(* TODO, do the resolving here instead *)
+let check_ops (a: typesDef) (b: typesDef) (l: base_types list) comparable: string option =
   l
   |> List.map (fun t ->
     let t = to_string t in
@@ -218,7 +219,6 @@ and typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
         to_tnode e d |> some
       )
     | Int i ->
-      print_string "DEBUG INT\n";
       to_tnode e (TypeT base_int) |> some
     | Float f -> to_tnode e (TypeT base_float) |> some
     | RawStr s
@@ -275,24 +275,6 @@ and typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
   | Typed e -> Some e
   | Scoped e -> None
 
-
-(* this converts a typesDef to a typesRef, it doesn't eval to
-an option because this conversion should always be possible
-*)
-let type_def_to_ref (scope: scope) (t: typesDef) =
-  match t with
-  | TypeT typ -> TypeR typ
-  | ArrayT (typ, l) -> ArrayR (typ, l)
-  | SliceT (typ, l) -> SliceR (typ, l)
-  | StructT members ->
-    let ot =
-      scope.types
-      |> rev_assoc
-      |> List.assoc_opt t in
-    match ot with
-    | Some name -> TypeR name
-    | None -> failwith "couldn't find definition for struct"
-
 let merge (old_scope: scope) (new_scope: scope) : scope =
   { old_scope with
     bindings = List.append old_scope.bindings new_scope.bindings;
@@ -301,7 +283,7 @@ let merge (old_scope: scope) (new_scope: scope) : scope =
 
 let new_scope parent = { bindings = []; types = []; parent = Some parent }
 
-(* TODO typecheck  *)
+(* TODO typecheck the types in struct declaration *)
 let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option =
   match s with
   | Position e ->
