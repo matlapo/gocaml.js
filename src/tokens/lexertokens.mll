@@ -31,7 +31,7 @@ let digit     = ['0'-'9']
 (* invisiable characters *)
 let ws        = [' ' '\t']
 let nl        = '\r'? '\n'
- 
+
 (* keywords *)
 let var       = "var"
 let if        = "if"
@@ -70,9 +70,9 @@ let append    = "append"
 (* literals *)
 let intval       = '0' | (['1'-'9'] digit*)
 let octoval      = '0' ['0'-'7']*
-let hexval       = '0'('x'|'X') ['0'-'9''A'-'F''a'-'f']*
+let hexval       = '0'('x'|'X') ['0'-'9''A'-'F''a'-'f']+
 let floatval     = (digit+ '.' digit+) | ('.' digit+) | (intval '.')
-let stringval    = '"' (ws | [^'\\''"'] | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | "\\\"" | "\\\\")* '"'
+let stringval    = '"' (ws | [^'\\''"''\n'] | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | "\\\"" | "\\\\")* '"'
 let runeval      = ''' (ws | [^'\\''''] | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | "\\'" | "\\\\") '''
 let rawstrval    = '`' [^'`']* '`'
 
