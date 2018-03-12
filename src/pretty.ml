@@ -166,7 +166,9 @@ and string_of_case lvl (exps, stmts) = indent lvl ^ "case "
     ^ none_or_print (string_of_list string_of_exp ",") exps ^ ":\n"
     ^ string_of_stmts (lvl + 1) stmts
 
-let string_of_decl {value = decl; _} = match decl with
+let string_of_decl gn =
+  let decl = extract_gen_node_value gn in
+  match decl with
   | Var vars -> List.fold_left
     (fun a (ids, t, exps) ->
       a ^
@@ -195,4 +197,4 @@ let string_of_decl {value = decl; _} = match decl with
 
 let string_of_prog (package, decls) = "package " ^ package ^ "\n\n" ^ string_of_list (fun d -> string_of_decl d) "" decls
 
-let pretty_print ast = print_string "TO FIX WHEN I'M SURE THIS WORKS" (* print_string (string_of_prog ast) *)
+let pretty_print ast = print_string (string_of_prog ast)
