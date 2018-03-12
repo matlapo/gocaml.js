@@ -369,7 +369,8 @@ let typecheck_var_decl ((vars, t, exps): string list * typesRef option * (exp ge
           |> List.map Option.get
           |> List.filter (fun x -> x.typ = typ)
           |> List.map (fun x -> Typed x) in
-        (vars, Some t, exps) |> some
+        if List.length exps <> List.length typed_exps then None
+        else (vars, Some t, exps) |> some
       )
 
 let typecheck (p: program) =
