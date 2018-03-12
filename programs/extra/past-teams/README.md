@@ -1,1 +1,0 @@
-The programs in this directory were taken from previous COMP 520 teams that made a GoLite compiler. It is our understanding that we are not violating any law or McGill policy since we are neither distributing nor submitting code that is not ours. Since we are using git submodules, we are only referencing it.
