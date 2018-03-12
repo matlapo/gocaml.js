@@ -83,3 +83,5 @@ $RECYCLE.BIN/
 
 # End of https://www.gitignore.io/api/macos,ocaml,windows,visualstudiocode
 leavemealone.txt
+grading.sh
+grading
