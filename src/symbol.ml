@@ -154,15 +154,15 @@ let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
     | Variable name ->
       scope.bindings
       |> List.assoc_opt name
-      |> bind (fun x -> lookup_typeref scope x)
+      |> bind (fun x -> lookup_typedef scope x)
     | Array (name, exps) ->
       scope.bindings
       |> List.assoc_opt name
       |> bind (fun x ->
-        lookup_typeref scope x
+        lookup_typedef scope x
         |> bind (fun t ->
           match x with
-          | ArrayR (typ, sizes) ->
+          | ArrayT (typ, sizes) ->
             let typed_exps =
               exps
               |> List.map (fun x -> typecheck_exp scope x)
@@ -325,7 +325,7 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
   | Typed e -> None
   | Scoped e -> Some e
 
-and type_context_check (l: stmt gen_node list) (scope: scope): (stmt snode list * scope) option =
+and type_context_check l scope =
     l
     |> List.fold_left (fun acc g_node ->
       acc
@@ -339,6 +339,48 @@ and type_context_check (l: stmt gen_node list) (scope: scope): (stmt snode list 
       )
     ) (Some ([], scope))
 
+let rec type_ref_to_def (scope: scope) (t: typesRef) =
+  match t with
+  | ArrayR (typ, l) -> ArrayT (typ, l) |> some
+  | SliceR (typ, l) -> SliceT (typ, l) |> some
+  | TypeR typ ->
+    let ot =
+      scope.types
+      |> List.assoc_opt typ in
+    match ot with
+    | Some typ -> Some typ
+    | None ->
+      scope.parent
+      |> bind (fun x -> type_ref_to_def x t)
+
+let print_scope (scope: scope) =
+  print_string "SCOPE\n";
+  scope.bindings
+  |> List.iter (fun (name, _) -> print_string name; print_newline();)
+
+let rec myfold f v l =
+  match l with
+  | [] -> v
+  | x::xs -> myfold f (f v x) xs
+
+let check_and_scope l check_func init_scope =
+  l
+  |> myfold (fun acc decl->
+    match acc with
+    | Some (acc_scope, acc_decls) ->
+      print_string "ACC:";
+      print_scope acc_scope;
+      (match check_func acc_scope decl with
+      | Some (d, scope) ->
+        let new_scope = merge acc_scope scope in
+        let new_decls = List.append acc_decls [d] in
+        print_string "NEW:";
+        print_scope new_scope;
+        Some (new_scope, new_decls)
+      | None -> None)
+    | None -> None
+  ) (Some (init_scope, []))
+
 let typecheck_fct_args (args: argument list) (scope: scope) =
   List.map (fun (_, t) -> lookup_typeref scope t)
 
@@ -347,30 +389,41 @@ let typecheck_fct_args (args: argument list) (scope: scope) =
   let args_type_def = typecheck_fct_args args scope in
   let type_context_check *)
 
-let typecheck_var_decl ((vars, t, exps): string list * typesRef option * (exp gen_node) list) =
-  let typed_exps =
+let typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef option * (exp gen_node) list) =
+  let otyped_exps =
     exps
-    |> List.map (fun exp -> typecheck_exp top_level exp)
+    |> List.map (fun exp -> typecheck_exp scope exp)
     |> List.filter is_some in
-  if List.length typed_exps <> List.length exps then None
+  if List.length otyped_exps <> List.length exps then None
   else
+    let typed_exps =
+      otyped_exps
+      |> List.map Option.get in
     match t with
     | None ->
+      print_string "NONE\n";
       let exps =
         typed_exps
-        |> List.map Option.get
         |> List.map (fun x -> Typed x) in
-      (vars, t, exps) |> some
+      let new_bindings =
+        typed_exps
+        |> List.map2 (fun name node -> (name, node.typ)) vars in
+      let new_scope = { scope with bindings = List.append scope.bindings new_bindings } in
+      ((vars, t, exps), new_scope) |> some
     | Some t ->
       lookup_typeref top_level t
       |> bind (fun typ ->
-        let exps =
+        let exps_with_annotation =
           typed_exps
-          |> List.map Option.get
           |> List.filter (fun x -> x.typ = typ)
           |> List.map (fun x -> Typed x) in
-        if List.length exps <> List.length typed_exps then None
-        else (vars, Some t, exps) |> some
+        if List.length exps_with_annotation <> List.length typed_exps then None
+        else
+          let new_bindings =
+            vars
+            |> List.map (fun name -> (name, typ)) in
+          let new_scope = { scope with bindings = List.append scope.bindings new_bindings } in
+          ((vars, Some t, exps), new_scope) |> some
       )
 
 let typecheck (p: program) =
@@ -382,16 +435,10 @@ let typecheck (p: program) =
       | Position x ->
         (match x.value with
         | Var l ->
-          let ol =
-            l
-            |> List.map typecheck_var_decl
-            |> List.filter is_some in
-          if List.length ol <> List.length l then None
-          else
-            let new_vars =
-              ol
-              |> List.map Option.get in
-            Var new_vars |> some
+          check_and_scope l typecheck_var_decl top_level
+          |> bind (fun (scope, ol) -> (* TODO: need to pass that scope *)
+              Var ol |> some
+          )
         | _ -> print_string "BAD"; None)
       | _ -> print_string "BAD"; None
     )
