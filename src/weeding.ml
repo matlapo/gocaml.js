@@ -379,7 +379,7 @@ let weed (p, d) =
         let args =
           args
           |> map_flat (fun (_, r) ->
-            map_default (blank_ref x.position.pos_lnum) r
+             blank_ref x.position.pos_lnum r
           ) in
         let s = map_flat blank_stm s in
         name

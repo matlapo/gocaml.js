@@ -216,7 +216,7 @@ args_list:
 
 // Takes a list of arguments having the same type (Ex: fun(a, b int)) and turning it into fun(a int, b int)
 arg:
-  | vars = identifier_list t = type_ref { List.map (fun x -> (x, Some t)) vars }
+  | vars = identifier_list t = type_ref { List.map (fun x -> (x, t)) vars }
   ;
 
 

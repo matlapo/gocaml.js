@@ -15,6 +15,7 @@ type scope =
   {
     bindings: (string * typesRef) list;
     types: (string * typesDef) list;
+    functions: (string * typesDef list * typesDef option) list; (* function name - argument types - return type *)
     parent: scope option (* top level scope doesn't have a parent *)
   }
 
@@ -119,7 +120,7 @@ and stmt =
 
 type package = string
 
-type argument = (string * typesRef option) (* arg name + type *)
+type argument = (string * typesRef) (* arg name + type *)
 
 type decl =
     | Var of (string list * typesRef option * (exp gen_node) list) list

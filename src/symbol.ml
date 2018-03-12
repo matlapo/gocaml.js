@@ -55,6 +55,7 @@ let top_level =
   {
     bindings = [];
     types = [];
+    functions = [];
     parent = None
   }
 
@@ -294,7 +295,7 @@ let merge (old_scope: scope) (new_scope: scope) : scope =
     types = List.append old_scope.types new_scope.types
   }
 
-let new_scope parent = { bindings = []; types = []; parent = Some parent }
+let new_scope parent = { bindings = []; types = []; functions = []; parent = Some parent }
 
 (* TODO typecheck the types in struct declaration *)
 (* TODO typecheck the declarations before storing new binding *)
@@ -338,6 +339,15 @@ and type_context_check (l: stmt gen_node list) (scope: scope): (stmt snode list 
         )
       )
     ) (Some ([], scope))
+
+let typecheck_fct_args (args: argument list) (scope: scope) =
+  List.map (fun (_, t) -> lookup_typeref scope t)
+
+let typecheck_fct ((name: string), (args: argument list), (ret_type: typesRef option), (stmts: stmt gen_node list)) scope: scope =
+  let ret_type_def = bind (lookup_typeref scope) ret_type in
+  let args_type_def = typecheck_fct_args args scope in
+  let type_context_check
+
 
 let typecheck (p: program) = None
   (* let package, decls = p in
