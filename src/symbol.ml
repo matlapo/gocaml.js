@@ -326,13 +326,13 @@ and type_context_check (l: stmt gen_node list) (scope: scope): (stmt snode list 
       )
     ) (Some ([], scope))
 
-let typecheck_fct_args (args: argument list) (scope: scope) =
+(* let typecheck_fct_args (args: argument list) (scope: scope) =
   List.map (fun (_, t) -> lookup_typeref scope t)
 
 let typecheck_fct ((name: string), (args: argument list), (ret_type: typesRef option), (stmts: stmt gen_node list)) scope: scope =
   let ret_type_def = bind (lookup_typeref scope) ret_type in
   let args_type_def = typecheck_fct_args args scope in
-  let type_context_check
+  let type_context_check *)
 
 
 let typecheck (p: program) = None
