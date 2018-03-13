@@ -366,6 +366,17 @@ let merge (old_scope: scope) (new_scope: scope) : scope option =
     )
   )
 
+let typecheck_args (scope: scope) (args: argument list) =
+  let typed_args =
+    args
+    |> List.map (fun (name, typ) -> lookup_typeref scope typ)
+    |> List.filter is_some in
+  if List.length args <> List.length typed_args then None
+  else
+    typed_args
+    |> List.map Option.get
+    |> some
+
 let new_scope parent = { bindings = []; types = []; functions = []; parent = Some parent }
 let empty_scope = { bindings = []; types = []; functions = []; parent = None }
 
@@ -534,10 +545,14 @@ let typecheck_decl scope decl =
         )
     | Fct (name, args, typ, stmts) ->
       let function_scope = new_scope scope in
-      type_context_check stmts function_scope
-      |> bind (fun (typed_stmts, new_scope) ->
-        let typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
-        (new_scope, Fct (name, args, typ, typed_stmts)) |> some
+      args
+      |> typecheck_args scope
+      |> bind (fun arg ->
+        type_context_check stmts function_scope
+        |> bind (fun (typed_stmts, new_scope) ->
+          let typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
+          (new_scope, Fct (name, args, typ, typed_stmts)) |> some
+        )
       )
     )
   | _ -> None
