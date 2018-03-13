@@ -2,5 +2,7 @@ package main;
 
 var (
   x, y = 1, "a"
-  z int = y
+  z string = y
 )
+
+var a = y
