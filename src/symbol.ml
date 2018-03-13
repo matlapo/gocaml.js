@@ -395,9 +395,10 @@ let check_and_scope l check_func init_scope =
 let typecheck_fct_args (args: argument list) (scope: scope) =
   List.map (fun (_, t) -> lookup_typeref scope t)
 
-(* let print_scope scope =
+let print_scope scope =
+  print_string "SCOPE: ";
   scope.bindings
-  |> List.iter (fun (name, _) -> print_endline name;) *)
+  |> List.iter (fun (name, _) -> print_endline name;)
 
 let typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef option * (exp gen_node) list) =
   let otyped_exps =
@@ -460,7 +461,13 @@ let typecheck_decl scope decl =
           |> List.map Option.get in
         let new_scope = { scope with types = List.append scope.types new_types } in
         (new_scope, Type new_types) |> some
-    | Fct _ -> None) (* add the func to scope, typecheck the body first *)
+    | Fct (name, args, typ, stmts) ->
+      type_context_check stmts scope
+      |> bind (fun (typed_stmts, new_scope) ->
+        let typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
+        (new_scope, Fct (name, args, typ, typed_stmts)) |> some
+      )
+    ) (* add the func to scope, typecheck the body first *)
   | _ -> None
 
 let typecheck (p: program) =
