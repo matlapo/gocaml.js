@@ -475,7 +475,7 @@ let typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef o
         let new_scope = { empty_scope with bindings = new_bindings } in
         ((vars, t, exps), new_scope) |> some
       | Some t ->
-        lookup_typeref top_level t
+        lookup_typeref scope t
         |> bind (fun typ ->
           let exps_with_annotation =
             typed_exps
