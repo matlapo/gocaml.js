@@ -296,6 +296,15 @@ let merge (old_scope: scope) (new_scope: scope) : scope =
 
 let new_scope parent = { bindings = []; types = []; functions = []; parent = Some parent }
 
+let rec typecheck_simple (s: simpleStm gen_node) (current: scope) =
+  match s with
+  | Position e ->
+    (match e.value with
+    | Assign (assign_type, (kinds, exps)) ->
+      None
+    | _ -> None)
+  | _ -> failwith "wut wut"
+
 (* TODO typecheck the types in struct declaration *)
 (* TODO typecheck the declarations before storing new binding *)
 let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option =
@@ -358,36 +367,22 @@ let print_scope (scope: scope) =
   scope.bindings
   |> List.iter (fun (name, _) -> print_string name; print_newline();)
 
-let rec myfold f v l =
-  match l with
-  | [] -> v
-  | x::xs -> myfold f (f v x) xs
-
 let check_and_scope l check_func init_scope =
   l
-  |> myfold (fun acc decl->
-    match acc with
-    | Some (acc_scope, acc_decls) ->
-      print_string "ACC:";
-      print_scope acc_scope;
-      (match check_func acc_scope decl with
-      | Some (d, scope) ->
+  |> List.fold_left (fun acc decl ->
+    acc
+    |> bind (fun (acc_scope, acc_decls) ->
+      check_func acc_scope decl
+      |> bind (fun (d, scope) ->
         let new_scope = merge acc_scope scope in
         let new_decls = List.append acc_decls [d] in
-        print_string "NEW:";
-        print_scope new_scope;
         Some (new_scope, new_decls)
-      | None -> None)
-    | None -> None
+      )
+    )
   ) (Some (init_scope, []))
 
 let typecheck_fct_args (args: argument list) (scope: scope) =
   List.map (fun (_, t) -> lookup_typeref scope t)
-
-(* let typecheck_fct ((name: string), (args: argument list), (ret_type: typesRef option), (stmts: stmt gen_node list)) scope: scope =
-  let ret_type_def = bind (lookup_typeref scope) ret_type in
-  let args_type_def = typecheck_fct_args args scope in
-  let type_context_check *)
 
 let typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef option * (exp gen_node) list) =
   let otyped_exps =
@@ -401,7 +396,6 @@ let typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef o
       |> List.map Option.get in
     match t with
     | None ->
-      print_string "NONE\n";
       let exps =
         typed_exps
         |> List.map (fun x -> Typed x) in
@@ -426,26 +420,33 @@ let typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef o
           ((vars, Some t, exps), new_scope) |> some
       )
 
+let typecheck_decl scope decl =
+  match decl with
+  | Position x ->
+    (match x.value with
+    | Var l ->
+      check_and_scope l typecheck_var_decl scope
+      |> bind (fun (scope, ol) ->
+          (scope, Var ol) |> some
+      )
+    | Type decls -> None (* TODO Just typecheck the typesDef and add them to scope *)
+    | Fct _ -> None) (* add the func to scope, typecheck the body first *)
+  | _ -> None
+
+(* This functions needs to be changed to 'accumulate' the scopes *)
 let typecheck (p: program) =
   let package, decls = p in
   let typed_decls =
     decls
-    |> List.map (fun decl ->
-      match decl with
-      | Position x ->
-        (match x.value with
-        | Var l ->
-          check_and_scope l typecheck_var_decl top_level
-          |> bind (fun (scope, ol) -> (* TODO: need to pass that scope *)
-              Var ol |> some
-          )
-        | _ -> print_string "BAD"; None)
-      | _ -> print_string "BAD"; None
-    )
-    |> List.filter is_some in
-  if List.length typed_decls <> List.length decls then None
-  else
-    typed_decls
-    |> List.map Option.get
-    |> (fun x -> (package, x))
-    |> some
+    |> List.fold_left (fun acc decl ->
+      acc
+      |> bind (fun (acc_scope, acc_decls) ->
+        typecheck_decl acc_scope decl
+        |> bind (fun (new_scope, new_decl) ->
+          let new_scope = merge acc_scope new_scope in
+          let new_decls = List.append acc_decls [new_decl] in
+          Some (new_scope, new_decls)
+        )
+      )
+    ) (Some (top_level, [])) in
+  typed_decls
