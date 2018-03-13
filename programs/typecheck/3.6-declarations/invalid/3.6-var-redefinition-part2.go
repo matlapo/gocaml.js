@@ -5,7 +5,3 @@ var (
 )
 
 var x int
-
-func main() {
-
-}
