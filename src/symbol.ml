@@ -563,7 +563,7 @@ let typecheck_decl scope decl =
         |> bind (fun new_scope ->
           (new_scope, Type new_types) |> some
         )
-    | Fct (name, args, typ, stmts) ->
+    | Fct (name, args, otyp, stmts) ->
       let empty_function_scope = new_scope scope in
       args
       |> typecheck_args scope
@@ -571,10 +571,15 @@ let typecheck_decl scope decl =
         type_context_check stmts empty_function_scope
         |> bind (fun (typed_stmts, new_scope) ->
           let typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
-          let function_binding = (name, typed_args, None) in
+          let oreturn_type =
+            otyp
+            |> bind (fun typ ->
+              type_ref_to_def scope typ
+            ) in
+          let function_binding = (name, typed_args, oreturn_type) in
           add_function_binding new_scope function_binding
           |> bind (fun new_scope ->
-            (new_scope, Fct (name, args, typ, typed_stmts)) |> some
+            (new_scope, Fct (name, args, otyp, typed_stmts)) |> some
           )
         )
       )
