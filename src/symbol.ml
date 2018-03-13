@@ -16,6 +16,15 @@ let rev_assoc l =
   l
   |> List.map (fun (a,b) -> (b,a))
 
+
+let contains_duplicate l =
+  l
+  |> List.map (fun x ->
+    l
+    |> List.find_all (fun name -> x = name)
+  )
+  |> List.exists (fun x -> List.length x > 1)
+
 let some x = Some x
 
 let id_undeclared id = Printf.sprintf "Variable %s is used before being declared" id
@@ -366,6 +375,7 @@ let rec typecheck_simple (s: simpleStm gen_node) (current: scope) =
     (match e.value with
     | Assign (assign_type, (kinds, exps)) ->
       None
+    | Empty -> Scoped { position = e.position; scope = current; value = Empty } |> some
     | _ -> None)
   | _ -> failwith "wut wut"
 
@@ -393,6 +403,16 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
       )
     | Print l -> print_helper l false
     | Println l -> print_helper l true
+    | Declaration l ->
+      check_and_scope l typecheck_var_decl current
+      |> bind (fun (scope, ol) ->
+          Some { position = e.position; scope = scope; value = Declaration ol }
+      )
+    | Simple simple ->
+      typecheck_simple simple current
+      |> bind (fun simple ->
+        Some { position = e.position; scope = current; value = Simple simple }
+      )
     (* | If  *)
     | _ -> failwith "not implemented")
   | Typed e -> None
@@ -414,14 +434,13 @@ and type_context_check l scope =
       )
     ) (Some ([], scope))
 
-
 (*
 Takes a list of Var declarations and for each one it calls check_fun
 (typecheck_var_decl in the case for vars), it 'accumulate' the scopes returned
 by each Var declaration and merge all of them together in order to return a single
 updated top-level scope.
 *)
-let check_and_scope l check_func init_scope =
+and check_and_scope l check_func init_scope =
   l
   |> List.fold_left (fun acc decl ->
     acc
@@ -437,21 +456,13 @@ let check_and_scope l check_func init_scope =
     )
   ) (Some (init_scope, []))
 
-let contains_duplicate l =
-  l
-  |> List.map (fun x ->
-    l
-    |> List.find_all (fun name -> x = name)
-  )
-  |> List.exists (fun x -> List.length x > 1)
-
 (*
 this function takes a single Var declaration and checks if it typechecks. If a type annotation is
 also given, it makes sure that it matches the type of each expression. This function returns the same
 Var declaration but with tnodes (nodes with an extra field representing the type). Note that it assumes
 that the number of variables matches the number of expression (this is handled by weeding).
 *)
-let typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef option * (exp gen_node) list) =
+and typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef option * (exp gen_node) list) =
   let otyped_exps =
     exps
     |> List.map (fun exp -> typecheck_exp scope exp)
@@ -522,12 +533,13 @@ let typecheck_decl scope decl =
           (new_scope, Type new_types) |> some
         )
     | Fct (name, args, typ, stmts) ->
-      type_context_check stmts scope
+      let function_scope = new_scope scope in
+      type_context_check stmts function_scope
       |> bind (fun (typed_stmts, new_scope) ->
         let typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
         (new_scope, Fct (name, args, typ, typed_stmts)) |> some
       )
-    ) (* add the func to scope, typecheck the body first *)
+    )
   | _ -> None
 
 (*
