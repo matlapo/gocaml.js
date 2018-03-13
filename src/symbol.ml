@@ -91,6 +91,13 @@ let rec print_scope scope : unit =
       let s = Printf.sprintf "%s: %s" name (typesDef_to_string typ) in
       print_endline s;
     ) in
+  let _ =
+    print_endline "#Function bindings#";
+    scope.functions
+    |> List.iter (fun (name, args, oreturn_type) ->
+      let s = Printf.sprintf "%s: function" name in
+      print_endline s;
+    ) in
   match scope.parent with
   | Some scope -> print_scope scope
   | None -> ()
@@ -512,6 +519,19 @@ and typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef o
             ((vars, Some t, exps), new_scope) |> some
         )
 
+let add_function_binding (scope: scope) (binding: (string * typesDef list * typesDef option)) =
+  match scope.parent with
+  | None -> None
+  | Some parent ->
+    let (name, _, _) = binding in
+    let new_bindings =
+      parent.functions
+      |> List.map (fun (name, _, _) -> name)
+      |> List.append [name] in
+    if contains_duplicate new_bindings then None
+    else
+      Some { scope with parent = Some { parent with functions = List.append parent.functions [binding] } }
+
 (*
  Depending on the type of declaration (i.e Var, Type or Fct) this function will
  add the new bindings to the given scope and return the updated scope along with
@@ -544,14 +564,18 @@ let typecheck_decl scope decl =
           (new_scope, Type new_types) |> some
         )
     | Fct (name, args, typ, stmts) ->
-      let function_scope = new_scope scope in
+      let empty_function_scope = new_scope scope in
       args
       |> typecheck_args scope
-      |> bind (fun arg ->
-        type_context_check stmts function_scope
+      |> bind (fun typed_args ->
+        type_context_check stmts empty_function_scope
         |> bind (fun (typed_stmts, new_scope) ->
           let typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
-          (new_scope, Fct (name, args, typ, typed_stmts)) |> some
+          let function_binding = (name, typed_args, None) in
+          add_function_binding new_scope function_binding
+          |> bind (fun new_scope ->
+            (new_scope, Fct (name, args, typ, typed_stmts)) |> some
+          )
         )
       )
     )
