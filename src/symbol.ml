@@ -59,7 +59,48 @@ let top_level =
     parent = None
   }
 
+let typesDef_to_string d =
+  match d with
+  | TypeT s -> s
+  | StructT _ -> "struct"
+  | ArrayT (typ, _) -> Printf.sprintf "%s array" typ
+  | SliceT (typ, _) -> Printf.sprintf "%s slice" typ
+
+let rec print_scope scope : unit =
+  print_endline "##### START OF SCOPE #####";
+  let _ =
+    print_endline "#Name bindings#";
+    scope.bindings
+    |> List.iter (fun (name, typ) ->
+      let s = Printf.sprintf "%s: %s" name (typesDef_to_string typ) in
+      print_endline s;
+    ) in
+  let _ =
+    print_endline "#Type bindings#";
+    scope.types
+    |> List.iter (fun (name, typ) ->
+      let s = Printf.sprintf "%s: %s" name (typesDef_to_string typ) in
+      print_endline s;
+    ) in
+  match scope.parent with
+  | Some scope -> print_scope scope
+  | None -> ()
+
 let to_tnode (e: exp node) t = { position = e.position; typ = t; value = e.value }
+
+let rec type_ref_to_def (scope: scope) (t: typesRef) =
+  match t with
+  | ArrayR (typ, l) -> ArrayT (typ, l) |> some
+  | SliceR (typ, l) -> SliceT (typ, l) |> some
+  | TypeR typ ->
+    let ot =
+      scope.types
+      |> List.assoc_opt typ in
+    match ot with
+    | Some typ -> Some typ
+    | None ->
+      scope.parent
+      |> bind (fun x -> type_ref_to_def x t)
 
 (* before calling this function, need to resolve the types to get base types *)
 (* TODO, do the resolving here instead *)
@@ -298,19 +339,26 @@ and typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
   | Typed e -> Some e
   | Scoped e -> None
 
-let merge (old_scope: scope) (new_scope: scope) : scope =
+let merge (old_scope: scope) (new_scope: scope) : scope option =
   let rec helper old_scope new_bindings =
     match new_bindings with
-    | [] -> old_scope
+    | [] -> Some old_scope
     | (name, typ)::xs ->
-      if List.mem_assoc name old_scope = true then helper old_scope xs
+      if List.mem_assoc name old_scope = true then (print_string "ERROR: "; print_endline name; None)
       else helper (List.append old_scope [(name, typ)]) xs in
-  { old_scope with
-    bindings = helper old_scope.bindings new_scope.bindings;
-    types = helper old_scope.types new_scope.types
-  }
+  helper old_scope.bindings new_scope.bindings
+  |> bind (fun bindings ->
+    helper old_scope.types new_scope.types
+    |> bind (fun types ->
+      { old_scope with
+        bindings = bindings;
+        types = types
+      } |> some
+    )
+  )
 
 let new_scope parent = { bindings = []; types = []; functions = []; parent = Some parent }
+let empty_scope = { bindings = []; types = []; functions = []; parent = None }
 
 let rec typecheck_simple (s: simpleStm gen_node) (current: scope) =
   match s with
@@ -357,27 +405,22 @@ and type_context_check l scope =
       |> bind (fun (s_nodes, context) ->
         typecheck_stm g_node context
         |> bind (fun s ->
-          let merged = merge context s.scope in
-          let s_nodes = List.append s_nodes [s] in
-          Some (s_nodes, merged)
+          merge context s.scope
+          |> bind (fun merged ->
+            let s_nodes = List.append s_nodes [s] in
+            Some (s_nodes, merged)
+          )
         )
       )
     ) (Some ([], scope))
 
-let rec type_ref_to_def (scope: scope) (t: typesRef) =
-  match t with
-  | ArrayR (typ, l) -> ArrayT (typ, l) |> some
-  | SliceR (typ, l) -> SliceT (typ, l) |> some
-  | TypeR typ ->
-    let ot =
-      scope.types
-      |> List.assoc_opt typ in
-    match ot with
-    | Some typ -> Some typ
-    | None ->
-      scope.parent
-      |> bind (fun x -> type_ref_to_def x t)
 
+(*
+Takes a list of Var declarations and for each one it calls check_fun
+(typecheck_var_decl in the case for vars), it 'accumulate' the scopes returned
+by each Var declaration and merge all of them together in order to return a single
+updated top-level scope.
+*)
 let check_and_scope l check_func init_scope =
   l
   |> List.fold_left (fun acc decl ->
@@ -385,21 +428,29 @@ let check_and_scope l check_func init_scope =
     |> bind (fun (acc_scope, acc_decls) ->
       check_func acc_scope decl
       |> bind (fun (d, scope) ->
-        let new_scope = merge acc_scope scope in
-        let new_decls = List.append acc_decls [d] in
-        Some (new_scope, new_decls)
+        merge acc_scope scope
+        |> bind (fun new_scope ->
+          let new_decls = List.append acc_decls [d] in
+          Some (new_scope, new_decls)
+        )
       )
     )
   ) (Some (init_scope, []))
 
-let typecheck_fct_args (args: argument list) (scope: scope) =
-  List.map (fun (_, t) -> lookup_typeref scope t)
+let contains_duplicate l =
+  l
+  |> List.map (fun x ->
+    l
+    |> List.find_all (fun name -> x = name)
+  )
+  |> List.exists (fun x -> List.length x > 1)
 
-let print_scope scope =
-  print_string "SCOPE: ";
-  scope.bindings
-  |> List.iter (fun (name, _) -> print_endline name;)
-
+(*
+this function takes a single Var declaration and checks if it typechecks. If a type annotation is
+also given, it makes sure that it matches the type of each expression. This function returns the same
+Var declaration but with tnodes (nodes with an extra field representing the type). Note that it assumes
+that the number of variables matches the number of expression (this is handled by weeding).
+*)
 let typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef option * (exp gen_node) list) =
   let otyped_exps =
     exps
@@ -408,6 +459,7 @@ let typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef o
   if List.length otyped_exps <> List.length exps then None
   else
     if check_vars_declared scope vars = true then None
+    else if contains_duplicate vars = true then None
     else
       let typed_exps =
         otyped_exps
@@ -420,7 +472,7 @@ let typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef o
         let new_bindings =
           typed_exps
           |> List.map2 (fun name node -> (name, node.typ)) vars in
-        let new_scope = merge scope { scope with bindings = new_bindings } in
+        let new_scope = { empty_scope with bindings = new_bindings } in
         ((vars, t, exps), new_scope) |> some
       | Some t ->
         lookup_typeref top_level t
@@ -434,10 +486,15 @@ let typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef o
             let new_bindings =
               vars
               |> List.map (fun name -> (name, typ)) in
-            let new_scope = merge scope { scope with bindings = new_bindings } in
+            let new_scope = { empty_scope with bindings = new_bindings } in
             ((vars, Some t, exps), new_scope) |> some
         )
 
+(*
+ Depending on the type of declaration (i.e Var, Type or Fct) this function will
+ add the new bindings to the given scope and return the updated scope along with
+ the same declaration but in a different type of node.
+*)
 let typecheck_decl scope decl =
   match decl with
   | Position x ->
@@ -459,8 +516,11 @@ let typecheck_decl scope decl =
         let new_types =
           typed_decls
           |> List.map Option.get in
-        let new_scope = { scope with types = List.append scope.types new_types } in
-        (new_scope, Type new_types) |> some
+        { empty_scope with types = new_types }
+        |> merge scope
+        |> bind (fun new_scope ->
+          (new_scope, Type new_types) |> some
+        )
     | Fct (name, args, typ, stmts) ->
       type_context_check stmts scope
       |> bind (fun (typed_stmts, new_scope) ->
@@ -470,8 +530,15 @@ let typecheck_decl scope decl =
     ) (* add the func to scope, typecheck the body first *)
   | _ -> None
 
+(*
+Root function: for each declaration, it calls typecheck_decl that will return the same
+declaration but using a different type of node (a node with a type or a node with a scope).
+typecheck_decl also returns an updated scope. Typecheck_decl is called for each declaration
+so that's why we use a fold (we accumulate the new scopes).
+*)
 let typecheck (p: program) =
   let package, decls = p in
+  let init_scope = new_scope top_level in
   let typed_decls =
     decls
     |> List.fold_left (fun acc decl ->
@@ -479,10 +546,13 @@ let typecheck (p: program) =
       |> bind (fun (acc_scope, acc_decls) ->
         typecheck_decl acc_scope decl
         |> bind (fun (new_scope, new_decl) ->
-          let new_scope = merge acc_scope new_scope in
           let new_decls = List.append acc_decls [new_decl] in
           Some (new_scope, new_decls)
         )
       )
-    ) (Some (top_level, [])) in
+    ) (Some (init_scope, [])) in
   typed_decls
+  |> bind (fun (scope, decls) ->
+    print_scope scope;
+    Some decls
+  )
