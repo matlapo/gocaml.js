@@ -5,7 +5,7 @@ package main
 func rotateRight(x int, n int) {
 	shifted := x >> n
 	rotBits := x << (32 - n)
-	combined := shifted | rot_bits
+	combined := shifted | rotBits
 
 	return combined
 }
