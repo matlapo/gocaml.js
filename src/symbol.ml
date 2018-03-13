@@ -424,7 +424,20 @@ let typecheck_decl scope decl =
       |> bind (fun (scope, ol) ->
           (scope, Var ol) |> some
       )
-    | Type decls -> None (* TODO Just typecheck the typesDef and add them to scope *)
+    | Type decls ->
+      let typed_decls =
+        decls
+        |> List.map (fun (name, x) ->
+          lookup_typedef scope x
+          |> bind (fun typ -> Some (name, typ)))
+        |> List.filter is_some in
+      if List.length typed_decls <> List.length decls then None
+      else
+        let new_types =
+          typed_decls
+          |> List.map Option.get in
+        let new_scope = { scope with types = List.append scope.types new_types } in
+        (new_scope, Type new_types) |> some
     | Fct _ -> None) (* add the func to scope, typecheck the body first *)
   | _ -> None
 
