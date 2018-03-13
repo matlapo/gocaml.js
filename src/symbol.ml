@@ -104,6 +104,16 @@ let try_base_type (s: string) =
   else if s = base_rune then s |> some
   else None
 
+(* checks if a list of vars are already declared in the current scope *)
+let check_vars_declared (scope: scope) (names: string list) =
+    let onames =
+      names
+      |> List.map (fun name ->
+        if List.mem_assoc name scope.bindings = true then None else Some name
+      )
+      |> List.filter is_some in
+    if List.length onames <> List.length names then true else false
+
 let rec lookup_type (scope: scope) (name: string) =
   let t =
     scope.types
@@ -289,9 +299,15 @@ and typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
   | Scoped e -> None
 
 let merge (old_scope: scope) (new_scope: scope) : scope =
+  let rec helper old_scope new_bindings =
+    match new_bindings with
+    | [] -> old_scope
+    | (name, typ)::xs ->
+      if List.mem_assoc name old_scope = true then helper old_scope xs
+      else helper (List.append old_scope [(name, typ)]) xs in
   { old_scope with
-    bindings = List.append old_scope.bindings new_scope.bindings;
-    types = List.append old_scope.types new_scope.types
+    bindings = helper old_scope.bindings new_scope.bindings;
+    types = helper old_scope.types new_scope.types
   }
 
 let new_scope parent = { bindings = []; types = []; functions = []; parent = Some parent }
@@ -379,6 +395,10 @@ let check_and_scope l check_func init_scope =
 let typecheck_fct_args (args: argument list) (scope: scope) =
   List.map (fun (_, t) -> lookup_typeref scope t)
 
+(* let print_scope scope =
+  scope.bindings
+  |> List.iter (fun (name, _) -> print_endline name;) *)
+
 let typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef option * (exp gen_node) list) =
   let otyped_exps =
     exps
@@ -386,34 +406,36 @@ let typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef o
     |> List.filter is_some in
   if List.length otyped_exps <> List.length exps then None
   else
-    let typed_exps =
-      otyped_exps
-      |> List.map Option.get in
-    match t with
-    | None ->
-      let exps =
-        typed_exps
-        |> List.map (fun x -> Typed x) in
-      let new_bindings =
-        typed_exps
-        |> List.map2 (fun name node -> (name, node.typ)) vars in
-      let new_scope = { scope with bindings = List.append scope.bindings new_bindings } in
-      ((vars, t, exps), new_scope) |> some
-    | Some t ->
-      lookup_typeref top_level t
-      |> bind (fun typ ->
-        let exps_with_annotation =
+    if check_vars_declared scope vars = true then None
+    else
+      let typed_exps =
+        otyped_exps
+        |> List.map Option.get in
+      match t with
+      | None ->
+        let exps =
           typed_exps
-          |> List.filter (fun x -> x.typ = typ)
           |> List.map (fun x -> Typed x) in
-        if List.length exps_with_annotation <> List.length typed_exps then None
-        else
-          let new_bindings =
-            vars
-            |> List.map (fun name -> (name, typ)) in
-          let new_scope = { scope with bindings = List.append scope.bindings new_bindings } in
-          ((vars, Some t, exps), new_scope) |> some
-      )
+        let new_bindings =
+          typed_exps
+          |> List.map2 (fun name node -> (name, node.typ)) vars in
+        let new_scope = merge scope { scope with bindings = new_bindings } in
+        ((vars, t, exps), new_scope) |> some
+      | Some t ->
+        lookup_typeref top_level t
+        |> bind (fun typ ->
+          let exps_with_annotation =
+            typed_exps
+            |> List.filter (fun x -> x.typ = typ)
+            |> List.map (fun x -> Typed x) in
+          if List.length exps_with_annotation <> List.length typed_exps then None
+          else
+            let new_bindings =
+              vars
+              |> List.map (fun name -> (name, typ)) in
+            let new_scope = merge scope { scope with bindings = new_bindings } in
+            ((vars, Some t, exps), new_scope) |> some
+        )
 
 let typecheck_decl scope decl =
   match decl with
