@@ -362,11 +362,6 @@ let rec type_ref_to_def (scope: scope) (t: typesRef) =
       scope.parent
       |> bind (fun x -> type_ref_to_def x t)
 
-let print_scope (scope: scope) =
-  print_string "SCOPE\n";
-  scope.bindings
-  |> List.iter (fun (name, _) -> print_string name; print_newline();)
-
 let check_and_scope l check_func init_scope =
   l
   |> List.fold_left (fun acc decl ->
@@ -433,7 +428,6 @@ let typecheck_decl scope decl =
     | Fct _ -> None) (* add the func to scope, typecheck the body first *)
   | _ -> None
 
-(* This functions needs to be changed to 'accumulate' the scopes *)
 let typecheck (p: program) =
   let package, decls = p in
   let typed_decls =
