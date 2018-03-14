@@ -150,7 +150,7 @@ let check_op (a: typesDef) (l: base_types list) =
   |> (fun x ->
     match x with
     | Some x -> x
-    | None -> print_string "some error message"; None
+    | None -> print_string "Error: some error message"; None
   )
 
 let try_base_type (s: string) =
@@ -360,7 +360,7 @@ let merge (old_scope: scope) (new_scope: scope) : scope option =
     match new_bindings with
     | [] -> Some old_scope
     | (name, typ)::xs ->
-      if List.mem_assoc name old_scope = true then (print_string "ERROR: "; print_endline name; None)
+      if List.mem_assoc name old_scope = true then (print_string "Error: "; print_endline name; None)
       else helper (List.append old_scope [(name, typ)]) xs in
   helper old_scope.bindings new_scope.bindings
   |> bind (fun bindings ->
