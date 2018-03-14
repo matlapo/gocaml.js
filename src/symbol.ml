@@ -495,7 +495,7 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
     | Print l -> print_helper l false
     | Println l -> print_helper l true
     | Declaration l ->
-      check_and_scope l typecheck_var_decl current
+      typecheck_decl_list l typecheck_var_decl current
       |> bind (fun (scope, ol) ->
           Some { position = e.position; scope = scope; value = Declaration ol }
       )
@@ -540,12 +540,11 @@ and type_check_stm_list l scope =
     ) (Some ([], scope))
 
 (*
-Takes a list of Var declarations and for each one it calls check_fun
-(typecheck_var_decl in the case for vars), it 'accumulate' the scopes returned
-by each Var declaration and merge all of them together in order to return a single
-updated top-level scope.
+Takes a list of declarations and for each one it calls a function that will typecheck the declaration and return the typed
+declaration along with an updated scope. It 'accumulate' the scopes returned by each declaration and merge all of them
+together in order to return a single updated scope containing all the new bindings.
 *)
-and check_and_scope l check_func init_scope =
+and typecheck_decl_list l check_func init_scope =
   l
   |> List.fold_left (fun acc decl ->
     acc
@@ -574,8 +573,8 @@ and typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef o
     |> List.filter is_some in
   if List.length otyped_exps <> List.length exps then None
   else
-    if check_vars_declared scope vars = true then None
-    else if contains_duplicate vars = true then None
+    if check_vars_declared scope vars then None
+    else if contains_duplicate vars then None
     else
       let typed_exps =
         otyped_exps
@@ -605,20 +604,6 @@ and typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef o
             let new_scope = { empty_scope with bindings = new_bindings } in
             ((vars, Some t, exps), new_scope) |> some
         )
-
-let add_function_binding (scope: scope) (binding: (string * typesDef list * typesDef option)) =
-  match scope.parent with
-  | None -> None
-  | Some parent ->
-    let (name, _, _) = binding in
-    let new_bindings =
-      parent.functions
-      |> List.map (fun (name, _, _) -> name)
-      |> List.append [name] in
-    if contains_duplicate new_bindings then None
-    else
-      Some { scope with parent = Some { parent with functions = List.append parent.functions [binding] } }
-
 (*
  Depending on the type of declaration (i.e Var, Type or Fct) this function will
  add the new bindings to the given scope and return the updated scope along with
@@ -629,7 +614,7 @@ let typecheck_decl scope decl =
   | Position x ->
     (match x.value with
     | Var l ->
-      check_and_scope l typecheck_var_decl scope
+      typecheck_decl_list l typecheck_var_decl scope
       |> bind (fun (scope, ol) ->
           (scope, Var ol) |> some
       )
