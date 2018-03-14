@@ -398,8 +398,6 @@ let rec typecheck_simple (s: simpleStm gen_node) (current: scope) =
     | _ -> None)
   | _ -> failwith "wut wut"
 
-(* TODO typecheck the types in struct declaration *)
-(* TODO typecheck the declarations before storing new binding *)
 let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option =
   match s with
   | Position e ->
@@ -418,6 +416,7 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
       let new_scope = new_scope current in
       type_check_stm_list l new_scope
       |> bind (fun (stms, new_scope) ->
+        let new_scope = { current with children = [new_scope] } in
         Some { position = e.position; scope = new_scope; value = Block (List.map (fun x -> Scoped x) stms) }
       )
     | Print l -> print_helper l false
@@ -442,7 +441,6 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
         { empty_scope with types = new_types }
         |> merge current
         |> bind (fun new_scope ->
-          (* (new_scope, Type new_types) |> some *)
           Some { position = e.position; scope = new_scope; value = TypeDeclaration new_types }
         )
     | Simple simple ->
