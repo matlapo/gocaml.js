@@ -355,13 +355,11 @@ and typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
   | Scoped e -> None
 
 let merge (old_scope: scope) (new_scope: scope) : scope option =
-  (* print_current_scope old_scope;
-  print_current_scope new_scope; *)
   let rec helper old_scope new_bindings =
     match new_bindings with
     | [] -> Some old_scope
     | (name, typ)::xs ->
-      if List.mem_assoc name old_scope = true then (print_string "ERROR: "; print_endline name; None)
+      if List.mem_assoc name old_scope = true then (print_string "error: "; print_endline name; None)
       else helper (List.append old_scope [(name, typ)]) xs in
   helper old_scope.bindings new_scope.bindings
   |> bind (fun bindings ->
@@ -419,6 +417,81 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
         let new_scope = { current with children = [new_scope] } in
         Some { position = e.position; scope = new_scope; value = Block (List.map (fun x -> Scoped x) stms) }
       )
+    | If (osimple, oexp, ifs, oelses) ->
+      let simple_scope = new_scope current in
+      let if_scope = new_scope current in
+      let if_helper typed_simple typed_exp typed_elses =
+        type_check_stm_list ifs if_scope
+        |> bind (fun (stms, new_scope) ->
+          let new_current_scope =
+            typed_simple
+            |> bind (fun simple ->
+              match simple with
+              | Scoped s ->
+                { current with children = [new_scope; s.scope] } |> some
+              | _ -> None
+            )
+            |> default { current with children = [new_scope] } in
+          let else_scope =
+              typed_elses
+              |> bind (fun elses ->
+                elses
+                |> List.rev
+                |> List.hd
+                |> (fun x -> match x with Scoped s -> Some s.scope | _ -> None)
+            ) in
+          let scoped_stms = List.map (fun x -> Scoped x) stms in
+          match typed_elses with
+          | None ->
+              Some { position = e.position; scope = new_current_scope; value = If (typed_simple, typed_exp, scoped_stms, typed_elses) }
+          | Some _ ->
+            else_scope
+            |> bind (fun else_scope ->
+              let new_current_scope = { new_current_scope with children = List.append new_current_scope.children [else_scope] } in
+              Some { position = e.position; scope = new_current_scope; value = If (typed_simple, typed_exp, scoped_stms, typed_elses) }
+            )
+        ) in
+      let typed_exp =
+        typecheck_exp current oexp
+        |> bind (fun typed -> Typed typed |> some) in
+      let typed_simple =
+        osimple
+        |> bind (fun simple ->
+          typecheck_simple simple simple_scope
+        ) in
+      let typed_elses =
+        oelses
+        |> bind (fun elses ->
+          type_check_stm_list elses current
+          |> bind (fun (snodes, _) ->
+            snodes
+            |> List.map (fun x -> Scoped x)
+            |> some
+          )
+        ) in
+      typed_exp
+      |> bind (fun typed_exp ->
+        match oelses with
+        | None ->
+          (match osimple with
+          | None -> if_helper None typed_exp None
+          | Some _ ->
+            typed_simple
+            |> bind (fun typed_simple ->
+              if_helper (Some typed_simple) typed_exp None
+            ))
+        | Some _ ->
+          typed_elses
+          |> bind (fun typed_else ->
+            (match osimple with
+            | None -> if_helper None typed_exp (Some typed_else)
+            | Some _ ->
+              typed_simple
+              |> bind (fun typed_simple ->
+                if_helper (Some typed_simple) typed_exp (Some typed_else)
+              ))
+          )
+      )
     | Print l -> print_helper l false
     | Println l -> print_helper l true
     | Declaration l ->
@@ -460,12 +533,8 @@ and type_check_stm_list l scope =
       |> bind (fun (s_nodes, acc_scope) ->
         typecheck_stm g_node acc_scope
         |> bind (fun s ->
-          (* merge s.scope acc_scope *)
-          Some s.scope
-          |> bind (fun merged ->
-            let s_nodes = List.append s_nodes [s] in
-            Some (s_nodes, merged)
-          )
+          let s_nodes = List.append s_nodes [s] in
+          Some (s_nodes, s.scope)
         )
       )
     ) (Some ([], scope))
@@ -595,15 +664,12 @@ let typecheck_decl scope decl =
               type_ref_to_def scope typ
             ) in
           let function_binding = (name, typed_args, oreturn_type) in
-          (* add_function_binding new_scope function_binding *)
-          (* |> bind (fun new_scope -> *)
           let scope =
             { scope with
               children = List.append scope.children [new_scope];
               functions = List.append scope.functions [function_binding]
             } in
           (scope, Fct (name, args, otyp, typed_stmts)) |> some
-          (* ) *)
         )
       )
     )

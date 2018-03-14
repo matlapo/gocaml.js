@@ -270,9 +270,9 @@ stm:
   | TVAR d = var_decls { Position { position = $symbolstartpos; value = Declaration d } }
   | TTYPE t = type_decls { Position { position = $symbolstartpos; value = TypeDeclaration t } }
   | TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
-    { Position { position = $symbolstartpos; value =  If (None, Some cond, s, l) } }
+    { Position { position = $symbolstartpos; value =  If (None, cond, s, l) } }
   | TIF simp = simpleStm TSEMICOLON cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
-    { Position { position = $symbolstartpos; value =  If (Some simp, Some cond, s, l) } }
+    { Position { position = $symbolstartpos; value =  If (Some simp, cond, s, l) } }
   | TFOR cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE
     { Position { position = $symbolstartpos; value = Loop (While (Some cond, s)) } }
   | TFOR TOPENINGBRACE s = stm_list TCLOSINGBRACE
@@ -327,9 +327,9 @@ simpleStm:
 
 else_ifs:
   | TELSE TIF cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
-    { Some [ Position { position = $symbolstartpos; value = If (None, Some cond, s, l) }] }
+    { Some [ Position { position = $symbolstartpos; value = If (None, cond, s, l) }] }
   | TELSE TIF simp = simpleStm TSEMICOLON cond = exp TOPENINGBRACE s = stm_list TCLOSINGBRACE l = else_ifs
-    { Some [ Position { position = $symbolstartpos; value = If (Some simp, Some cond, s, l) }] }
+    { Some [ Position { position = $symbolstartpos; value = If (Some simp, cond, s, l) }] }
   | TELSE TOPENINGBRACE s = stm_list TCLOSINGBRACE
     { Some s }
   | { None }

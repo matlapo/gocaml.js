@@ -110,7 +110,7 @@ and stmt =
     | Println of exp gen_node list
     | Declaration of (string list * typesRef option * (exp gen_node) list) list
     | TypeDeclaration of (string * typesDef) list
-    | If of (simpleStm gen_node) option * exp gen_node option * (stmt gen_node) list * elseif option
+    | If of (simpleStm gen_node) option * exp gen_node * (stmt gen_node) list * elseif option
     | Loop of loop
     | Return of exp gen_node option
     | Switch of (simpleStm gen_node) option * exp gen_node option * case list
