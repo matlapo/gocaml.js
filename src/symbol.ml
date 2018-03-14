@@ -534,8 +534,31 @@ let print_helper current (e: stmt node) l is_println =
     |> List.filter is_some in
   if List.length l <> List.length tnodes then None
   else
-    let lst = (List.map (fun x -> Typed (Option.get x)) tnodes) in
-    Some { position = e.position; scope = current; value = if is_println then Println lst else Print lst }
+    let tnodes = List.map Option.get tnodes in
+    let check_types =
+      tnodes
+      |> List.map (fun x -> match x.typ with | TypeT s -> Some s | _ -> None)
+      |> List.exists is_none in
+    let lst = List.map (fun x -> Typed x) tnodes in
+    if check_types = true then None
+    else
+      Some { position = e.position; scope = current; value = if is_println then Println lst else Print lst }
+
+let verify_return_statements (l: (stmt snode) list) expected_type =
+  l
+  |> List.map (fun s ->
+    match s.value with
+    | Return exp ->
+      exp
+      |> bind (fun exp ->
+        (match exp with
+        | Typed e -> Some e.typ = expected_type |> some
+        | _ -> None)
+      )
+      |> (default (is_none expected_type))
+    | _ -> true
+  )
+  |> List.exists (fun x -> x = false)
 
 (* given a statement node, typecheck it *)
 let rec typecheck_stm_opt current s =
@@ -621,7 +644,16 @@ let rec typecheck_stm_opt current s =
       |> bind (fun simple ->
         Some { position = e.position; scope = current; value = Simple simple }
       )
+    | Return exp ->
+      (match exp with
+      | None -> Some { position = e.position; scope = current; value = Return None }
+      | Some exp ->
+        typecheck_exp_opt current exp
+        |> bind (fun x ->
+          Some { position = e.position; scope = current; value = Return (Some (Typed x)) }
+        ))
     | _ -> failwith "not implemented")
+
   | Typed e -> None
   | Scoped e -> Some e
 
@@ -737,6 +769,13 @@ and typecheck_var_decl_opt scope (vars, t, exps) =
             let new_scope = { empty_scope with bindings = new_bindings } in
             ((vars, Some t, exps), new_scope) |> some
         )
+
+let check_invalid_main (name, args, otyp) =
+  if name = "main" then
+    List.length args > 0 || is_some otyp
+  else
+    false
+
 (*
  Depending on the type of declaration (i.e Var, Type or Fct) this function will
  add the new bindings to the given scope and return the updated scope along with
@@ -770,28 +809,32 @@ let typecheck_decl_opt scope decl =
         )
     | Fct (name, args, otyp, stmts) ->
       let empty_function_scope = new_scope scope in
-      args
-      |> typecheck_args_opt scope
-      |> bind (fun typed_args ->
-        let arguments_scope = List.map2 (fun (name, _) typ -> (name, typ)) args typed_args in
-        let empty_function_scope = { empty_function_scope with bindings = arguments_scope } in
-        typecheck_stm_list_opt stmts empty_function_scope
-        |> bind (fun (typed_stmts, new_scope) ->
-          let typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
-          let oreturn_type =
-            otyp
-            |> bind (fun typ ->
-              def_of_ref_opt scope typ
-            ) in
-          let function_binding = (name, typed_args, oreturn_type) in
-          let scope =
-            { scope with
-              children = List.append scope.children [new_scope];
-              functions = List.append scope.functions [function_binding]
-            } in
-          (scope, Fct (name, args, otyp, typed_stmts)) |> some
+      if check_invalid_main (name, args, otyp) then None
+      else
+        args
+        |> typecheck_args_opt scope
+        |> bind (fun typed_args ->
+          let arguments_scope = List.map2 (fun (name, _) typ -> (name, typ)) args typed_args in
+          let empty_function_scope = { empty_function_scope with bindings = arguments_scope } in
+          typecheck_stm_list_opt stmts empty_function_scope
+          |> bind (fun (typed_stmts, new_scope) ->
+            let scoped_typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
+            let oreturn_type =
+              otyp
+              |> bind (fun typ ->
+                def_of_ref_opt scope typ
+              ) in
+            if verify_return_statements typed_stmts oreturn_type = true then None
+            else
+              let function_binding = (name, typed_args, oreturn_type) in
+              let scope =
+                { scope with
+                  children = List.append scope.children [new_scope];
+                  functions = List.append scope.functions [function_binding]
+                } in
+              (scope, Fct (name, args, otyp, scoped_typed_stmts)) |> some
+          )
         )
-      )
     )
   | _ -> None
 
