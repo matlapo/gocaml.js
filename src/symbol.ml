@@ -82,7 +82,7 @@ let top_level =
     children = []
   }
 
-let typesDef_to_string d =
+let typesdef_to_string d =
   match d with
   | TypeT s -> s
   | StructT _ -> "struct"
@@ -96,14 +96,14 @@ let rec print_scope scope =
     print_endline "#Name bindings#";
     scope.bindings
     |> List.iter (fun (name, typ) ->
-      let s = Printf.sprintf "%s: %s" name (typesDef_to_string typ) in
+      let s = Printf.sprintf "%s: %s" name (typesdef_to_string typ) in
       print_endline s;
     ) in
   let _ =
     print_endline "#Type bindings#";
     scope.types
     |> List.iter (fun (name, typ) ->
-      let s = Printf.sprintf "%s: %s" name (typesDef_to_string typ) in
+      let s = Printf.sprintf "%s: %s" name (typesdef_to_string typ) in
       print_endline s;
     ) in
   let _ =
@@ -119,10 +119,10 @@ let rec print_scope scope =
 let print_symbol_table scope = print_scope scope
 
 (* converts a regular node to a node with the given type *)
-let to_tnode e t = { position = e.position; typ = t; value = e.value }
+let tnode_of_node (e: exp node) t = { position = e.position; typ = t; value = e.value }
 
 (* given a scope and a type reference, try finding the associated type definition *)
-let rec try_convert_ref_to_def scope t =
+let rec def_of_ref_opt scope t =
   match t with
   | ArrayR (typ, l) -> ArrayT (typ, l) |> some
   | SliceR (typ, l) -> SliceT (typ, l) |> some
@@ -134,10 +134,10 @@ let rec try_convert_ref_to_def scope t =
     | Some typ -> Some typ
     | None ->
       scope.parent
-      |> bind (fun x -> try_convert_ref_to_def x t)
+      |> bind (fun x -> def_of_ref_opt x t)
 
-(*  *)
-let check_ops a b l comparable =
+(* given the types of 2 arguments (for a binary operation) and a list of accepted types for the binary operation, return the resulting type *)
+let check_ops_opt a b l comparable =
   l
   |> List.map (fun t ->
     let t = to_string t in
@@ -152,6 +152,7 @@ let check_ops a b l comparable =
     | None -> print_string "Error: ..."; None
   )
 
+(* given type of an argument (for a unary operation) and a list of accepted types for the operation, return the resulting type *)
 let check_op a l =
   l
   |> List.map (fun t ->
@@ -167,7 +168,7 @@ let check_op a l =
     | None -> print_string "Error: some error message"; None
   )
 
-(* checks if a list of vars are already declared in the current scope *)
+(* checks if any variable name in a list is already declared in the current scope *)
 let check_vars_declared scope names =
     let onames =
       names
@@ -177,42 +178,48 @@ let check_vars_declared scope names =
       |> List.filter is_some in
     if List.length onames <> List.length names then true else false
 
-let rec lookup_type scope name =
+(* given a name and a scope, tries to find the associated type definition starting from the given scope up to the top-level scope *)
+let rec type_of_name_opt scope name =
   let t =
     scope.types
     |> List.assoc_opt name
-    |> bind (fun x -> lookup_typedef scope x) in
+    |> bind (fun x -> resolve_typedef_opt scope x) in
   match t with
   | Some t as found -> found
   | None ->
     scope.parent
-    |> bind (fun x -> lookup_type x name)
+    |> bind (fun x -> type_of_name_opt x name)
 
-and lookup_typedef (scope: scope) (t: typesDef) =
+(* given a type definition, make sure that it is a well-defined type (meaning that all the types it refer are also valid).
+Additionally, if the type is a TypeT (so basically just a name) it will try to convert it to a base type, an array, struct or slice (in other words, anything but simply a name!) *)
+and resolve_typedef_opt scope t =
   match t with
   | TypeT s ->
     (match try_base_type s with
     | Some s -> TypeT s |> some
-    | None -> lookup_type scope s)
+    | None -> type_of_name_opt scope s)
   | StructT members as def ->
     let l =
       members
       |> List.map (fun (_, t) -> t)
-      |> List.map (fun t -> lookup_typedef scope t)
+      |> List.map (fun t -> resolve_typedef_opt scope t)
       |> List.filter is_some in
     if List.length l <> List.length members then None else def |> some
   | SliceT (t, _) as slice ->
-    lookup_type scope t
+    type_of_name_opt scope t
     |> bind (fun x -> Some slice)
   | ArrayT (t, _) as a ->
-    lookup_type scope t
+    type_of_name_opt scope t
     |> bind (fun x -> Some a)
 
-let lookup_typeref (scope: scope) (t: typesRef) =
+(* given a type reference, it will try to find the associated type definition in the current scope or above, and then resolve the type definition.
+Note that we type check every type declarations before adding them to the symbole table, BUT we still resolve the type here to get something other than just a type name because
+when this function is called, we not only want to know if the type is valid, but also what is it precisely (is it an array, struct, etc?)*)
+let resolve_typeref_opt scope t =
   match t with
   | TypeR typ
   | ArrayR (typ, _)
-  | SliceR (typ, _) -> lookup_type scope typ
+  | SliceR (typ, _) -> type_of_name_opt scope typ
 
 let check_if_exps_are_all_ints scope exps typecheck_func =
   exps
@@ -220,18 +227,19 @@ let check_if_exps_are_all_ints scope exps typecheck_func =
   |> List.map (fun x ->
     x
     |> bind (fun x ->
-      lookup_typedef scope x.typ
+      resolve_typedef_opt scope x.typ
       |> bind (fun x ->
         if x = TypeT base_int then Some x else None
       )
     )
   )
 
-let try_find_array scope (name, exps) typecheck_func =
+(* given an array name and a list of expressions (i.e my_array[2][3+6]), return the resulting type, if possible*)
+let typedef_of_array_opt scope (name, exps) typecheck_func =
   scope.bindings
   |> List.assoc_opt name
   |> bind (fun x ->
-    lookup_typedef scope x
+    resolve_typedef_opt scope x
     |> bind (fun t ->
       match x with
       | ArrayT (typ, sizes) ->
@@ -247,22 +255,24 @@ let try_find_array scope (name, exps) typecheck_func =
     )
   )
 
-let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
+(* given a kind element (i.e a variable name or an array name with a list of expressions) returns the resulting type *)
+let rec typecheck_kind_element_opt (scope: scope) (e: kind_elem) =
   let try_in_scope =
     match e with
     | Variable name ->
       scope.bindings
       |> List.assoc_opt name
-      |> bind (fun x -> lookup_typedef scope x)
-    | Array (name, exps) -> try_find_array scope (name, exps) typecheck_exp in
+      |> bind (fun x -> resolve_typedef_opt scope x)
+    | Array (name, exps) -> typedef_of_array_opt scope (name, exps) typecheck_exp in
     (match try_in_scope with
     | Some t as found -> found
     | None ->
       scope.parent
-      |> bind (fun x -> lookup_kind_elem x e))
+      |> bind (fun x -> typecheck_kind_element_opt x e))
 
-and lookup_kind (scope: scope) (kind: kind): typesDef option =
-  let rec helper (scope: scope) (kind: kind) (typ: typesDef option) =
+(* given a list of kind_elements, type check the whole sequence and return the resulting type if possible *)
+and typecheck_kind_opt scope kind =
+  let rec helper scope kind typ =
     match kind with
     | [] -> None
     | x::[] -> typ
@@ -287,8 +297,8 @@ and lookup_kind (scope: scope) (kind: kind): typesDef option =
       ) in
     match kind with
     | [] -> None
-    | x::[] -> lookup_kind_elem scope x
-    | x::xs -> helper scope kind (lookup_kind_elem scope x)
+    | x::[] -> typecheck_kind_element_opt scope x
+    | x::xs -> helper scope kind (typecheck_kind_element_opt scope x)
 
 (* converts a exp node to exp enode (node with type) *)
 (* type rules are not implemented, just trying to get "best" structure for everything *)
@@ -298,16 +308,16 @@ and typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
   | Position e ->
     (match e.value with
     | Id kind ->
-      lookup_kind scope kind
+      typecheck_kind_opt scope kind
       |> bind (fun d ->
-        to_tnode e d |> some
+        tnode_of_node e d |> some
       )
-    | Int i -> to_tnode e (TypeT base_int) |> some
-    | Float f -> to_tnode e (TypeT base_float) |> some
+    | Int i -> tnode_of_node e (TypeT base_int) |> some
+    | Float f -> tnode_of_node e (TypeT base_float) |> some
     | RawStr s
-    | String s -> to_tnode e (TypeT base_string) |> some
-    | Bool b -> to_tnode e (TypeT base_bool) |> some
-    | Rune r -> to_tnode e (TypeT base_rune) |> some
+    | String s -> tnode_of_node e (TypeT base_string) |> some
+    | Bool b -> tnode_of_node e (TypeT base_bool) |> some
+    | Rune r -> tnode_of_node e (TypeT base_rune) |> some
     | BinaryOp (bin, (a, b)) ->
       typecheck_exp scope a
       |> bind (fun a ->
@@ -334,9 +344,9 @@ and typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
             | BOr
             | Caret
             | Mod -> [Int], false in
-          check_ops a.typ b.typ types comparable
+          check_ops_opt a.typ b.typ types comparable
           |> bind (fun x ->
-            to_tnode e (TypeT x) |> some
+            tnode_of_node e (TypeT x) |> some
           )
         )
       )
@@ -351,13 +361,14 @@ and typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
           | Not -> [Bool] in
         check_op a.typ types
         |> bind (fun x ->
-          to_tnode e (TypeT x) |> some
+          tnode_of_node e (TypeT x) |> some
         )
       )
     | _ -> None)
   | Typed e -> Some e
   | Scoped e -> None
 
+(* merge_scope_opt *)
 let merge (old_scope: scope) (new_scope: scope) : scope option =
   let rec helper old_scope new_bindings =
     match new_bindings with
@@ -379,7 +390,7 @@ let merge (old_scope: scope) (new_scope: scope) : scope option =
 let typecheck_args (scope: scope) (args: argument list) =
   let typed_args =
     args
-    |> List.map (fun (name, typ) -> lookup_typeref scope typ)
+    |> List.map (fun (name, typ) -> resolve_typeref_opt scope typ)
     |> List.filter is_some in
   if List.length args <> List.length typed_args then None
   else
@@ -507,7 +518,7 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
       let typed_decls =
         decls
         |> List.map (fun (name, x) ->
-          lookup_typedef current x
+          resolve_typedef_opt current x
           |> bind (fun typ -> Some (name, typ)))
         |> List.filter is_some in
       if List.length typed_decls <> List.length decls then None
@@ -530,6 +541,7 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
   | Typed e -> None
   | Scoped e -> Some e
 
+(* kljwahfsdaklj *)
 and type_check_stm_list l scope =
     l
     |> List.fold_left (fun acc g_node ->
@@ -594,7 +606,7 @@ and typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef o
         let new_scope = { empty_scope with bindings = new_bindings } in
         ((vars, t, exps), new_scope) |> some
       | Some t ->
-        lookup_typeref scope t
+        resolve_typeref_opt scope t
         |> bind (fun typ ->
           let exps_with_annotation =
             typed_exps
@@ -626,7 +638,7 @@ let typecheck_decl scope decl =
       let typed_decls =
         decls
         |> List.map (fun (name, x) ->
-          lookup_typedef scope x
+          resolve_typedef_opt scope x
           |> bind (fun typ -> Some (name, typ)))
         |> List.filter is_some in
       if List.length typed_decls <> List.length decls then None
@@ -650,7 +662,7 @@ let typecheck_decl scope decl =
           let oreturn_type =
             otyp
             |> bind (fun typ ->
-              try_convert_ref_to_def scope typ
+              def_of_ref_opt scope typ
             ) in
           let function_binding = (name, typed_args, oreturn_type) in
           let scope =
