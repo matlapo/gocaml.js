@@ -273,6 +273,23 @@ let rec typecheck_kind_element_opt scope e =
       scope.parent
       |> bind (fun x -> typecheck_kind_element_opt x e))
 
+(* given a type, checks that it is of type stuct and that the given name is one of its members *)
+and check_struct_member_opt typ member cont =
+  typ
+  |> bind (fun def ->
+    match def with
+    | StructT members ->
+      members
+      |> List.map (fun (names, t) ->
+        names
+        |> List.find_opt (fun x -> x = member)
+        |> bind (fun _ -> cont t)
+      )
+      |> List.find_opt is_some
+      |> bind id
+    | _ -> None
+  )
+
 (* given a list of kind_elements, type check the whole sequence and return the resulting type if possible *)
 and typecheck_kind_opt scope kind =
   let rec helper scope kind typ =
@@ -284,20 +301,8 @@ and typecheck_kind_opt scope kind =
         match y with
         | Variable n
         | Array (n, _) -> n in
-      typ
-      |> bind (fun def ->
-        match def with
-        | StructT members ->
-          members
-          |> List.map (fun (names, t) ->
-            names
-            |> List.find_opt (fun x -> x = member)
-            |> bind (fun _ -> helper scope (y::xs) (Some t))
-          )
-          |> List.find_opt is_some
-          |> bind id
-        | _ -> None
-      ) in
+      let rest_of_sequence = y::xs in
+      (check_struct_member_opt typ member (fun t -> helper scope rest_of_sequence (Some t))) in
     match kind with
     | [] -> None
     | x::[] -> typecheck_kind_element_opt scope x
@@ -388,7 +393,7 @@ let merge_scope_opt old_scope new_scope =
     )
   )
 
-(* given the arguments of a function (i.e (name, type reference)), typecheck_opt all the type references *)
+(* given the arguments of a function (i.e (name, type reference)), typecheck all the type references *)
 let typecheck_args_opt scope args =
   let typed_args =
     args
@@ -400,7 +405,7 @@ let typecheck_args_opt scope args =
     |> List.map Option.get
     |> some
 
-(* given a simple statement node, typecheck_opt it *)
+(* given a simple statement node, typecheck it *)
 let rec typecheck_simple_opt current s =
   match s with
   | Position e ->
@@ -411,20 +416,21 @@ let rec typecheck_simple_opt current s =
     | _ -> None)
   | _ -> failwith "wut wut"
 
-(* given a statement node, typecheck_opt it *)
+(* print helper function for typecheck print and println statements *)
+let print_helper current (e: stmt node) l is_println =
+  let tnodes =
+    l
+    |> List.map (fun x -> typecheck_exp_opt current x)
+    |> List.filter is_some in
+  if List.length l <> List.length tnodes then None
+  else
+    let lst = (List.map (fun x -> Typed (Option.get x)) tnodes) in
+    Some { position = e.position; scope = current; value = if is_println then Println lst else Print lst }
+
+(* given a statement node, typecheck it *)
 let rec typecheck_stm_opt current s =
   match s with
   | Position e ->
-    (* helper to avoid duplicated code *)
-    let print_helper (l: exp gen_node list) (ln: bool) =
-      let tnodes =
-        l
-        |> List.map (fun x -> typecheck_exp_opt current x)
-        |> List.filter is_some in
-      if List.length l <> List.length tnodes then None
-      else
-        let lst = (List.map (fun x -> Typed (Option.get x)) tnodes) in
-        Some { position = e.position; scope = current; value = if ln then Println lst else Print lst } in
     (match e.value with
     | Block l ->
       let new_scope = new_scope current in
@@ -435,38 +441,6 @@ let rec typecheck_stm_opt current s =
       )
     | If (osimple, oexp, ifs, oelses) ->
       let simple_scope = new_scope current in
-      let if_scope = new_scope current in
-      let if_helper typed_simple typed_exp typed_elses =
-        typecheck_stm_list_opt ifs if_scope
-        |> bind (fun (stms, new_scope) ->
-          let new_current_scope =
-            typed_simple
-            |> bind (fun simple ->
-              match simple with
-              | Scoped s ->
-                { current with children = [new_scope; s.scope] } |> some
-              | _ -> None
-            )
-            |> default { current with children = [new_scope] } in
-          let else_scope =
-              typed_elses
-              |> bind (fun elses ->
-                elses
-                |> List.rev
-                |> List.hd
-                |> (fun x -> match x with Scoped s -> Some s.scope | _ -> None)
-            ) in
-          let scoped_stms = List.map (fun x -> Scoped x) stms in
-          match typed_elses with
-          | None ->
-              Some { position = e.position; scope = new_current_scope; value = If (typed_simple, typed_exp, scoped_stms, typed_elses) }
-          | Some _ ->
-            else_scope
-            |> bind (fun else_scope ->
-              let new_current_scope = { new_current_scope with children = List.append new_current_scope.children [else_scope] } in
-              Some { position = e.position; scope = new_current_scope; value = If (typed_simple, typed_exp, scoped_stms, typed_elses) }
-            )
-        ) in
       let typed_exp =
         typecheck_exp_opt current oexp
         |> bind (fun typed -> Typed typed |> some) in
@@ -490,26 +464,26 @@ let rec typecheck_stm_opt current s =
         match oelses with
         | None ->
           (match osimple with
-          | None -> if_helper None typed_exp None
+          | None -> if_helper current ifs e None typed_exp None
           | Some _ ->
             typed_simple
             |> bind (fun typed_simple ->
-              if_helper (Some typed_simple) typed_exp None
+              if_helper current ifs e (Some typed_simple) typed_exp None
             ))
         | Some _ ->
           typed_elses
           |> bind (fun typed_else ->
             (match osimple with
-            | None -> if_helper None typed_exp (Some typed_else)
+            | None -> if_helper current ifs e None typed_exp (Some typed_else)
             | Some _ ->
               typed_simple
               |> bind (fun typed_simple ->
-                if_helper (Some typed_simple) typed_exp (Some typed_else)
+                if_helper current ifs e (Some typed_simple) typed_exp (Some typed_else)
               ))
           )
       )
-    | Print l -> print_helper l false
-    | Println l -> print_helper l true
+    | Print l -> print_helper current e l false
+    | Println l -> print_helper current e l true
     | Declaration l ->
       typecheck_decl_list_opt l typecheck_var_decl_opt current
       |> bind (fun (scope, ol) ->
@@ -537,10 +511,42 @@ let rec typecheck_stm_opt current s =
       |> bind (fun simple ->
         Some { position = e.position; scope = current; value = Simple simple }
       )
-    (* | If  *)
     | _ -> failwith "not implemented")
   | Typed e -> None
   | Scoped e -> Some e
+
+and if_helper current ifs (e: stmt node) typed_simple typed_exp typed_elses =
+  let if_scope = new_scope current in
+  typecheck_stm_list_opt ifs if_scope
+  |> bind (fun (stms, new_scope) ->
+    let new_current_scope =
+      typed_simple
+      |> bind (fun simple ->
+        match simple with
+        | Scoped s ->
+          { current with children = [new_scope; s.scope] } |> some
+        | _ -> None
+      )
+      |> default { current with children = [new_scope] } in
+    let else_scope =
+        typed_elses
+        |> bind (fun elses ->
+          elses
+          |> List.rev
+          |> List.hd
+          |> (fun x -> match x with Scoped s -> Some s.scope | _ -> None)
+      ) in
+    let scoped_stms = List.map (fun x -> Scoped x) stms in
+    match typed_elses with
+    | None ->
+        Some { position = e.position; scope = new_current_scope; value = If (typed_simple, typed_exp, scoped_stms, typed_elses) }
+    | Some _ ->
+      else_scope
+      |> bind (fun else_scope ->
+        let new_current_scope = { new_current_scope with children = List.append new_current_scope.children [else_scope] } in
+        Some { position = e.position; scope = new_current_scope; value = If (typed_simple, typed_exp, scoped_stms, typed_elses) }
+      )
+  )
 
 (* geiven a list of statement nodes, typecheck_opt them *)
 and typecheck_stm_list_opt l scope =
