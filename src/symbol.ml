@@ -43,7 +43,7 @@ type base_types =
   | Rune
 
 let base_int = "int"
-let base_float = "float"
+let base_float = "float64"
 let base_string = "string"
 let base_bool = "bool"
 let base_rune = "rune"
@@ -193,8 +193,10 @@ let rec type_of_name_opt scope name =
 (* given a type definition, make sure that it is a well-defined type (meaning that all the types it refer are also valid).
 Additionally, if the type is a TypeT (so basically just a name) it will try to convert it to a base type, an array, struct or slice (in other words, anything but simply a name!) *)
 and resolve_typedef_opt scope t =
+  print_endline "HERE";
   match t with
   | TypeT s ->
+    print_endline "TYPE";
     (match try_base_type s with
     | Some s -> TypeT s |> some
     | None -> type_of_name_opt scope s)
@@ -209,6 +211,7 @@ and resolve_typedef_opt scope t =
     type_of_name_opt scope t
     |> bind (fun x -> Some slice)
   | ArrayT (t, _) as a ->
+    print_endline "ARRAY";
     type_of_name_opt scope t
     |> bind (fun x -> Some a)
 
@@ -257,6 +260,7 @@ let typedef_of_array_opt scope (name, exps) typecheck_func =
 
 (* given a kind element (i.e a variable name or an array name with a list of expressions) returns the resulting type *)
 let rec typecheck_kind_element_opt scope e =
+  print_endline "WUT";
   let try_in_scope =
     match e with
     | Variable name ->
@@ -408,7 +412,45 @@ let rec typecheck_simple_opt current s =
   | Position e ->
     (match e.value with
     | Assign (assign_type, (kinds, exps)) ->
-      None
+      let typ =
+        match assign_type with
+        | Regular -> None
+        | PlusEqual
+        | MinusEqual
+        | DivEqual
+        | TimesEqual -> Some [Int; Float]
+        | AndEqual
+        | OrEqual
+        | HatEqual
+        | PercentEqual
+        | AndHatEqual -> Some [Int]
+        | DoubleGreaterEqual
+        | DoubleSmallerEqual -> Some [Int] in
+      (match typ with
+      | None ->
+        let otyped_kinds =
+          kinds
+          |> List.map (fun x -> typecheck_kind_opt current x)
+          |> List.filter is_some in
+        if List.length otyped_kinds <> List.length kinds then None
+        else
+          let typed_kinds = List.map Option.get otyped_kinds in
+          let otyped_exps =
+            exps
+            |> List.map (fun x -> typecheck_exp_opt current x)
+            |> List.filter is_some in
+          if List.length otyped_exps <> List.length exps then None
+          else
+            let typed_exps = List.map Option.get otyped_exps in
+            let test =
+              typed_kinds
+              |> List.map2 (fun exp kind -> kind = exp.typ) typed_exps
+              |> List.exists (fun x -> x = false) in
+            if test then None
+            else
+              let gen_nodes = List.map (fun x -> Typed x) typed_exps in
+              Scoped { position = e.position; scope = current; value = Assign (assign_type, (kinds, gen_nodes)) } |> some
+      | Some l -> None)
     | Empty -> Scoped { position = e.position; scope = current; value = Empty } |> some
     | _ -> None)
   | _ -> failwith "wut wut"
