@@ -21,12 +21,12 @@ func rand32bit() int {
 	return rotr32(x>>27, count) // 27 = 32 - 5
 }
 
-func rand(min int, max int) {
-	return int(float(min) + float(max-min)*float(rand32bit())/float(randMax))
+func rand(min int, max int) int {
+	return int(float64(min) + float64(max-min)*float64(rand32bit())/float64(randMax))
 }
 
 // Computes a^d mod n
-func powMod(a, d, n int) {
+func powMod(a, d, n int) int {
 	if d == 0 {
 		return 1
 	}
@@ -43,7 +43,7 @@ func powMod(a, d, n int) {
 
 // Performs a Miller-Rabin primality test on n with k passes
 // Pseucode from https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test#Computational_complexity
-func isProbablyPrime(n int, k int) {
+func isProbablyPrime(n int, k int) bool {
 	d := n - 1
 	r := 0
 	for d%2 == 0 {
@@ -52,7 +52,7 @@ func isProbablyPrime(n int, k int) {
 	}
 
 	for i := 0; i < k; i++ {
-		a = rand(2, n-1)
+		a := rand(2, n-1)
 		x := powMod(a, d, n)
 		if x == 1 || x == n-1 {
 			continue
@@ -76,7 +76,7 @@ func isProbablyPrime(n int, k int) {
 
 func main() {
 	for i := 1000000000000; i < 1000000001000; i++ {
-		if isProbablyPrime(i) {
+		if isProbablyPrime(i, 100) {
 			println(i, "Prime")
 		} else {
 			println(i)
