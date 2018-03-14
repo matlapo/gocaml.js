@@ -654,6 +654,7 @@ and typecheck_var_decl_opt scope (vars, t, exps) =
       | Some t ->
         resolve_typeref_opt scope t
         |> bind (fun typ ->
+          print_string (string_of_typedef typ);
           let exps_with_annotation =
             typed_exps
             |> List.filter (fun x -> x.typ = typ)
