@@ -16,6 +16,11 @@ let rev_assoc l =
   l
   |> List.map (fun (a,b) -> (b,a))
 
+let get_rest_of_list (start: int) l =
+  l
+  |> List.mapi (fun i x -> if i < start then None else Some x)
+  |> List.filter is_some
+  |> List.map Option.get
 
 let contains_duplicate l =
   l
@@ -51,6 +56,14 @@ let to_string (b: base_types) =
   | Bool -> base_bool
   | Rune -> base_rune
 
+let try_base_type (s: string) =
+  if s = base_int then s |> some
+  else if s = base_float then s |> some
+  else if s = base_string then s |> some
+  else if s = base_bool then s |> some
+  else if s = base_rune then s |> some
+  else None
+
 let base_types =
   [
     base_int, (TypeT base_int);
@@ -76,7 +89,8 @@ let typesDef_to_string d =
   | ArrayT (typ, _) -> Printf.sprintf "%s array" typ
   | SliceT (typ, _) -> Printf.sprintf "%s slice" typ
 
-let rec print_scope scope : unit =
+(* given a scope, prints all of its children *)
+let rec print_scope scope =
   print_endline "##### START OF SCOPE #####";
   let _ =
     print_endline "#Name bindings#";
@@ -101,9 +115,14 @@ let rec print_scope scope : unit =
     ) in
   List.iter (fun x -> print_scope x) scope.children
 
-let to_tnode (e: exp node) t = { position = e.position; typ = t; value = e.value }
+(* given the full symbol table, prints all of its content *)
+let print_symbol_table scope = print_scope scope
 
-let rec type_ref_to_def (scope: scope) (t: typesRef) =
+(* converts a regular node to a node with the given type *)
+let to_tnode e t = { position = e.position; typ = t; value = e.value }
+
+(* given a scope and a type reference, try finding the associated type definition *)
+let rec try_convert_ref_to_def scope t =
   match t with
   | ArrayR (typ, l) -> ArrayT (typ, l) |> some
   | SliceR (typ, l) -> SliceT (typ, l) |> some
@@ -115,19 +134,16 @@ let rec type_ref_to_def (scope: scope) (t: typesRef) =
     | Some typ -> Some typ
     | None ->
       scope.parent
-      |> bind (fun x -> type_ref_to_def x t)
+      |> bind (fun x -> try_convert_ref_to_def x t)
 
-(* before calling this function, need to resolve the types to get base types *)
-(* TODO, do the resolving here instead *)
-let check_ops (a: typesDef) (b: typesDef) (l: base_types list) comparable: string option =
+(*  *)
+let check_ops a b l comparable =
   l
   |> List.map (fun t ->
     let t = to_string t in
     match a, b with
-    | TypeT x, TypeT y ->
-      if x = t && y = t then Some t
-      else None
-    | _ -> None (* TODO not sure what are the rules for this *)
+    | TypeT x, TypeT y -> if x = t && y = t then Some t else None
+    | _ -> None
   )
   |> List.find_opt is_some
   |> (fun x ->
@@ -136,8 +152,7 @@ let check_ops (a: typesDef) (b: typesDef) (l: base_types list) comparable: strin
     | None -> print_string "Error: ..."; None
   )
 
-(* similar to above but for unary ops, might be able to refactor this into one larger function *)
-let check_op (a: typesDef) (l: base_types list) =
+let check_op a l =
   l
   |> List.map (fun t ->
     let t = to_string t in
@@ -152,16 +167,8 @@ let check_op (a: typesDef) (l: base_types list) =
     | None -> print_string "Error: some error message"; None
   )
 
-let try_base_type (s: string) =
-  if s = base_int then s |> some
-  else if s = base_float then s |> some
-  else if s = base_string then s |> some
-  else if s = base_bool then s |> some
-  else if s = base_rune then s |> some
-  else None
-
 (* checks if a list of vars are already declared in the current scope *)
-let check_vars_declared (scope: scope) (names: string list) =
+let check_vars_declared scope names =
     let onames =
       names
       |> List.map (fun name ->
@@ -170,7 +177,7 @@ let check_vars_declared (scope: scope) (names: string list) =
       |> List.filter is_some in
     if List.length onames <> List.length names then true else false
 
-let rec lookup_type (scope: scope) (name: string) =
+let rec lookup_type scope name =
   let t =
     scope.types
     |> List.assoc_opt name
@@ -207,13 +214,39 @@ let lookup_typeref (scope: scope) (t: typesRef) =
   | ArrayR (typ, _)
   | SliceR (typ, _) -> lookup_type scope typ
 
-let part_of_list (start: int) l =
-  l
-  |> List.mapi (fun i x -> if i < start then None else Some x)
-  |> List.filter is_some
-  |> List.map Option.get
+let check_if_exps_are_all_ints scope exps typecheck_func =
+  exps
+  |> List.map (fun x -> typecheck_func scope x)
+  |> List.map (fun x ->
+    x
+    |> bind (fun x ->
+      lookup_typedef scope x.typ
+      |> bind (fun x ->
+        if x = TypeT base_int then Some x else None
+      )
+    )
+  )
 
-(* TODO: Split into both kinds *)
+let try_find_array scope (name, exps) typecheck_func =
+  scope.bindings
+  |> List.assoc_opt name
+  |> bind (fun x ->
+    lookup_typedef scope x
+    |> bind (fun t ->
+      match x with
+      | ArrayT (typ, sizes) ->
+        let typed_exps = check_if_exps_are_all_ints scope exps typecheck_func in
+        if List.length typed_exps = List.length exps then
+          if List.length exps = List.length sizes then TypeT typ |> some
+          else if List.length exps < List.length sizes then
+            let new_dimension = get_rest_of_list (List.length exps) sizes in
+            ArrayT (typ, new_dimension) |> some
+          else None
+        else None
+      | _ -> None
+    )
+  )
+
 let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
   let try_in_scope =
     match e with
@@ -221,36 +254,7 @@ let rec lookup_kind_elem (scope: scope) (e: kind_elem) =
       scope.bindings
       |> List.assoc_opt name
       |> bind (fun x -> lookup_typedef scope x)
-    | Array (name, exps) ->
-      scope.bindings
-      |> List.assoc_opt name
-      |> bind (fun x ->
-        lookup_typedef scope x
-        |> bind (fun t ->
-          match x with
-          | ArrayT (typ, sizes) ->
-            let typed_exps =
-              exps
-              |> List.map (fun x -> typecheck_exp scope x)
-              |> List.map (fun x ->
-                x
-                |> bind (fun x ->
-                  lookup_typedef scope x.typ
-                  |> bind (fun x ->
-                    if x = TypeT base_int then Some x else None
-                  )
-                )
-              ) in
-            if List.length typed_exps = List.length exps then
-              if List.length exps = List.length sizes then TypeT typ |> some
-              else if List.length exps < List.length sizes then
-                let new_dimension = part_of_list (List.length exps) sizes in
-                ArrayT (typ, new_dimension) |> some
-              else None
-            else None
-          | _ -> None
-        )
-      ) in
+    | Array (name, exps) -> try_find_array scope (name, exps) typecheck_exp in
     (match try_in_scope with
     | Some t as found -> found
     | None ->
@@ -646,7 +650,7 @@ let typecheck_decl scope decl =
           let oreturn_type =
             otyp
             |> bind (fun typ ->
-              type_ref_to_def scope typ
+              try_convert_ref_to_def scope typ
             ) in
           let function_binding = (name, typed_args, oreturn_type) in
           let scope =
