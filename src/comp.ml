@@ -83,7 +83,7 @@ let typecheck input =
     let ast = Parser.prog Lexer.read lexer_buffer in
       match Weeding.weed ast with
       | [] ->
-        (match Symbol.typecheck ast with
+        (match Symbol.typecheck_opt ast with
         | Some _ ->
           print_string "OK\n";
           exit 0;
