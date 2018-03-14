@@ -2,7 +2,6 @@ open Printf
 open Lexing
 open Weeding
 open Symbol
-open Printsymbol
 
 (* prints the error message msg with the associate lexer buffer *)
 let print_error lb msg =
@@ -108,9 +107,9 @@ let symbol input =
     let ast = Parser.prog Lexer.read lexer_buffer in
       match Weeding.weed ast with
       | [] ->
-        (match Symbol.typecheck ast with
+        (match Symbol.typecheck_opt ast with
         | Some (_, symbols) ->
-          print_symbol_table symbols;
+          print_string (Symbol.string_of_symbol_table symbols);
           exit 0;
         | None ->
           print_error lexer_buffer "Error: Type check error";
