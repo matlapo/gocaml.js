@@ -90,7 +90,7 @@ let typesDef_to_string d =
   | SliceT (typ, _) -> Printf.sprintf "%s slice" typ
 
 (* given a scope, prints all of its children *)
-let rec print_scope scope =
+(* let rec print_scope scope =
   print_endline "##### START OF SCOPE #####";
   let _ =
     print_endline "#Name bindings#";
@@ -113,10 +113,29 @@ let rec print_scope scope =
       let s = Printf.sprintf "%s: function" name in
       print_endline s;
     ) in
-  List.iter (fun x -> print_scope x) scope.children
+  List.iter (fun x -> print_scope x) scope.children *)
+
+let string_of_typedef (_: typesDef) = "TYPEDEF"
+
+let string_of_list printer l =
+  l
+  |> List.fold_left (fun acc v ->
+    acc ^ "\n" ^ printer v)
+  ""
+
+let string_of_var_binding (name, def) =
+  name ^ "[var] = " ^ string_of_typedef def
+
+let string_of_type_binding (name, def) =
+  name ^ "[var] = " ^ string_of_typedef def
+
+let rec string_of_scope lvl scope =
+  (scope.bindings |> string_of_list (fun b -> string_of_var_binding b))
+  ^ "\n" ^
+  (scope.types |> string_of_list (fun b -> string_of_type_binding b))
 
 (* given the full symbol table, prints all of its content *)
-let print_symbol_table scope = print_scope scope
+let print_symbol_table scope = print_string (string_of_scope 0 scope)
 
 (* converts a regular node to a node with the given type *)
 let to_tnode e t = { position = e.position; typ = t; value = e.value }
