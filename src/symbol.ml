@@ -707,8 +707,9 @@ let typecheck_opt (p: program) =
     Some (decls, top_level)
   )
 
-
+(* ################## *)
 (* #### PRINTING #### *)
+(* ################## *)
 let string_of_list printer sep l =
   l
   |> List.fold_left (fun acc v ->
@@ -755,11 +756,15 @@ let string_of_function_binding (name, args, ret) =
   ^ ") -> "
   ^ (match ret with None -> "void" | Some r -> string_of_typedef r)
 
+(* Prints a scope *)
 let rec string_of_scope lvl scope =
+  (* Prints the variable bindings of a scope *)
   (scope.bindings |> string_of_list (fun b -> indent lvl ^ string_of_var_binding b) "\n")
   ^ "\n" ^
+  (* Prints the type bindings of a scope *)
   (scope.types |> string_of_list (fun b -> indent lvl ^ string_of_type_binding b) "\n")
   ^
+  (* Print the children scopes *)
   (scope.children |> string_of_list (fun s ->
       indent lvl ^ "{\n"
       ^ string_of_scope (lvl+1) s
@@ -768,12 +773,16 @@ let rec string_of_scope lvl scope =
     "\n"
   )
 
+(* Prints the top-level scope of an application *)
 let string_of_top_level_symbol_table scope =
   indent 1 ^ "{\n" ^
+  (* Print the variable bindings *)
   (scope.bindings |> string_of_list (fun b -> indent 2 ^ string_of_var_binding b) "\n")
   ^ "\n" ^
+  (* Print the type bindings *)
   (scope.types |> string_of_list (fun b -> indent 2 ^ string_of_type_binding b) "\n")
   ^ "\n" ^
+  (* Print each function and its associated scope *)
   (List.map2 (fun a b -> (a, b)) scope.functions scope.children
     |> string_of_list (fun (f, s) ->
         indent 2 ^ string_of_function_binding f ^ "\n" ^
@@ -788,9 +797,9 @@ let string_of_top_level_symbol_table scope =
 (* given the full symbol table, prints all of its content *)
 let string_of_symbol_table scope =
   "{\n" ^
-  (scope.bindings |> string_of_list (fun b -> indent 1 ^ string_of_var_binding b) "\n")
-  ^
+  (* Print the base types *)
   (scope.types |> string_of_list (fun b -> indent 1 ^ string_of_type_binding b) "\n")
   ^ "\n" ^
+  (* Print the top-level scope *)
   string_of_top_level_symbol_table (List.hd scope.children)
   ^ "}\n"
