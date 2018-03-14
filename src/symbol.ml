@@ -76,33 +76,6 @@ let typesDef_to_string d =
   | ArrayT (typ, _) -> Printf.sprintf "%s array" typ
   | SliceT (typ, _) -> Printf.sprintf "%s slice" typ
 
-(* let rec print_scope scope : unit = *)
-  (* print_endline "##### START OF SCOPE #####";
-  let _ =
-    print_endline "#Name bindings#";
-    scope.bindings
-    |> List.iter (fun (name, typ) ->
-      let s = Printf.sprintf "%s: %s" name (typesDef_to_string typ) in
-      print_endline s;
-    ) in
-  let _ =
-    print_endline "#Type bindings#";
-    scope.types
-    |> List.iter (fun (name, typ) ->
-      let s = Printf.sprintf "%s: %s" name (typesDef_to_string typ) in
-      print_endline s;
-    ) in
-  let _ =
-    print_endline "#Function bindings#";
-    scope.functions
-    |> List.iter (fun (name, args, oreturn_type) ->
-      let s = Printf.sprintf "%s: function" name in
-      print_endline s;
-    ) in
-  match scope.parent with
-  | Some scope -> print_scope scope
-  | None -> () *)
-
 let rec print_scope scope : unit =
   print_endline "##### START OF SCOPE #####";
   let _ =
@@ -127,15 +100,6 @@ let rec print_scope scope : unit =
       print_endline s;
     ) in
   List.iter (fun x -> print_scope x) scope.children
-(*
-let rec print_current_scope scope : unit =
-  print_endline "##### START OF SCOPE #####";
-  print_endline "#Name bindings#";
-  scope.bindings
-  |> List.iter (fun (name, typ) ->
-    let s = Printf.sprintf "%s: %s" name (typesDef_to_string typ) in
-    print_endline s;
-  ) *)
 
 let to_tnode (e: exp node) t = { position = e.position; typ = t; value = e.value }
 
@@ -424,58 +388,6 @@ let typecheck_args (scope: scope) (args: argument list) =
 let new_scope parent = { bindings = []; types = []; functions = []; parent = Some parent; children = [] }
 let empty_scope = { bindings = []; types = []; functions = []; parent = None; children = [] }
 
-(*
-(* TODO typecheck the types in struct declaration *)
-(* TODO typecheck the declarations before storing new binding *)
-let rec typecheck_one_stm (s: stmt gen_node) (scope: scope) : ((stmt snode) * scope) option =
-  match s with
-  | Position e ->
-    (match e.value with
-    | Declaration l ->
-      l
-      |> check_list_of_decl scope
-      |> bind (fun (scope, ol) ->
-          (* (scope, Var ol) |> some *)
-          (* (scope, { position = e.position; scope = scope; value = Declaration ol }) |> some *)
-          None
-      )
-    | _ -> failwith "not implemented")
-  | Typed e -> None
-  | Scoped e -> Some (e, scope)
-
-and check_list_of_stms (l: stmt gen_node list) (init_scope: scope) =
-  l
-  |> List.fold_left (fun acc decl ->
-    acc
-    |> bind (fun (acc_scope, acc_decls) ->
-      typecheck_one_stm decl acc_scope
-      |> bind (fun (d, scope) ->
-        merge acc_scope scope
-        |> bind (fun new_scope ->
-          let new_decls = List.append acc_decls [d] in
-          Some (new_scope, new_decls)
-        )
-      )
-    )
-  ) (Some (init_scope, []))
-
-and check_list_of_decl init_scope l: (scope * (string list * typesRef option * (exp gen_node) list)) option =
-  l
-  |> List.fold_left (fun acc decl ->
-    acc
-    |> bind (fun (acc_scope, acc_decls) ->
-      (* check_func acc_scope decl *)
-      None
-      |> bind (fun (d, scope) ->
-        merge acc_scope scope
-        |> bind (fun new_scope ->
-          let new_decls = List.append acc_decls [d] in
-          Some (new_scope, new_decls)
-        )
-      )
-    )
-  ) (Some (init_scope, [])) *)
-
 let rec typecheck_simple (s: simpleStm gen_node) (current: scope) =
   match s with
   | Position e ->
@@ -513,10 +425,26 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
     | Declaration l ->
       check_and_scope l typecheck_var_decl current
       |> bind (fun (scope, ol) ->
-          (* print_endline "TEST";
-          print_current_scope scope; *)
           Some { position = e.position; scope = scope; value = Declaration ol }
       )
+    | TypeDeclaration decls ->
+      let typed_decls =
+        decls
+        |> List.map (fun (name, x) ->
+          lookup_typedef current x
+          |> bind (fun typ -> Some (name, typ)))
+        |> List.filter is_some in
+      if List.length typed_decls <> List.length decls then None
+      else
+        let new_types =
+          typed_decls
+          |> List.map Option.get in
+        { empty_scope with types = new_types }
+        |> merge current
+        |> bind (fun new_scope ->
+          (* (new_scope, Type new_types) |> some *)
+          Some { position = e.position; scope = new_scope; value = TypeDeclaration new_types }
+        )
     | Simple simple ->
       typecheck_simple simple current
       |> bind (fun simple ->
