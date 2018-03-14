@@ -35,6 +35,103 @@ let some x = Some x
 let id_undeclared id = Printf.sprintf "Variable %s is used before being declared" id
 let binary_different_types t1 t2 = Printf.sprintf "Expecting both expressions to be of type %s but got type %s and %s" t1 t1 t2
 
+(* ################## *)
+(* #### PRINTING #### *)
+(* ################## *)
+let string_of_list printer sep l =
+  l
+  |> List.fold_left (fun acc v ->
+    acc ^ (if acc <> "" then sep else "") ^ printer v)
+  ""
+
+let rec repeat_string s r =
+  if (r == 0) then ""
+  else s ^ repeat_string s (r-1)
+
+let rec string_of_structdef l =
+  "struct { "
+  ^
+  (
+    l
+    |> List.fold_left (fun acc (names, def) ->
+          acc
+          ^ string_of_list (fun s -> s) "," names
+          ^ " "
+          ^ string_of_typedef def ^ "; "
+        )
+        ""
+  )
+  ^
+  " }"
+
+and string_of_typedef (d: typesDef) = match d with
+  | TypeT name -> name
+  | StructT members -> string_of_structdef members
+  | ArrayT (name, dim) -> string_of_list (fun d -> "[" ^ Int64.to_string d ^ "]") "" dim ^ name
+  | SliceT (name, dim) -> repeat_string "[]" (Int64.to_int dim) ^ name
+
+let string_of_var_binding (name, def) =
+  name ^ " [var] = " ^ string_of_typedef def
+
+let string_of_type_binding (name, def) =
+  name ^ " [type] = " ^ string_of_typedef def
+
+let indent lvl = repeat_string "  " lvl
+
+let string_of_function_binding (name, args, ret) =
+  name ^ " [function] = " ^ "("
+  ^ string_of_list (fun a -> string_of_typedef a) ", " args
+  ^ ") -> "
+  ^ (match ret with None -> "void" | Some r -> string_of_typedef r)
+
+(* Prints a scope *)
+let rec string_of_scope lvl scope =
+  (* Prints the variable bindings of a scope *)
+  (scope.bindings |> string_of_list (fun b -> indent lvl ^ string_of_var_binding b) "\n")
+  ^ "\n" ^
+  (* Prints the type bindings of a scope *)
+  (scope.types |> string_of_list (fun b -> indent lvl ^ string_of_type_binding b) "\n")
+  ^
+  (* Print the children scopes *)
+  (scope.children |> string_of_list (fun s ->
+      indent lvl ^ "{\n"
+      ^ string_of_scope (lvl+1) s
+      ^ indent lvl ^ "}\n"
+    )
+    "\n"
+  )
+
+(* Prints the top-level scope of an application *)
+let string_of_top_level_symbol_table scope =
+  indent 1 ^ "{\n" ^
+  (* Print the variable bindings *)
+  (scope.bindings |> string_of_list (fun b -> indent 2 ^ string_of_var_binding b) "\n")
+  ^ "\n" ^
+  (* Print the type bindings *)
+  (scope.types |> string_of_list (fun b -> indent 2 ^ string_of_type_binding b) "\n")
+  ^ "\n" ^
+  (* Print each function and its associated scope *)
+  (List.map2 (fun a b -> (a, b)) scope.functions scope.children
+    |> string_of_list (fun (f, s) ->
+        indent 2 ^ string_of_function_binding f ^ "\n" ^
+        indent 2 ^ "{\n"
+        ^ string_of_scope 3 s
+        ^ indent 2 ^ "}"
+      )
+      "\n"
+  )
+  ^ "\n" ^ indent 1 ^ "}\n"
+
+(* given the full symbol table, prints all of its content *)
+let string_of_symbol_table scope =
+  "{\n" ^
+  (* Print the base types *)
+  (scope.types |> string_of_list (fun b -> indent 1 ^ string_of_type_binding b) "\n")
+  ^ "\n" ^
+  (* Print the top-level scope *)
+  string_of_top_level_symbol_table (List.hd scope.children)
+  ^ "}\n"
+
 type base_types =
   | Int
   | Float
@@ -91,32 +188,6 @@ let typesdef_to_string d =
   | StructT _ -> "struct"
   | ArrayT (typ, _) -> Printf.sprintf "%s array" typ
   | SliceT (typ, _) -> Printf.sprintf "%s slice" typ
-
-(* given a scope, prints all of its children *)
-(* let rec print_scope scope =
-  print_endline "##### START OF SCOPE #####";
-  let _ =
-    print_endline "#Name bindings#";
-    scope.bindings
-    |> List.iter (fun (name, typ) ->
-      let s = Printf.sprintf "%s: %s" name (typesdef_to_string typ) in
-      print_endline s;
-    ) in
-  let _ =
-    print_endline "#Type bindings#";
-    scope.types
-    |> List.iter (fun (name, typ) ->
-      let s = Printf.sprintf "%s: %s" name (typesdef_to_string typ) in
-      print_endline s;
-    ) in
-  let _ =
-    print_endline "#Function bindings#";
-    scope.functions
-    |> List.iter (fun (name, args, oreturn_type) ->
-      let s = Printf.sprintf "%s: function" name in
-      print_endline s;
-    ) in
-  List.iter (fun x -> print_scope x) scope.children *)
 
 (* converts a regular node to a node with the given type *)
 let tnode_of_node (e: exp node) t = { position = e.position; typ = t; value = e.value }
@@ -193,10 +264,8 @@ let rec type_of_name_opt scope name =
 (* given a type definition, make sure that it is a well-defined type (meaning that all the types it refer are also valid).
 Additionally, if the type is a TypeT (so basically just a name) it will try to convert it to a base type, an array, struct or slice (in other words, anything but simply a name!) *)
 and resolve_typedef_opt scope t =
-  print_endline "HERE";
   match t with
   | TypeT s ->
-    print_endline "TYPE";
     (match try_base_type s with
     | Some s -> TypeT s |> some
     | None -> type_of_name_opt scope s)
@@ -211,18 +280,21 @@ and resolve_typedef_opt scope t =
     type_of_name_opt scope t
     |> bind (fun x -> Some slice)
   | ArrayT (t, _) as a ->
-    print_endline "ARRAY";
     type_of_name_opt scope t
     |> bind (fun x -> Some a)
 
 (* given a type reference, it will try to find the associated type definition in the current scope or above, and then resolve the type definition.
 Note that we type check every type declarations before adding them to the symbole table, BUT we still resolve the type here to get something other than just a type name because
 when this function is called, we not only want to know if the type is valid, but also what is it precisely (is it an array, struct, etc?)*)
-let resolve_typeref_opt scope t =
+let resolve_typeref_opt scope t: typesDef option =
   match t with
-  | TypeR typ
-  | ArrayR (typ, _)
-  | SliceR (typ, _) -> type_of_name_opt scope typ
+  | TypeR typ -> type_of_name_opt scope typ
+  | ArrayR (typ, l) ->
+    type_of_name_opt scope typ
+    |> bind (fun _ -> ArrayT (typ, l) |> some)
+  | SliceR (typ, l) ->
+    type_of_name_opt scope typ
+    |> bind (fun _ -> SliceT (typ, l) |> some)
 
 let check_if_exps_are_all_ints scope exps typecheck_func =
   exps
@@ -260,7 +332,6 @@ let typedef_of_array_opt scope (name, exps) typecheck_func =
 
 (* given a kind element (i.e a variable name or an array name with a list of expressions) returns the resulting type *)
 let rec typecheck_kind_element_opt scope e =
-  print_endline "WUT";
   let try_in_scope =
     match e with
     | Variable name ->
@@ -654,7 +725,6 @@ and typecheck_var_decl_opt scope (vars, t, exps) =
       | Some t ->
         resolve_typeref_opt scope t
         |> bind (fun typ ->
-          print_string (string_of_typedef typ);
           let exps_with_annotation =
             typed_exps
             |> List.filter (fun x -> x.typ = typ)
@@ -703,6 +773,8 @@ let typecheck_decl_opt scope decl =
       args
       |> typecheck_args_opt scope
       |> bind (fun typed_args ->
+        let arguments_scope = List.map2 (fun (name, _) typ -> (name, typ)) args typed_args in
+        let empty_function_scope = { empty_function_scope with bindings = arguments_scope } in
         typecheck_stm_list_opt stmts empty_function_scope
         |> bind (fun (typed_stmts, new_scope) ->
           let typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
@@ -749,91 +821,3 @@ let typecheck_opt (p: program) =
     let top_level = { top_level with children = [scope] } in
     Some (decls, top_level)
   )
-
-
-(* #### PRINTING #### *)
-let string_of_list printer sep l =
-  l
-  |> List.fold_left (fun acc v ->
-    acc ^ (if acc <> "" then sep else "") ^ printer v)
-  ""
-
-let rec repeat_string s r =
-  if (r == 0) then ""
-  else s ^ repeat_string s (r-1)
-
-let rec string_of_structdef l =
-  "struct { "
-  ^
-  (
-    l
-    |> List.fold_left (fun acc (names, def) ->
-          acc
-          ^ string_of_list (fun s -> s) "," names
-          ^ " "
-          ^ string_of_typedef def ^ "; "
-        )
-        ""
-  )
-  ^
-  " }"
-
-and string_of_typedef (d: typesDef) = match d with
-  | TypeT name -> name
-  | StructT members -> string_of_structdef members
-  | ArrayT (name, dim) -> string_of_list (fun d -> "[" ^ Int64.to_string d ^ "]") "" dim ^ name
-  | SliceT (name, dim) -> repeat_string "[]" (Int64.to_int dim) ^ name
-
-let string_of_var_binding (name, def) =
-  name ^ " [var] = " ^ string_of_typedef def
-
-let string_of_type_binding (name, def) =
-  name ^ " [type] = " ^ string_of_typedef def
-
-let indent lvl = repeat_string "  " lvl
-
-let string_of_function_binding (name, args, ret) =
-  name ^ " [function] = " ^ "("
-  ^ string_of_list (fun a -> string_of_typedef a) ", " args
-  ^ ") -> "
-  ^ (match ret with None -> "void" | Some r -> string_of_typedef r)
-
-let rec string_of_scope lvl scope =
-  (scope.bindings |> string_of_list (fun b -> indent lvl ^ string_of_var_binding b) "\n")
-  ^ "\n" ^
-  (scope.types |> string_of_list (fun b -> indent lvl ^ string_of_type_binding b) "\n")
-  ^
-  (scope.children |> string_of_list (fun s ->
-      indent lvl ^ "{\n"
-      ^ string_of_scope (lvl+1) s
-      ^ indent lvl ^ "}\n"
-    )
-    "\n"
-  )
-
-let string_of_top_level_symbol_table scope =
-  indent 1 ^ "{\n" ^
-  (scope.bindings |> string_of_list (fun b -> indent 2 ^ string_of_var_binding b) "\n")
-  ^ "\n" ^
-  (scope.types |> string_of_list (fun b -> indent 2 ^ string_of_type_binding b) "\n")
-  ^ "\n" ^
-  (List.map2 (fun a b -> (a, b)) scope.functions scope.children
-    |> string_of_list (fun (f, s) ->
-        indent 2 ^ string_of_function_binding f ^ "\n" ^
-        indent 2 ^ "{\n"
-        ^ string_of_scope 3 s
-        ^ indent 2 ^ "}"
-      )
-      "\n"
-  )
-  ^ "\n" ^ indent 1 ^ "}\n"
-
-(* given the full symbol table, prints all of its content *)
-let string_of_symbol_table scope =
-  "{\n" ^
-  (scope.bindings |> string_of_list (fun b -> indent 1 ^ string_of_var_binding b) "\n")
-  ^
-  (scope.types |> string_of_list (fun b -> indent 1 ^ string_of_type_binding b) "\n")
-  ^ "\n" ^
-  string_of_top_level_symbol_table (List.hd scope.children)
-  ^ "}\n"

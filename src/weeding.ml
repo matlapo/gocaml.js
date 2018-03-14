@@ -24,6 +24,14 @@ let map_default f o =
   |> Option.map f
   |> Option.default []
 
+let contains_duplicate l =
+  l
+  |> List.map (fun x ->
+    l
+    |> List.find_all (fun name -> x = name)
+  )
+  |> List.exists (fun x -> List.length x > 1)
+
 (*
 ########################### WEEDING ###########################
 Most functions take an AST node and return a string list
@@ -52,7 +60,11 @@ let variable_decl_error x = Printf.sprintf "Error: number of variables does not 
 let function_call_error x = Printf.sprintf "Error: only function call are allowed as expression statement: line %d" x
 
 (* Helpers post loop *)
-let loop_error x = Printf.sprintf "Error cannot declare in post statement of for loop: line %d" x
+let loop_error x = Printf.sprintf "Error: cannot declare in post statement of for loop: line %d" x
+
+let duplicate_args x = Printf.sprintf "Error: duplicate argument name for this function: line %d" x
+
+let duplicate_member x = Printf.sprintf "Error: duplicate member name for this struct: line %d" x
 
 (* finds an invalid blank id in a type definition *)
 let rec blank_def line t =
@@ -68,6 +80,16 @@ let rec blank_def line t =
       |> List.append (blank_def line ts)
     )
     |> List.flatten
+
+let rec duplicate_member_struct line t =
+  match t with
+  | StructT l ->
+    l
+    |> List.map (fun (ls, _) ->
+        if contains_duplicate ls then [duplicate_member line] else []
+    )
+    |> List.flatten
+  | _ -> []
 
 (* finds an invalid blank id in a type reference *)
 let blank_ref line t =
@@ -147,6 +169,7 @@ let rec blank_stm (stm: stmt gen_node) =
       l
       |> map_flat (fun (s, ts) ->
         blank_def stm.position.pos_lnum ts
+        |> List.append (duplicate_member_struct stm.position.pos_lnum ts)
         |> List.append (helper stm.position.pos_lnum s)
       )
     | If (s, e, l, el) ->
@@ -370,6 +393,7 @@ let weed (p, d) =
         )
       | Fct (name, args, _, s) ->
         (* TODO make better filter structure *)
+        let duplicate_args = if contains_duplicate args then [duplicate_args x.position.pos_lnum] else [] in
         let continue = map_flat check_cont_break s in
         let default = map_flat check_default s in
         let assign = map_flat assign_check s in
@@ -383,6 +407,7 @@ let weed (p, d) =
           ) in
         let s = map_flat blank_stm s in
         name
+        |> List.append duplicate_args
         |> List.append s
         |> List.append args
         |> List.append continue
@@ -390,6 +415,11 @@ let weed (p, d) =
         |> List.append assign
         |> List.append fct
         |> List.append post
-      | _ -> [])
+    | Type l ->
+      l
+      |> map_flat (fun (s, ts) ->
+        blank_def x.position.pos_lnum ts
+        |> List.append (duplicate_member_struct x.position.pos_lnum ts)
+        |> List.append (helper x.position.pos_lnum s) ))
     | _ -> []
   )
