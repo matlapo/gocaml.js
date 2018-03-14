@@ -82,6 +82,9 @@ let top_level =
     children = []
   }
 
+let new_scope parent = { bindings = []; types = []; functions = []; parent = Some parent; children = [] }
+let empty_scope = { bindings = []; types = []; functions = []; parent = None; children = [] }
+
 let typesdef_to_string d =
   match d with
   | TypeT s -> s
@@ -256,14 +259,14 @@ let typedef_of_array_opt scope (name, exps) typecheck_func =
   )
 
 (* given a kind element (i.e a variable name or an array name with a list of expressions) returns the resulting type *)
-let rec typecheck_kind_element_opt (scope: scope) (e: kind_elem) =
+let rec typecheck_kind_element_opt scope e =
   let try_in_scope =
     match e with
     | Variable name ->
       scope.bindings
       |> List.assoc_opt name
       |> bind (fun x -> resolve_typedef_opt scope x)
-    | Array (name, exps) -> typedef_of_array_opt scope (name, exps) typecheck_exp in
+    | Array (name, exps) -> typedef_of_array_opt scope (name, exps) typecheck_exp_opt in
     (match try_in_scope with
     | Some t as found -> found
     | None ->
@@ -300,10 +303,8 @@ and typecheck_kind_opt scope kind =
     | x::[] -> typecheck_kind_element_opt scope x
     | x::xs -> helper scope kind (typecheck_kind_element_opt scope x)
 
-(* converts a exp node to exp enode (node with type) *)
-(* type rules are not implemented, just trying to get "best" structure for everything *)
-(* TODO Support for Append and Function calls *)
-and typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
+(* given an expression node, typecheck_opt the expression and return an expression tnode (a node record with a field for its type) *)
+and typecheck_exp_opt scope e =
   match e with
   | Position e ->
     (match e.value with
@@ -319,9 +320,9 @@ and typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
     | Bool b -> tnode_of_node e (TypeT base_bool) |> some
     | Rune r -> tnode_of_node e (TypeT base_rune) |> some
     | BinaryOp (bin, (a, b)) ->
-      typecheck_exp scope a
+      typecheck_exp_opt scope a
       |> bind (fun a ->
-        typecheck_exp scope b
+        typecheck_exp_opt scope b
         |> bind (fun b -> (* TODO resolve the types *)
           let types, comparable =
             match bin with
@@ -351,7 +352,7 @@ and typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
         )
       )
     | Unaryexp (un, a) ->
-      typecheck_exp scope a
+      typecheck_exp_opt scope a
       |> bind (fun a ->
         let types =
           match un with
@@ -368,8 +369,8 @@ and typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
   | Typed e -> Some e
   | Scoped e -> None
 
-(* merge_scope_opt *)
-let merge (old_scope: scope) (new_scope: scope) : scope option =
+(* given two scopes, merge them together so that all their bindings are all at the same level. If the resulting bindings contain duplicates, it returns None *)
+let merge_scope_opt old_scope new_scope =
   let rec helper old_scope new_bindings =
     match new_bindings with
     | [] -> Some old_scope
@@ -387,7 +388,8 @@ let merge (old_scope: scope) (new_scope: scope) : scope option =
     )
   )
 
-let typecheck_args (scope: scope) (args: argument list) =
+(* given the arguments of a function (i.e (name, type reference)), typecheck_opt all the type references *)
+let typecheck_args_opt scope args =
   let typed_args =
     args
     |> List.map (fun (name, typ) -> resolve_typeref_opt scope typ)
@@ -398,10 +400,8 @@ let typecheck_args (scope: scope) (args: argument list) =
     |> List.map Option.get
     |> some
 
-let new_scope parent = { bindings = []; types = []; functions = []; parent = Some parent; children = [] }
-let empty_scope = { bindings = []; types = []; functions = []; parent = None; children = [] }
-
-let rec typecheck_simple (s: simpleStm gen_node) (current: scope) =
+(* given a simple statement node, typecheck_opt it *)
+let rec typecheck_simple_opt current s =
   match s with
   | Position e ->
     (match e.value with
@@ -411,14 +411,15 @@ let rec typecheck_simple (s: simpleStm gen_node) (current: scope) =
     | _ -> None)
   | _ -> failwith "wut wut"
 
-let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option =
+(* given a statement node, typecheck_opt it *)
+let rec typecheck_stm_opt current s =
   match s with
   | Position e ->
     (* helper to avoid duplicated code *)
     let print_helper (l: exp gen_node list) (ln: bool) =
       let tnodes =
         l
-        |> List.map (fun x -> typecheck_exp current x)
+        |> List.map (fun x -> typecheck_exp_opt current x)
         |> List.filter is_some in
       if List.length l <> List.length tnodes then None
       else
@@ -427,7 +428,7 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
     (match e.value with
     | Block l ->
       let new_scope = new_scope current in
-      type_check_stm_list l new_scope
+      typecheck_stm_list_opt l new_scope
       |> bind (fun (stms, new_scope) ->
         let new_scope = { current with children = [new_scope] } in
         Some { position = e.position; scope = new_scope; value = Block (List.map (fun x -> Scoped x) stms) }
@@ -436,7 +437,7 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
       let simple_scope = new_scope current in
       let if_scope = new_scope current in
       let if_helper typed_simple typed_exp typed_elses =
-        type_check_stm_list ifs if_scope
+        typecheck_stm_list_opt ifs if_scope
         |> bind (fun (stms, new_scope) ->
           let new_current_scope =
             typed_simple
@@ -467,17 +468,17 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
             )
         ) in
       let typed_exp =
-        typecheck_exp current oexp
+        typecheck_exp_opt current oexp
         |> bind (fun typed -> Typed typed |> some) in
       let typed_simple =
         osimple
         |> bind (fun simple ->
-          typecheck_simple simple simple_scope
+          typecheck_simple_opt simple_scope simple
         ) in
       let typed_elses =
         oelses
         |> bind (fun elses ->
-          type_check_stm_list elses current
+          typecheck_stm_list_opt elses current
           |> bind (fun (snodes, _) ->
             snodes
             |> List.map (fun x -> Scoped x)
@@ -510,7 +511,7 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
     | Print l -> print_helper l false
     | Println l -> print_helper l true
     | Declaration l ->
-      typecheck_decl_list l typecheck_var_decl current
+      typecheck_decl_list_opt l typecheck_var_decl_opt current
       |> bind (fun (scope, ol) ->
           Some { position = e.position; scope = scope; value = Declaration ol }
       )
@@ -527,12 +528,12 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
           typed_decls
           |> List.map Option.get in
         { empty_scope with types = new_types }
-        |> merge current
+        |> merge_scope_opt current
         |> bind (fun new_scope ->
           Some { position = e.position; scope = new_scope; value = TypeDeclaration new_types }
         )
     | Simple simple ->
-      typecheck_simple simple current
+      typecheck_simple_opt current simple
       |> bind (fun simple ->
         Some { position = e.position; scope = current; value = Simple simple }
       )
@@ -541,13 +542,13 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
   | Typed e -> None
   | Scoped e -> Some e
 
-(* kljwahfsdaklj *)
-and type_check_stm_list l scope =
+(* geiven a list of statement nodes, typecheck_opt them *)
+and typecheck_stm_list_opt l scope =
     l
     |> List.fold_left (fun acc g_node ->
       acc
       |> bind (fun (s_nodes, acc_scope) ->
-        typecheck_stm g_node acc_scope
+        typecheck_stm_opt acc_scope g_node
         |> bind (fun s ->
           let s_nodes = List.append s_nodes [s] in
           Some (s_nodes, s.scope)
@@ -556,18 +557,18 @@ and type_check_stm_list l scope =
     ) (Some ([], scope))
 
 (*
-Takes a list of declarations and for each one it calls a function that will typecheck the declaration and return the typed
-declaration along with an updated scope. It 'accumulate' the scopes returned by each declaration and merge all of them
+Takes a list of declarations and for each one it calls a function that will typecheck_opt the declaration and return the typed
+declaration along with an updated scope. It 'accumulate' the scopes returned by each declaration and merge_scope_opt all of them
 together in order to return a single updated scope containing all the new bindings.
 *)
-and typecheck_decl_list l check_func init_scope =
+and typecheck_decl_list_opt l check_func init_scope =
   l
   |> List.fold_left (fun acc decl ->
     acc
     |> bind (fun (acc_scope, acc_decls) ->
       check_func acc_scope decl
       |> bind (fun (d, scope) ->
-        merge acc_scope scope
+        merge_scope_opt acc_scope scope
         |> bind (fun new_scope ->
           let new_decls = List.append acc_decls [d] in
           Some (new_scope, new_decls)
@@ -582,10 +583,10 @@ also given, it makes sure that it matches the type of each expression. This func
 Var declaration but with tnodes (nodes with an extra field representing the type). Note that it assumes
 that the number of variables matches the number of expression (this is handled by weeding).
 *)
-and typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef option * (exp gen_node) list) =
+and typecheck_var_decl_opt scope (vars, t, exps) =
   let otyped_exps =
     exps
-    |> List.map (fun exp -> typecheck_exp scope exp)
+    |> List.map (fun exp -> typecheck_exp_opt scope exp)
     |> List.filter is_some in
   if List.length otyped_exps <> List.length exps then None
   else
@@ -625,12 +626,12 @@ and typecheck_var_decl (scope: scope) ((vars, t, exps): string list * typesRef o
  add the new bindings to the given scope and return the updated scope along with
  the same declaration but in a different type of node.
 *)
-let typecheck_decl scope decl =
+let typecheck_decl_opt scope decl =
   match decl with
   | Position x ->
     (match x.value with
     | Var l ->
-      typecheck_decl_list l typecheck_var_decl scope
+      typecheck_decl_list_opt l typecheck_var_decl_opt scope
       |> bind (fun (scope, ol) ->
           (scope, Var ol) |> some
       )
@@ -647,16 +648,16 @@ let typecheck_decl scope decl =
           typed_decls
           |> List.map Option.get in
         { empty_scope with types = new_types }
-        |> merge scope
+        |> merge_scope_opt scope
         |> bind (fun new_scope ->
           (new_scope, Type new_types) |> some
         )
     | Fct (name, args, otyp, stmts) ->
       let empty_function_scope = new_scope scope in
       args
-      |> typecheck_args scope
+      |> typecheck_args_opt scope
       |> bind (fun typed_args ->
-        type_check_stm_list stmts empty_function_scope
+        typecheck_stm_list_opt stmts empty_function_scope
         |> bind (fun (typed_stmts, new_scope) ->
           let typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
           let oreturn_type =
@@ -677,12 +678,12 @@ let typecheck_decl scope decl =
   | _ -> None
 
 (*
-Root function: for each declaration, it calls typecheck_decl that will return the same
+Root function: for each declaration, it calls typecheck_decl_opt that will return the same
 declaration but using a different type of node (a node with a type or a node with a scope).
-typecheck_decl also returns an updated scope. Typecheck_decl is called for each declaration
+typecheck_decl_opt also returns an updated scope. Typecheck_decl is called for each declaration
 so that's why we use a fold (we accumulate the new scopes).
 *)
-let typecheck (p: program) =
+let typecheck_opt (p: program) =
   let package, decls = p in
   let init_scope = new_scope top_level in
   let typed_decls =
@@ -690,7 +691,7 @@ let typecheck (p: program) =
     |> List.fold_left (fun acc decl ->
       acc
       |> bind (fun (acc_scope, acc_decls) ->
-        typecheck_decl acc_scope decl
+        typecheck_decl_opt acc_scope decl
         |> bind (fun (new_scope, new_decl) ->
           let new_decls = List.append acc_decls [new_decl] in
           Some (new_scope, new_decls)
