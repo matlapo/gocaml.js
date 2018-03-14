@@ -2,6 +2,7 @@ open Printf
 open Lexing
 open Weeding
 open Symbol
+open Printsymbol
 
 (* prints the error message msg with the associate lexer buffer *)
 let print_error lb msg =
@@ -101,6 +102,31 @@ let typecheck input =
     print_error lexer_buffer ("Error: Unexpected " ^ token);
     exit 1
 
+let symbol input =
+  let lexer_buffer = Lexing.from_string input in
+  try
+    let ast = Parser.prog Lexer.read lexer_buffer in
+      match Weeding.weed ast with
+      | [] ->
+        (match Symbol.typecheck ast with
+        | Some (_, symbols) ->
+          print_symbol_table symbols;
+          exit 0;
+        | None ->
+          print_error lexer_buffer "Error: Type check error";
+          exit 1;)
+      | w::_ ->
+        print_error lexer_buffer w;
+        exit 1;
+  with
+  | Lexer.SyntaxError msg ->
+    print_error lexer_buffer ("Error: " ^ msg);
+    exit 1
+  | Parser.Error ->
+    let token = Lexing.lexeme lexer_buffer in
+    print_error lexer_buffer ("Error: Unexpected " ^ token);
+    exit 1
+
 let in_to_string ic =
   let rec r ic o =
     try
@@ -122,6 +148,7 @@ let () =
     else if mode = "parse" then parse file_content
     else if mode = "pretty" then pretty file_content
     else if mode = "typecheck" then typecheck file_content
+    else if mode = "symbol" then symbol file_content
     else printf "%s is not a valid compiler mode\n" mode; exit 1;
   else
     print_string "You must pass two argument: scan|tokens <source file path>\n";

@@ -115,28 +115,6 @@ let typesdef_to_string d =
     ) in
   List.iter (fun x -> print_scope x) scope.children *)
 
-let string_of_typedef (_: typesDef) = "TYPEDEF"
-
-let string_of_list printer l =
-  l
-  |> List.fold_left (fun acc v ->
-    acc ^ "\n" ^ printer v)
-  ""
-
-let string_of_var_binding (name, def) =
-  name ^ "[var] = " ^ string_of_typedef def
-
-let string_of_type_binding (name, def) =
-  name ^ "[var] = " ^ string_of_typedef def
-
-let rec string_of_scope lvl scope =
-  (scope.bindings |> string_of_list (fun b -> string_of_var_binding b))
-  ^ "\n" ^
-  (scope.types |> string_of_list (fun b -> string_of_type_binding b))
-
-(* given the full symbol table, prints all of its content *)
-let print_symbol_table scope = print_string (string_of_scope 0 scope)
-
 (* converts a regular node to a node with the given type *)
 let tnode_of_node (e: exp node) t = { position = e.position; typ = t; value = e.value }
 
@@ -719,6 +697,5 @@ let typecheck (p: program) =
   typed_decls
   |> bind (fun (scope, decls) ->
     let top_level = { top_level with children = [scope] } in
-    print_scope top_level;
-    Some decls
+    Some (decls, top_level)
   )
