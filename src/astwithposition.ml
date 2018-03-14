@@ -16,7 +16,8 @@ type scope =
     bindings: (string * typesDef) list;
     types: (string * typesDef) list;
     functions: (string * typesDef list * typesDef option) list; (* function name - argument types - return type *)
-    parent: scope option (* top level scope doesn't have a parent *)
+    parent: scope option; (* top level scope doesn't have a parent *)
+    children: scope list
   }
 
 type 'a node = { position: Lexing.position; value: 'a }

@@ -65,7 +65,8 @@ let top_level =
     bindings = [];
     types = base_types;
     functions = [];
-    parent = None
+    parent = None;
+    children = []
   }
 
 let typesDef_to_string d =
@@ -74,6 +75,33 @@ let typesDef_to_string d =
   | StructT _ -> "struct"
   | ArrayT (typ, _) -> Printf.sprintf "%s array" typ
   | SliceT (typ, _) -> Printf.sprintf "%s slice" typ
+
+(* let rec print_scope scope : unit = *)
+  (* print_endline "##### START OF SCOPE #####";
+  let _ =
+    print_endline "#Name bindings#";
+    scope.bindings
+    |> List.iter (fun (name, typ) ->
+      let s = Printf.sprintf "%s: %s" name (typesDef_to_string typ) in
+      print_endline s;
+    ) in
+  let _ =
+    print_endline "#Type bindings#";
+    scope.types
+    |> List.iter (fun (name, typ) ->
+      let s = Printf.sprintf "%s: %s" name (typesDef_to_string typ) in
+      print_endline s;
+    ) in
+  let _ =
+    print_endline "#Function bindings#";
+    scope.functions
+    |> List.iter (fun (name, args, oreturn_type) ->
+      let s = Printf.sprintf "%s: function" name in
+      print_endline s;
+    ) in
+  match scope.parent with
+  | Some scope -> print_scope scope
+  | None -> () *)
 
 let rec print_scope scope : unit =
   print_endline "##### START OF SCOPE #####";
@@ -98,9 +126,16 @@ let rec print_scope scope : unit =
       let s = Printf.sprintf "%s: function" name in
       print_endline s;
     ) in
-  match scope.parent with
-  | Some scope -> print_scope scope
-  | None -> ()
+  List.iter (fun x -> print_scope x) scope.children
+(*
+let rec print_current_scope scope : unit =
+  print_endline "##### START OF SCOPE #####";
+  print_endline "#Name bindings#";
+  scope.bindings
+  |> List.iter (fun (name, typ) ->
+    let s = Printf.sprintf "%s: %s" name (typesDef_to_string typ) in
+    print_endline s;
+  ) *)
 
 let to_tnode (e: exp node) t = { position = e.position; typ = t; value = e.value }
 
@@ -356,6 +391,8 @@ and typecheck_exp (scope: scope) (e: exp gen_node): (exp tnode) option =
   | Scoped e -> None
 
 let merge (old_scope: scope) (new_scope: scope) : scope option =
+  (* print_current_scope old_scope;
+  print_current_scope new_scope; *)
   let rec helper old_scope new_bindings =
     match new_bindings with
     | [] -> Some old_scope
@@ -384,8 +421,60 @@ let typecheck_args (scope: scope) (args: argument list) =
     |> List.map Option.get
     |> some
 
-let new_scope parent = { bindings = []; types = []; functions = []; parent = Some parent }
-let empty_scope = { bindings = []; types = []; functions = []; parent = None }
+let new_scope parent = { bindings = []; types = []; functions = []; parent = Some parent; children = [] }
+let empty_scope = { bindings = []; types = []; functions = []; parent = None; children = [] }
+
+(*
+(* TODO typecheck the types in struct declaration *)
+(* TODO typecheck the declarations before storing new binding *)
+let rec typecheck_one_stm (s: stmt gen_node) (scope: scope) : ((stmt snode) * scope) option =
+  match s with
+  | Position e ->
+    (match e.value with
+    | Declaration l ->
+      l
+      |> check_list_of_decl scope
+      |> bind (fun (scope, ol) ->
+          (* (scope, Var ol) |> some *)
+          (* (scope, { position = e.position; scope = scope; value = Declaration ol }) |> some *)
+          None
+      )
+    | _ -> failwith "not implemented")
+  | Typed e -> None
+  | Scoped e -> Some (e, scope)
+
+and check_list_of_stms (l: stmt gen_node list) (init_scope: scope) =
+  l
+  |> List.fold_left (fun acc decl ->
+    acc
+    |> bind (fun (acc_scope, acc_decls) ->
+      typecheck_one_stm decl acc_scope
+      |> bind (fun (d, scope) ->
+        merge acc_scope scope
+        |> bind (fun new_scope ->
+          let new_decls = List.append acc_decls [d] in
+          Some (new_scope, new_decls)
+        )
+      )
+    )
+  ) (Some (init_scope, []))
+
+and check_list_of_decl init_scope l: (scope * (string list * typesRef option * (exp gen_node) list)) option =
+  l
+  |> List.fold_left (fun acc decl ->
+    acc
+    |> bind (fun (acc_scope, acc_decls) ->
+      (* check_func acc_scope decl *)
+      None
+      |> bind (fun (d, scope) ->
+        merge acc_scope scope
+        |> bind (fun new_scope ->
+          let new_decls = List.append acc_decls [d] in
+          Some (new_scope, new_decls)
+        )
+      )
+    )
+  ) (Some (init_scope, [])) *)
 
 let rec typecheck_simple (s: simpleStm gen_node) (current: scope) =
   match s with
@@ -415,7 +504,7 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
     (match e.value with
     | Block l ->
       let new_scope = new_scope current in
-      type_context_check l new_scope
+      type_check_stm_list l new_scope
       |> bind (fun (stms, new_scope) ->
         Some { position = e.position; scope = new_scope; value = Block (List.map (fun x -> Scoped x) stms) }
       )
@@ -424,6 +513,8 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
     | Declaration l ->
       check_and_scope l typecheck_var_decl current
       |> bind (fun (scope, ol) ->
+          (* print_endline "TEST";
+          print_current_scope scope; *)
           Some { position = e.position; scope = scope; value = Declaration ol }
       )
     | Simple simple ->
@@ -436,14 +527,15 @@ let rec typecheck_stm (s: stmt gen_node) (current: scope) : (stmt snode) option 
   | Typed e -> None
   | Scoped e -> Some e
 
-and type_context_check l scope =
+and type_check_stm_list l scope =
     l
     |> List.fold_left (fun acc g_node ->
       acc
-      |> bind (fun (s_nodes, context) ->
-        typecheck_stm g_node context
+      |> bind (fun (s_nodes, acc_scope) ->
+        typecheck_stm g_node acc_scope
         |> bind (fun s ->
-          merge context s.scope
+          (* merge s.scope acc_scope *)
+          Some s.scope
           |> bind (fun merged ->
             let s_nodes = List.append s_nodes [s] in
             Some (s_nodes, merged)
@@ -568,7 +660,7 @@ let typecheck_decl scope decl =
       args
       |> typecheck_args scope
       |> bind (fun typed_args ->
-        type_context_check stmts empty_function_scope
+        type_check_stm_list stmts empty_function_scope
         |> bind (fun (typed_stmts, new_scope) ->
           let typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
           let oreturn_type =
@@ -577,10 +669,15 @@ let typecheck_decl scope decl =
               type_ref_to_def scope typ
             ) in
           let function_binding = (name, typed_args, oreturn_type) in
-          add_function_binding new_scope function_binding
-          |> bind (fun new_scope ->
-            (new_scope, Fct (name, args, otyp, typed_stmts)) |> some
-          )
+          (* add_function_binding new_scope function_binding *)
+          (* |> bind (fun new_scope -> *)
+          let scope =
+            { scope with
+              children = List.append scope.children [new_scope];
+              functions = List.append scope.functions [function_binding]
+            } in
+          (scope, Fct (name, args, otyp, typed_stmts)) |> some
+          (* ) *)
         )
       )
     )
@@ -609,6 +706,7 @@ let typecheck (p: program) =
     ) (Some (init_scope, [])) in
   typed_decls
   |> bind (fun (scope, decls) ->
-    print_scope scope;
+    let top_level = { top_level with children = [scope] } in
+    print_scope top_level;
     Some decls
   )
