@@ -31,7 +31,12 @@ func main(x int, y person) {
 func main2(x int, y person) {
   var test = 5
   var test2 = 5 + 5
+  type person struct {
+      name int
+      age  int
+  }
   var ty = 5 + test + test2
+  type my_int int
   print (5)
 }
 

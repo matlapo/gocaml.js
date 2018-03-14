@@ -116,7 +116,7 @@ and string_of_stmt lvl gn =
       decls
       ^ "\n"
   | If (sstm, exp, stmts1, else_stmts) -> indent lvl ^ "if " ^ none_or_print (fun s -> string_of_simple_stmt s ^ "; ") sstm
-    ^ none_or_print string_of_exp exp ^ " {\n"
+    ^ string_of_exp exp ^ " {\n"
     ^ string_of_stmts (lvl + 1) stmts1 ^ indent lvl ^ "}"
     ^ none_or_print (fun stmts -> " else {\n" ^ string_of_stmts (lvl + 1) stmts ^ indent lvl ^ "}") else_stmts
     ^ "\n"

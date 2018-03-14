@@ -151,7 +151,7 @@ let rec blank_stm (stm: stmt gen_node) =
       )
     | If (s, e, l, el) ->
       let s = map_default blank_simple s in
-      let e = map_default blank_exp e in
+      let e = map_default blank_exp (Some e) in
       let l = map_flat blank_stm l in
       let el =
         el
