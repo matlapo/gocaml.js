@@ -35,5 +35,6 @@ rm -r full
 rm -r parser
 rm -r scanner
 rm -r typecheck
+rm -r milestone2
 
 cd ..
