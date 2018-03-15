@@ -1,7 +1,7 @@
 # GoLite OCaml
 A GoLite compiler written in OCaml (ewww C)
 
-The best compiler of the history of compilers, maybe ever.
+The okayest compiler of the history of compilers, maybe ever.
 
 # Team Members
 * Maxence Frenette (260685124)

@@ -5,6 +5,8 @@ cd programs
 mkdir 1-scan+parse
 mkdir 1-scan+parse/valid
 mkdir 1-scan+parse/invalid
+mkdir 2-typecheck
+mkdir 2-typecheck/invalid
 
 # Valid programs
 cp full/* 1-scan+parse/valid
@@ -25,11 +27,13 @@ cp parser/2.7-types/invalid/* 1-scan+parse/invalid
 rm 1-scan+parse/invalid/bad-bracket-slice2.go
 cp parser/2.8-statements/invalid/* 1-scan+parse/invalid
 cp parser/2.9-expressions/invalid/* 1-scan+parse/invalid
+cp typecheck/milestone2/* 2-typecheck/invalid
 
 # Remove other folders
 rm -r extra
 rm -r full
 rm -r parser
 rm -r scanner
+rm -r typecheck
 
 cd ..
