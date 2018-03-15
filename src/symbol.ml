@@ -612,7 +612,11 @@ let rec typecheck_stm_opt current s =
       let simple_scope = new_scope current in
       let typed_exp =
         typecheck_exp_opt current oexp
-        |> bind (fun typed -> Typed typed |> some) in
+        |> bind (fun typed ->
+          match typed.typ with
+          | TypeT s -> if s = base_bool then Typed typed |> some else None
+          | _ -> None
+        ) in
       let typed_simple =
         osimple
         |> bind (fun simple ->
