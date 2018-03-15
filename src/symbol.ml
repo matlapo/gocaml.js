@@ -536,6 +536,29 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
     | Empty -> { position = e.position; scope = current; value = Empty } |> some
     | DoublePlus kind -> double_helper e current kind true
     | DoubleMinus kind -> double_helper e current kind false
+    | ShortDeclaration (kinds, exps) ->
+      let otyped_kinds =
+        kinds
+        |> List.map (fun x -> typecheck_kind_opt current x)
+        |> List.filter is_some in
+      if List.length otyped_kinds <> List.length kinds then None
+      else
+        let typed_kinds = List.map Option.get otyped_kinds in
+        let otyped_exps =
+          exps
+          |> List.map (fun x -> typecheck_exp_opt current x)
+          |> List.filter is_some in
+        if List.length otyped_exps <> List.length exps then None
+        else
+          let typed_exps = List.map Option.get otyped_exps in
+          let test =
+            typed_kinds
+            |> List.map2 (fun exp kind -> kind = exp.typ) typed_exps
+            |> List.exists (fun x -> x = false) in
+          if test then None
+          else
+            let gen_nodes = List.map (fun x -> Typed x) typed_exps in
+            { position = e.position; scope = current; value = ShortDeclaration (kinds, gen_nodes) } |> some
     | _ -> None)
   | _ -> failwith "wut wut"
 
