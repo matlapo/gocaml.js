@@ -477,8 +477,19 @@ let typecheck_args_opt scope args =
     |> List.map Option.get
     |> some
 
+let double_helper (e: simpleStm node) current kind isplus =
+  typecheck_kind_opt current kind
+  |> bind (fun x ->
+    match x with
+    | TypeT s ->
+      if s <> base_int then None
+      else
+        { position = e.position; scope = current; value = if isplus then DoublePlus kind else DoubleMinus kind } |> some
+    | _ -> None
+  )
+
 (* given a simple statement node, typecheck it *)
-let rec typecheck_simple_opt current s =
+let rec typecheck_simple_opt current s: simpleStm snode option =
   match s with
   | Position e ->
     (match e.value with
@@ -520,9 +531,34 @@ let rec typecheck_simple_opt current s =
             if test then None
             else
               let gen_nodes = List.map (fun x -> Typed x) typed_exps in
-              Scoped { position = e.position; scope = current; value = Assign (assign_type, (kinds, gen_nodes)) } |> some
+              { position = e.position; scope = current; value = Assign (assign_type, (kinds, gen_nodes)) } |> some
       | Some l -> None)
-    | Empty -> Scoped { position = e.position; scope = current; value = Empty } |> some
+    | Empty -> { position = e.position; scope = current; value = Empty } |> some
+    | DoublePlus kind -> double_helper e current kind true
+    | DoubleMinus kind -> double_helper e current kind false
+    | ShortDeclaration (kinds, exps) ->
+      let otyped_kinds =
+        kinds
+        |> List.map (fun x -> typecheck_kind_opt current x)
+        |> List.filter is_some in
+      if List.length otyped_kinds <> List.length kinds then None
+      else
+        let typed_kinds = List.map Option.get otyped_kinds in
+        let otyped_exps =
+          exps
+          |> List.map (fun x -> typecheck_exp_opt current x)
+          |> List.filter is_some in
+        if List.length otyped_exps <> List.length exps then None
+        else
+          let typed_exps = List.map Option.get otyped_exps in
+          let test =
+            typed_kinds
+            |> List.map2 (fun exp kind -> kind = exp.typ) typed_exps
+            |> List.exists (fun x -> x = false) in
+          if test then None
+          else
+            let gen_nodes = List.map (fun x -> Typed x) typed_exps in
+            { position = e.position; scope = current; value = ShortDeclaration (kinds, gen_nodes) } |> some
     | _ -> None)
   | _ -> failwith "wut wut"
 
@@ -534,8 +570,31 @@ let print_helper current (e: stmt node) l is_println =
     |> List.filter is_some in
   if List.length l <> List.length tnodes then None
   else
-    let lst = (List.map (fun x -> Typed (Option.get x)) tnodes) in
-    Some { position = e.position; scope = current; value = if is_println then Println lst else Print lst }
+    let tnodes = List.map Option.get tnodes in
+    let check_types =
+      tnodes
+      |> List.map (fun x -> match x.typ with | TypeT s -> Some s | _ -> None)
+      |> List.exists is_none in
+    let lst = List.map (fun x -> Typed x) tnodes in
+    if check_types = true then None
+    else
+      Some { position = e.position; scope = current; value = if is_println then Println lst else Print lst }
+
+let verify_return_statements (l: (stmt snode) list) expected_type =
+  l
+  |> List.map (fun s ->
+    match s.value with
+    | Return exp ->
+      exp
+      |> bind (fun exp ->
+        (match exp with
+        | Typed e -> Some e.typ = expected_type |> some
+        | _ -> None)
+      )
+      |> (default (is_none expected_type))
+    | _ -> true
+  )
+  |> List.exists (fun x -> x = false)
 
 (* given a statement node, typecheck it *)
 let rec typecheck_stm_opt current s =
@@ -553,7 +612,11 @@ let rec typecheck_stm_opt current s =
       let simple_scope = new_scope current in
       let typed_exp =
         typecheck_exp_opt current oexp
-        |> bind (fun typed -> Typed typed |> some) in
+        |> bind (fun typed ->
+          match typed.typ with
+          | TypeT s -> if s = base_bool then Typed typed |> some else None
+          | _ -> None
+        ) in
       let typed_simple =
         osimple
         |> bind (fun simple ->
@@ -619,9 +682,25 @@ let rec typecheck_stm_opt current s =
     | Simple simple ->
       typecheck_simple_opt current simple
       |> bind (fun simple ->
-        Some { position = e.position; scope = current; value = Simple simple }
+        Some { position = e.position; scope = current; value = Simple (Scoped simple) }
+      )
+    | Return exp ->
+      (match exp with
+      | None -> Some { position = e.position; scope = current; value = Return None }
+      | Some exp ->
+        typecheck_exp_opt current exp
+        |> bind (fun x ->
+          Some { position = e.position; scope = current; value = Return (Some (Typed x)) }
+        ))
+    | Loop loop ->
+      let new_scope = new_scope current in
+      loop_helper e new_scope loop
+      |> bind (fun x ->
+        let new_scope = { current with children = List.append current.children [x.scope] } in
+        { x with scope = new_scope } |> some
       )
     | _ -> failwith "not implemented")
+
   | Typed e -> None
   | Scoped e -> Some e
 
@@ -632,10 +711,7 @@ and if_helper current ifs (e: stmt node) typed_simple typed_exp typed_elses =
     let new_current_scope =
       typed_simple
       |> bind (fun simple ->
-        match simple with
-        | Scoped s ->
-          { current with children = [new_scope; s.scope] } |> some
-        | _ -> None
+        { current with children = [new_scope; simple.scope] } |> some
       )
       |> default { current with children = [new_scope] } in
     let else_scope =
@@ -647,6 +723,7 @@ and if_helper current ifs (e: stmt node) typed_simple typed_exp typed_elses =
           |> (fun x -> match x with Scoped s -> Some s.scope | _ -> None)
       ) in
     let scoped_stms = List.map (fun x -> Scoped x) stms in
+    let typed_simple = Option.map (fun x -> Scoped x) typed_simple in
     match typed_elses with
     | None ->
         Some { position = e.position; scope = new_current_scope; value = If (typed_simple, typed_exp, scoped_stms, typed_elses) }
@@ -657,6 +734,62 @@ and if_helper current ifs (e: stmt node) typed_simple typed_exp typed_elses =
         Some { position = e.position; scope = new_current_scope; value = If (typed_simple, typed_exp, scoped_stms, typed_elses) }
       )
   )
+
+and loop_helper e scope loop =
+  match loop with
+  | While (oexp, stmts) ->
+    let otyped_exp =
+      oexp
+      |> bind (fun exp ->
+        typecheck_exp_opt scope exp
+      ) in
+    typecheck_stm_list_opt stmts scope
+    |> bind (fun (typed_stmts, new_scope) ->
+      let gen_nodes = List.map (fun x -> Scoped x) typed_stmts in
+      (match oexp with
+      | None ->
+        Some { position = e.position; scope = new_scope; value = Loop (While (None, gen_nodes)) }
+      | _ ->
+        otyped_exp
+        |> bind (fun typed_exp ->
+          if not (match typed_exp.typ with | TypeT s -> s = base_bool | _ -> false) then None
+          else
+            let exp_gen = Typed typed_exp in
+            Some { position = e.position; scope = new_scope; value = Loop (While (Some exp_gen, gen_nodes)) }
+        )
+      )
+    )
+  | For (init, oexp, inc, stmts) ->
+    let otyped_exp =
+      oexp
+      |> bind (fun exp ->
+        typecheck_exp_opt scope exp
+      ) in
+    typecheck_simple_opt scope init
+    |> bind (fun init ->
+      let scope = { scope with bindings = init.scope.bindings } in
+      typecheck_simple_opt scope inc
+      |> bind (fun inc ->
+        typecheck_stm_list_opt stmts scope
+        |> bind (fun (typed_stmt, new_scope) ->
+          let stmt_gen_nodes = List.map (fun x -> Scoped x) typed_stmt in
+          let init_gen = Scoped init in
+          let inc_gen = Scoped inc in
+          (match oexp with
+          | None ->
+            Some { position = e.position; scope = new_scope; value = Loop (For (init_gen, None, inc_gen, stmt_gen_nodes)) }
+          | Some _ ->
+            otyped_exp
+            |> bind (fun typed_exp ->
+              if not (match typed_exp.typ with | TypeT s -> s = base_bool | _ -> false) then None
+              else
+                let exp_gen = Typed typed_exp in
+                Some { position = e.position; scope = new_scope; value = Loop (For (init_gen, Some exp_gen, inc_gen, stmt_gen_nodes)) }
+            )
+          )
+        )
+      )
+    )
 
 (* geiven a list of statement nodes, typecheck_opt them *)
 and typecheck_stm_list_opt l scope =
@@ -737,6 +870,13 @@ and typecheck_var_decl_opt scope (vars, t, exps) =
             let new_scope = { empty_scope with bindings = new_bindings } in
             ((vars, Some t, exps), new_scope) |> some
         )
+
+let check_invalid_main (name, args, otyp) =
+  if name = "main" then
+    List.length args > 0 || is_some otyp
+  else
+    false
+
 (*
  Depending on the type of declaration (i.e Var, Type or Fct) this function will
  add the new bindings to the given scope and return the updated scope along with
@@ -770,28 +910,32 @@ let typecheck_decl_opt scope decl =
         )
     | Fct (name, args, otyp, stmts) ->
       let empty_function_scope = new_scope scope in
-      args
-      |> typecheck_args_opt scope
-      |> bind (fun typed_args ->
-        let arguments_scope = List.map2 (fun (name, _) typ -> (name, typ)) args typed_args in
-        let empty_function_scope = { empty_function_scope with bindings = arguments_scope } in
-        typecheck_stm_list_opt stmts empty_function_scope
-        |> bind (fun (typed_stmts, new_scope) ->
-          let typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
-          let oreturn_type =
-            otyp
-            |> bind (fun typ ->
-              def_of_ref_opt scope typ
-            ) in
-          let function_binding = (name, typed_args, oreturn_type) in
-          let scope =
-            { scope with
-              children = List.append scope.children [new_scope];
-              functions = List.append scope.functions [function_binding]
-            } in
-          (scope, Fct (name, args, otyp, typed_stmts)) |> some
+      if check_invalid_main (name, args, otyp) then None
+      else
+        args
+        |> typecheck_args_opt scope
+        |> bind (fun typed_args ->
+          let arguments_scope = List.map2 (fun (name, _) typ -> (name, typ)) args typed_args in
+          let empty_function_scope = { empty_function_scope with bindings = arguments_scope } in
+          typecheck_stm_list_opt stmts empty_function_scope
+          |> bind (fun (typed_stmts, new_scope) ->
+            let scoped_typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
+            let oreturn_type =
+              otyp
+              |> bind (fun typ ->
+                def_of_ref_opt scope typ
+              ) in
+            if verify_return_statements typed_stmts oreturn_type = true then None
+            else
+              let function_binding = (name, typed_args, oreturn_type) in
+              let scope =
+                { scope with
+                  children = List.append scope.children [new_scope];
+                  functions = List.append scope.functions [function_binding]
+                } in
+              (scope, Fct (name, args, otyp, scoped_typed_stmts)) |> some
+          )
         )
-      )
     )
   | _ -> None
 

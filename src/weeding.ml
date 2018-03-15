@@ -66,6 +66,8 @@ let duplicate_args x = Printf.sprintf "Error: duplicate argument name for this f
 
 let duplicate_member x = Printf.sprintf "Error: duplicate member name for this struct: line %d" x
 
+let type_redeclaration x = Printf.sprintf "Error: cannot redeclare this type: line %d" x
+
 (* finds an invalid blank id in a type definition *)
 let rec blank_def line t =
   match t with
@@ -81,14 +83,21 @@ let rec blank_def line t =
     )
     |> List.flatten
 
-let rec duplicate_member_struct line t =
+let duplicate_member_struct line t =
   match t with
   | StructT l ->
-    l
-    |> List.map (fun (ls, _) ->
-        if contains_duplicate ls then [duplicate_member line] else []
-    )
-    |> List.flatten
+    let all_strings =
+      l
+      |> List.map (fun (ls, _) ->
+          ls
+      )
+      |> List.flatten in
+    if contains_duplicate all_strings then [duplicate_member line] else []
+  | _ -> []
+
+let type_redeclaration_check line t name =
+  match t with
+  | TypeT s -> if s = name then [type_redeclaration line] else []
   | _ -> []
 
 (* finds an invalid blank id in a type reference *)
@@ -170,6 +179,7 @@ let rec blank_stm (stm: stmt gen_node) =
       |> map_flat (fun (s, ts) ->
         blank_def stm.position.pos_lnum ts
         |> List.append (duplicate_member_struct stm.position.pos_lnum ts)
+        |> List.append (type_redeclaration_check stm.position.pos_lnum ts s)
         |> List.append (helper stm.position.pos_lnum s)
       )
     | If (s, e, l, el) ->
@@ -420,6 +430,7 @@ let weed (p, d) =
       |> map_flat (fun (s, ts) ->
         blank_def x.position.pos_lnum ts
         |> List.append (duplicate_member_struct x.position.pos_lnum ts)
+        |> List.append (type_redeclaration_check x.position.pos_lnum ts s)
         |> List.append (helper x.position.pos_lnum s) ))
     | _ -> []
   )
