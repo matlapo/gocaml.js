@@ -27,7 +27,7 @@ cp parser/2.7-types/invalid/* 1-scan+parse/invalid
 rm 1-scan+parse/invalid/bad-bracket-slice2.go
 cp parser/2.8-statements/invalid/* 1-scan+parse/invalid
 cp parser/2.9-expressions/invalid/* 1-scan+parse/invalid
-cp typecheck/milestone2/* 2-typecheck/invalid
+cp milestone2/* 2-typecheck/invalid
 
 # Remove other folders
 rm -r extra
