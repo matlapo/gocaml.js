@@ -403,10 +403,10 @@ and typecheck_exp_opt scope e =
         |> bind (fun b -> (* TODO resolve the types *)
           let types, comparable =
             match bin with
-            | Plus -> [Int; Float; String], false
+            | Plus -> [Int; Float; String; Rune], false
             | Minus
             | Times
-            | Div -> [Int; Float], false
+            | Div -> [Int; Float; Rune], false
             | Equals
             | NotEquals -> [Int; Float; String; Bool; Rune], true
             | And
@@ -414,7 +414,7 @@ and typecheck_exp_opt scope e =
             | Smaller
             | Greater
             | SmallerEq
-            | GreaterEq -> [Int; Float], true (* TODO ordered? *)
+            | GreaterEq -> [Int; Float; String; Rune], true (* TODO ordered? *)
             | DGreater
             | DSmaller
             | AndHat
