@@ -172,7 +172,7 @@ let base_types =
 
 let top_level =
   {
-    bindings = [];
+    bindings = [("true", TypeT base_bool); ("false", TypeT base_bool)];
     types = base_types;
     functions = [];
     parent = None;
