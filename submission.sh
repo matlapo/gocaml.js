@@ -5,6 +5,7 @@ cd programs
 mkdir 1-scan+parse
 mkdir 1-scan+parse/valid
 mkdir 1-scan+parse/invalid
+mkdir 2-typecheck
 mkdir 2-typecheck/invalid
 
 # Valid programs
