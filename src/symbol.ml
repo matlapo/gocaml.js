@@ -482,7 +482,7 @@ let double_helper (e: simpleStm node) current kind isplus =
   |> bind (fun x ->
     match x with
     | TypeT s ->
-      if s <> base_int then None
+      if not (s = base_int || s = base_float || s = base_rune) then None
       else
         { position = e.position; scope = current; value = if isplus then DoublePlus kind else DoubleMinus kind } |> some
     | _ -> None
@@ -560,7 +560,7 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
             let gen_nodes = List.map (fun x -> Typed x) typed_exps in
             { position = e.position; scope = current; value = ShortDeclaration (kinds, gen_nodes) } |> some
     | _ -> None)
-  | _ -> failwith "wut wut"
+  | _ -> None
 
 (* print helper function for typecheck print and println statements *)
 let print_helper current (e: stmt node) l is_println =
@@ -622,6 +622,10 @@ let rec typecheck_stm_opt current s =
         |> bind (fun simple ->
           typecheck_simple_opt simple_scope simple
         ) in
+      let current =
+        match typed_simple with
+        | Some s -> { current with bindings =  List.append current.bindings s.scope.bindings }
+        | None -> current in
       let typed_elses =
         oelses
         |> bind (fun elses ->
@@ -699,7 +703,7 @@ let rec typecheck_stm_opt current s =
         let new_scope = { current with children = List.append current.children [x.scope] } in
         { x with scope = new_scope } |> some
       )
-    | _ -> failwith "not implemented")
+    | _ -> None)
 
   | Typed e -> None
   | Scoped e -> Some e
