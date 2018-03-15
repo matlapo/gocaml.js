@@ -482,7 +482,7 @@ let double_helper (e: simpleStm node) current kind isplus =
   |> bind (fun x ->
     match x with
     | TypeT s ->
-      if s <> base_int then None
+      if not (s = base_int || s = base_float || s = base_rune) then None
       else
         { position = e.position; scope = current; value = if isplus then DoublePlus kind else DoubleMinus kind } |> some
     | _ -> None
