@@ -32,9 +32,9 @@ COMPILER=./src/_build/comp.byte
 
 outfile=$(echo "$2" | cut -d. -f1)
 
-if [ "codegen" = "$1" ];
-then
-	$COMPILER < "$2" 1> "$outfile.c"
-else
+#if [ "codegen" = "$1" ];
+#then
+#	$COMPILER < "$2" 1> "$outfile.c"
+#else
 	$COMPILER "$1" "$2" < "$2"
-fi
+#fi

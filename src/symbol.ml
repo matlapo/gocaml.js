@@ -967,5 +967,5 @@ let typecheck_opt (p: program) =
   typed_decls
   |> bind (fun (scope, decls) ->
     let top_level = { top_level with children = [scope] } in
-    Some (decls, top_level)
+    Some ((package, decls), top_level)
   )
