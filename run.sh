@@ -35,6 +35,10 @@ outfile=$(echo "$2" | cut -d. -f1)
 if [ "codegen" = "$1" ];
 then
 	$COMPILER "$1" "$2" 1> "$outfile.js"
+	if [ -x "$(command -v prettier)" ];
+	then
+		prettier --write "$outfile.js" > /dev/null
+	fi
 else
 	$COMPILER "$1" "$2" < "$2"
 fi

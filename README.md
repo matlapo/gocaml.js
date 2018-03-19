@@ -21,9 +21,12 @@ Since the Trottier SOCS machine have a version of OCaml that dates from 2014, th
 * Install OPAM
 * `opam install menhir merlin ocamlbuild`
 * For IDE integration, install the VSCode extension `ReasonML`
+* Install Node.js
 * To run the tests
-  * Install node.js
   * `npm i -g jest`
+* To prettify generated program output
+  * `npm i -g pretter`
+
 # Run
 ## Compiler
 * `./build.sh` 
@@ -35,6 +38,8 @@ Since the Trottier SOCS machine have a version of OCaml that dates from 2014, th
 To only run certain test suites, run `jest [suite names]`. The following test suites are available:
 * `focused` Runs only tests that are fully written by us.
 * `extra` Runs go sample programs from online sources.
+## Running generated programs
+* `node program.js`
 
 Example: `jest focused extra`
 ### Running only certain test files
