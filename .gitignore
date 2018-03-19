@@ -1,4 +1,5 @@
 programs/1-scan+parse
+programs/**/*.js
 
 # Created by https://www.gitignore.io/api/macos,ocaml,windows,visualstudiocode
 

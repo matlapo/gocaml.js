@@ -8,3 +8,4 @@ testDirectory('programs/parser', 'parse', {
 });
 testDirectory('programs/typecheck', 'typecheck');
 testDirectory('programs/full', 'typecheck', { validity: VALID });
+testDirectory('programs/codegen', 'codegen');

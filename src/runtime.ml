@@ -1,6 +1,6 @@
 let prelude = "
 const print = (s) => {
-  console.log(s);
+  process.stdout.write(s);
 };
 
 "
@@ -8,4 +8,5 @@ const print = (s) => {
 let postlude = "
 
 main();
+process.exit(0);
 "

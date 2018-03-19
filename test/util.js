@@ -32,20 +32,49 @@ function testFiles(pathString, command, options) {
 
 function testFile(pathString, command, options) {
     it(path.basename(pathString), () => {
-        expect(options.validity).toBeDefined();
-
-        const result = spawnSync(`${__dirname}/../run.sh`, [command, pathString], { cwd: `${__dirname}/..`});
+        const result = spawnSync(
+            `${__dirname}/../run.sh`,
+            [command, pathString],
+            { cwd: `${__dirname}/..` }
+        );
         const output = result.output.join('');
 
-        if (options.validity === VALID) {
-            expect(output).toMatch(/OK/);
-            expect(result.status).toBe(0);
-        } else if (options.validity === INVALID) {
-            expect(output).toMatch(/Error/);
-            expect(result.status).toBe(1);
+        if (command === 'codegen') {
+            const programPath = pathString.replace(/\.go$/, ".js");
+            const programResult = spawnSync(
+                `${__dirname}/../execute.sh`,
+                [programPath],
+                { cwd: `${__dirname}/..` }
+            );
+            const programOutput = programResult.output.join('');
+            const fileContents = fs.readFileSync(pathString).toString();
+
+            console.log(pathString);
+            console.log(programOutput);
+            if (/\/\/!/.test(fileContents)) {
+                expect(programResult.status).not.toBe(0);
+            } else {
+                const expectedOutput = fileContents
+                    .match(/(?:\/\/~[^\n]*\n)*(?:\/\/~[^\n]*)/)[0]
+                    .replace(/^\/\/~/, '')
+                    .replace(/\n\/\/~/, '//~');
+                
+                expect(programResult.status).toBe(0);
+                expect(programOutput).toBe(expectedOutput);
+            }
         } else {
-            throw new Error('unreachable');
-        }
+            expect(options.validity).toBeDefined();
+
+            if (options.validity === VALID) {
+                expect(output).toMatch(/OK/);
+                expect(result.status).toBe(0);
+            } else if (options.validity === INVALID) {
+                expect(output).toMatch(/Error/);
+                expect(result.status).toBe(1);
+            } else {
+                throw new Error('unreachable');
+            }
+        } 
     });
 }
 

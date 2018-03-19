@@ -1,3 +1,5 @@
+//~Hello, World !
+
 package main
 
 func main() {
