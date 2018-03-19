@@ -39,27 +39,27 @@ let num_of_char c = Int64.of_int (match c with
     | _ -> 0)
 
 let list_of_string s =
-    let rec rs s a =
-        let length = String.length s in
-        if length > 0 then
-            rs (String.sub s 1 (length - 1)) (String.get s 0 :: a)
-        else
-            a
-    in
-    rs s []
+  let rec rs s a =
+    let length = String.length s in
+    if length > 0 then
+      rs (String.sub s 1 (length - 1)) (String.get s 0 :: a)
+    else
+      a
+  in
+  rs s []
 
 let int_of_hex h =
-    let digits = list_of_string h in
-    let rec process_digit p r t = match r with
-        | d::l -> process_digit (p + 1) l (Int64.mul (Int64.add t (num_of_char d)) (16.0 ** (float_of_int p) |> Int64.of_float))
-        | [] -> t
-    in
-        process_digit 0 digits Int64.zero
+  let digits = list_of_string h in
+  let rec process_digit p r t = match r with
+    | d::l -> process_digit (p + 1) l (Int64.mul (Int64.add t (num_of_char d)) (16.0 ** (float_of_int p) |> Int64.of_float))
+    | [] -> t
+  in
+  process_digit 0 digits Int64.zero
 
 let int_of_oct o =
-    let digits = list_of_string o in
-    let rec process_digit p r t = match r with
-        | d::l -> process_digit (p + 1) l (Int64.mul (Int64.add t (num_of_char d)) (8.0 ** (float_of_int p) |> Int64.of_float))
-        | [] -> t
-    in
-        process_digit 0 digits Int64.zero
+  let digits = list_of_string o in
+  let rec process_digit p r t = match r with
+    | d::l -> process_digit (p + 1) l (Int64.mul (Int64.add t (num_of_char d)) (8.0 ** (float_of_int p) |> Int64.of_float))
+    | [] -> t
+  in
+  process_digit 0 digits Int64.zero
