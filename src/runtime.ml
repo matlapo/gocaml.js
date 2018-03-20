@@ -11,6 +11,6 @@ const println = (...args) => {
 
 let postlude = "
 
-main();
+_main();
 process.exit(0);
 "
