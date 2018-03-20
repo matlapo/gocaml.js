@@ -1,0 +1,21 @@
+
+TypeRef -> TypeDef : resolve using name
+TypeDef -> TypeDef : compare name + lvl
+
+typeRefs will be ignored
+
+rename kind
+
+symboltable.ml to manipulate symbols
+
+parser rule simpleStm_cannot_be_empty
+
+TODO:
+- Refactor simpleStm in if/loop/switch
+- Record instead of tuples
+- Refactor return type
+- Refactor kind
+- Refactor typesDef
+- Refactor typeRefs
+- Anonymous struct
+- Typecast is a function call (int)(3)
