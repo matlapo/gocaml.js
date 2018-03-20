@@ -109,7 +109,7 @@ let symbol input =
       | [] ->
         (match Typecheck.typecheck_opt ast with
         | Some (_, symbols) ->
-          print_string (Typecheck.string_of_symbol_table symbols);
+          print_string (Scopeprinter.string_of_symbol_table symbols);
           exit 0;
         | None ->
           print_error lexer_buffer "Error: Type check error";
