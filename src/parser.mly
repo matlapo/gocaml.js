@@ -1,5 +1,5 @@
 %{
-  open Astwithposition
+  open Ast
   open Utils
 %}
 %token TVAR
@@ -96,7 +96,7 @@
 %left TTIMES TDIV TMOD TDSMALLER TDGREATER TBITAND TANDHAT
 %left TUPLUS TUMINUS TNOT TUCARET
 
-%start <Astwithposition.program> prog
+%start <Ast.program> prog
 %%
 
 // Reserved keyword (we don't use them anywhere)

@@ -1,4 +1,4 @@
-open Astwithposition
+open Ast
 
 let concat_map (f: 'a -> string) (l: 'a list) :string = l |> List.map f |> List.fold_left (^) ""
 

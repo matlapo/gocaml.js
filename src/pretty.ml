@@ -1,4 +1,4 @@
-open Astwithposition
+open Ast
 
 let string_of_list printer separator l = List.fold_left (fun a e -> a ^ (if a <> "" then separator else "") ^ (printer e)) "" l
 
