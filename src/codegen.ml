@@ -1,5 +1,14 @@
 open Astwithposition
 
+let concat_comma (l: string list) :string =
+  List.fold_left
+    (fun acc elt -> match acc with
+      | "" -> elt
+      | _ -> acc ^ "," ^ elt
+    )
+    ""
+    l
+
 let concat_map (f: 'a -> string) (l: 'a list) :string = l |> List.map f |> List.fold_left (^) ""
 
 let unwrap_gen_node (node:'a gen_node) :'a = match node with
@@ -46,7 +55,7 @@ and codegen_binary_op (op: binary) (left: exp gen_node) (right: exp gen_node) :s
 and codegen_exp (exp: exp gen_node) :string =
   let e = unwrap_gen_node exp in
   let code = match e with
-    | Id _ -> "(undefined /* UNIMPLEMENTED_EXP_ID */)"
+    | Id k -> "(undefined /* UNIMPLEMENTED_EXP_ID */)"
     | Int i -> Int64.to_string i
     | Float f -> string_of_float f
     | String s -> s
@@ -55,19 +64,13 @@ and codegen_exp (exp: exp gen_node) :string =
     | Bool b -> string_of_bool b
     | BinaryOp (op, (left, right)) -> codegen_binary_op op left right
     | Unaryexp (op, exp) -> codegen_unary_op op exp
-    | FuncCall (name, params) -> "('' /* UNIMPLEMENTED_FUNC_CALL */)"
+    | FuncCall (name, params) -> name ^ "(" ^ (codegen_exps params) ^ ")"
     | Append (l, v) -> "('' /* UNIMPLEMENTED_APPEND */)"
   in
   paren code
-
-let codegen_exps (exps: exp gen_node list): string = exps
+and codegen_exps (exps: exp gen_node list): string = exps
   |> List.map codegen_exp
-  |> List.fold_left
-    (fun acc elt -> match acc with
-      | "" -> elt
-      | _ -> acc ^ "," ^ elt
-    )
-    ""
+  |> concat_comma
 
 let codegen_stmt (stmt:stmt) :string = match stmt with
   | Print exps -> "print(" ^ codegen_exps exps ^ ");"
@@ -75,14 +78,18 @@ let codegen_stmt (stmt:stmt) :string = match stmt with
   | Return _ -> "return;"
   | s -> "/* UNIMPLEMENTED_STMT */"
 
+let codegen_args (args:argument list) :string = args |> List.map fst |> concat_comma
+
 let codegen_decl (decl:decl) :string = match decl with
+  | Var _ -> "/* UNIMPLEMENTED_VAR_DECL */"
   | Type _ -> ""
-  | Fct (name, [], None, stmts) ->
+  | Fct (name, args, _, stmts) ->
     "function " ^
     name ^
-    "(){" ^
-    (stmts |> List.map unwrap_gen_node |> concat_map codegen_stmt)
-    ^ "}"
-  | _ -> "/* UNIMPLEMENTED_DECL */"
+    "(" ^
+    (args |> List.map fst |> concat_comma) ^
+    "){" ^
+    (stmts |> List.map unwrap_gen_node |> concat_map codegen_stmt) ^
+    "}"
 
 let codegen ((_, decls):string * decl list) :string = Runtime.prelude ^ concat_map codegen_decl decls ^ Runtime.postlude
