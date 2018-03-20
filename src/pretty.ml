@@ -55,7 +55,6 @@ let rec string_of_exp gn =
   | String s -> s
   | RawStr s -> s
   | Rune s -> s
-  | Bool b -> string_of_bool b
   | BinaryOp (b, (e1, e2)) -> "(" ^ (string_of_exp e1) ^ " " ^ (string_of_binary_op b) ^ " " ^ (string_of_exp e2) ^ ")"
   | Unaryexp (u, e) -> "(" ^ string_of_unary_op u ^ string_of_exp e ^ ")"
   | Append (e1, e2) -> "append(" ^ string_of_exp e1 ^ "," ^ string_of_exp e2 ^ ")"

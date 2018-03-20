@@ -268,7 +268,6 @@ and typecheck_exp_opt scope e =
     | Float f -> tnode_of_node e (TypeT base_float) |> some
     | RawStr s
     | String s -> tnode_of_node e (TypeT base_string) |> some
-    | Bool b -> tnode_of_node e (TypeT base_bool) |> some
     | Rune r -> tnode_of_node e (TypeT base_rune) |> some
     | BinaryOp (bin, (a, b)) ->
       typecheck_exp_opt scope a

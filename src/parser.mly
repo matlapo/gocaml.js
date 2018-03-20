@@ -14,7 +14,6 @@
 %token <string> TSTRINGVAL
 %token <string> TRAWSTRVAL
 %token <string> TRUNEVAL
-%token <bool> TBOOLVAL
 %token TPLUS
 %token TUPLUS
 %token TMINUS
@@ -396,7 +395,6 @@ exp:
   | s = TSTRINGVAL { Position { position = $symbolstartpos; value = String s } }
   | s = TRAWSTRVAL { Position { position = $symbolstartpos; value = RawStr s } }
   | s = TRUNEVAL { Position { position = $symbolstartpos; value = Rune s } }
-  | b = TBOOLVAL { Position { position = $symbolstartpos; value = Bool b } }
   | e1 = exp TPLUS e2 = exp
     { Position { position = $symbolstartpos; value = BinaryOp (Plus, (e1, e2)) } }
   | e1 = exp TMINUS e2 = exp
