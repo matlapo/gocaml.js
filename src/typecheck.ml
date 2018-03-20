@@ -1,36 +1,7 @@
 open Ast
-open Utils
 open BatOption
-
+open Utils
 module Option = BatOption
-let bind x f = Option.bind f x
-let id x = x
-let inline (<|) f x = f x
-
-let map_flat f l =
-  l
-  |> List.map f
-  |> List.flatten
-
-let rev_assoc l =
-  l
-  |> List.map (fun (a,b) -> (b,a))
-
-let get_rest_of_list (start: int) l =
-  l
-  |> List.mapi (fun i x -> if i < start then None else Some x)
-  |> List.filter is_some
-  |> List.map Option.get
-
-let contains_duplicate l =
-  l
-  |> List.map (fun x ->
-    l
-    |> List.find_all (fun name -> x = name)
-  )
-  |> List.exists (fun x -> List.length x > 1)
-
-let some x = Some x
 
 let id_undeclared id = Printf.sprintf "Variable %s is used before being declared" id
 let binary_different_types t1 t2 = Printf.sprintf "Expecting both expressions to be of type %s but got type %s and %s" t1 t1 t2

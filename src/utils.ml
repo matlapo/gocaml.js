@@ -1,3 +1,7 @@
+open BatOption
+
+module Option = BatOption
+
 let inline (|>) x f = f x
 let inline (||>) (x1,x2) f = f x1 x2
 let inline (|||>) (x1,x2,x3) f = f x1 x2 x3
@@ -63,3 +67,32 @@ let int_of_oct o =
     | [] -> t
   in
   process_digit 0 digits Int64.zero
+
+let bind x f = Option.bind f x
+let id x = x
+let inline (<|) f x = f x
+
+let map_flat f l =
+  l
+  |> List.map f
+  |> List.flatten
+
+let rev_assoc l =
+  l
+  |> List.map (fun (a,b) -> (b,a))
+
+let get_rest_of_list (start: int) l =
+  l
+  |> List.mapi (fun i x -> if i < start then None else Some x)
+  |> List.filter is_some
+  |> List.map Option.get
+
+let contains_duplicate l =
+  l
+  |> List.map (fun x ->
+    l
+    |> List.find_all (fun name -> x = name)
+  )
+  |> List.exists (fun x -> List.length x > 1)
+
+let some x = Some x
