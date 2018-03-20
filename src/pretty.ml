@@ -115,7 +115,7 @@ and string_of_stmt lvl gn =
       "\n"
       decls
       ^ "\n"
-  | If (sstm, exp, stmts1, else_stmts) -> indent lvl ^ "if " ^ none_or_print (fun s -> string_of_simple_stmt s ^ "; ") sstm
+  | If (sstm, exp, stmts1, else_stmts) -> indent lvl ^ "if " ^ string_of_simple_stmt sstm ^ "; "
     ^ string_of_exp exp ^ " {\n"
     ^ string_of_stmts (lvl + 1) stmts1 ^ indent lvl ^ "}"
     ^ none_or_print (fun stmts -> " else {\n" ^ string_of_stmts (lvl + 1) stmts ^ indent lvl ^ "}") else_stmts
@@ -131,7 +131,7 @@ and string_of_stmt lvl gn =
     ^ indent lvl ^ "}\n"
   | Return exp -> indent lvl ^ "return " ^ none_or_print string_of_exp exp ^ "\n"
   | Switch (sstmt, exp, cases) -> indent lvl ^ "switch "
-    ^ none_or_print (fun s -> string_of_simple_stmt s ^ "; ") sstmt
+    ^ string_of_simple_stmt sstmt ^ "; "
     ^ none_or_print string_of_exp exp ^ " {\n"
     ^ string_of_list (string_of_case lvl) "" cases ^ indent lvl ^ "}\n"
   | Simple sstmt -> if (extract_gen_node_value sstmt) = Empty then string_of_simple_stmt sstmt else indent lvl ^ string_of_simple_stmt sstmt ^ "\n"

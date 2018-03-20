@@ -183,7 +183,7 @@ let rec blank_stm (stm: stmt gen_node) =
         |> List.append (helper stm.position.pos_lnum s)
       )
     | If (s, e, l, el) ->
-      let s = map_default blank_simple s in
+      let s = blank_simple s in
       let e = map_default blank_exp (Some e) in
       let l = map_flat blank_stm l in
       let el =
@@ -209,7 +209,7 @@ let rec blank_stm (stm: stmt gen_node) =
     | Simple s -> blank_simple s
     | Return e -> map_default blank_exp e
     | Switch (s, e, cs) ->
-      let s = map_default blank_simple s in
+      let s = blank_simple s in
       let e = map_default blank_exp e in
       cs
       |> map_flat (fun x ->

@@ -608,7 +608,7 @@ let rec typecheck_stm_opt current s =
         let new_scope = { current with children = [new_scope] } in
         Some { position = e.position; scope = new_scope; value = Block (List.map (fun x -> Scoped x) stms) }
       )
-    | If (osimple, oexp, ifs, oelses) ->
+    | If (simple, oexp, ifs, oelses) ->
       let simple_scope = new_scope current in
       let typed_exp =
         typecheck_exp_opt current oexp
@@ -617,11 +617,7 @@ let rec typecheck_stm_opt current s =
           | TypeT s -> if s = base_bool then Typed typed |> some else None
           | _ -> None
         ) in
-      let typed_simple =
-        osimple
-        |> bind (fun simple ->
-          typecheck_simple_opt simple_scope simple
-        ) in
+      let typed_simple = typecheck_simple_opt simple_scope simple in
       let current =
         match typed_simple with
         | Some s -> { current with bindings =  List.append current.bindings s.scope.bindings }
@@ -636,29 +632,20 @@ let rec typecheck_stm_opt current s =
             |> some
           )
         ) in
-      typed_exp
-      |> bind (fun typed_exp ->
-        match oelses with
-        | None ->
-          (match osimple with
-          | None -> if_helper current ifs e None typed_exp None
+      typed_simple
+      |> bind (fun typed_simple ->
+        typed_exp
+        |> bind (fun typed_exp ->
+          match oelses with
+          | None -> if_helper current ifs e typed_simple typed_exp None
           | Some _ ->
-            typed_simple
-            |> bind (fun typed_simple ->
-              if_helper current ifs e (Some typed_simple) typed_exp None
-            ))
-        | Some _ ->
-          typed_elses
-          |> bind (fun typed_else ->
-            (match osimple with
-            | None -> if_helper current ifs e None typed_exp (Some typed_else)
-            | Some _ ->
-              typed_simple
-              |> bind (fun typed_simple ->
-                if_helper current ifs e (Some typed_simple) typed_exp (Some typed_else)
-              ))
-          )
+            typed_elses
+            |> bind (fun typed_else ->
+              if_helper current ifs e typed_simple typed_exp (Some typed_else)
+            )
+        )
       )
+
     | Print l -> print_helper current e l false
     | Println l -> print_helper current e l true
     | Declaration l ->
@@ -712,12 +699,7 @@ and if_helper current ifs (e: stmt node) typed_simple typed_exp typed_elses =
   let if_scope = new_scope current in
   typecheck_stm_list_opt ifs if_scope
   |> bind (fun (stms, new_scope) ->
-    let new_current_scope =
-      typed_simple
-      |> bind (fun simple ->
-        { current with children = [new_scope; simple.scope] } |> some
-      )
-      |> default { current with children = [new_scope] } in
+    let new_current_scope = { current with children = [new_scope; typed_simple.scope] } in
     let else_scope =
         typed_elses
         |> bind (fun elses ->
@@ -727,7 +709,7 @@ and if_helper current ifs (e: stmt node) typed_simple typed_exp typed_elses =
           |> (fun x -> match x with Scoped s -> Some s.scope | _ -> None)
       ) in
     let scoped_stms = List.map (fun x -> Scoped x) stms in
-    let typed_simple = Option.map (fun x -> Scoped x) typed_simple in
+    let typed_simple = Scoped typed_simple in
     match typed_elses with
     | None ->
         Some { position = e.position; scope = new_current_scope; value = If (typed_simple, typed_exp, scoped_stms, typed_elses) }
