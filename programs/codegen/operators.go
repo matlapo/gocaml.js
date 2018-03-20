@@ -1,3 +1,8 @@
+//~true
+//~-23
+//~24
+//~-3
+//~
 //~2
 //~7
 //~6
@@ -6,6 +11,12 @@
 package main
 
 func main() {
+	// Unary Operators
+	println(!false)
+	println(-23)
+	println(+24)
+	println(^2)
+	println()
 
 	// Binary operators
 	println(1 + 1)

@@ -7,7 +7,14 @@ let unwrap_gen_node (node:'a gen_node) :'a = match node with
   | Typed { value=v } -> v
   | Scoped { value=v } -> v
 
-let rec codegen_binary_op (op: binary) (left: exp gen_node) (right: exp gen_node) :string =
+let rec codegen_unary_op (op: unary) (exp: exp gen_node) :string =
+  let e = codegen_exp exp in
+  match op with
+    | Not -> "!" ^ e
+    | UMinus -> "-" ^ e
+    | UPlus -> "+" ^ e
+    | UCaret -> "-1" ^ "^" ^ e
+and codegen_binary_op (op: binary) (left: exp gen_node) (right: exp gen_node) :string =
   let l = codegen_exp left in
   let r = codegen_exp right in
   match op with
@@ -41,7 +48,7 @@ and codegen_exp (exp: exp gen_node) :string =
     | Rune r -> r
     | Bool b -> string_of_bool b
     | BinaryOp (op, (left, right)) -> codegen_binary_op op left right
-    | Unaryexp (op, exp) -> "('' /* UNIMPLEMENTED_UNARY_EXP */)"
+    | Unaryexp (op, exp) -> codegen_unary_op op exp
     | FuncCall (name, params) -> "('' /* UNIMPLEMENTED_FUNC_CALL */)"
     | Append (l, v) -> "('' /* UNIMPLEMENTED_APPEND */)"
 
