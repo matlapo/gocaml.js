@@ -7,15 +7,56 @@ let unwrap_gen_node (node:'a gen_node) :'a = match node with
   | Typed { value=v } -> v
   | Scoped { value=v } -> v
 
-let codegen_exp (exp:exp) :string = match exp with
-  | String s -> s
-  | _ -> "(undefined /* UNIMPLEMENTED_EXP */)"
+let rec codegen_binary_op (op: binary) (left: exp gen_node) (right: exp gen_node) :string =
+  let l = codegen_exp left in
+  let r = codegen_exp right in
+  match op with
+    | Plus -> l ^ "+" ^ r
+    | Minus -> l ^ "-" ^ r
+    | Times -> l ^ "*" ^ r
+    | Div -> l ^ "/" ^ r
+    | Mod -> l ^ "%" ^ r
+    | Equals -> l ^ "==" ^ r
+    | NotEquals -> l ^ "!=" ^ r
+    | And -> l ^ "&&" ^ r
+    | Or -> l ^ "||" ^ r
+    | Smaller -> l ^ "<" ^ r
+    | Greater -> l ^ ">" ^ r
+    | SmallerEq -> l ^ "<=" ^ r
+    | GreaterEq -> l ^ ">=" ^ r
+    | DGreater -> l ^ ">>" ^ r
+    | DSmaller -> l ^ "<<" ^ r
+    | AndHat -> "(undefined /* UNSUPPORTED_AND_HAT */)"
+    | BAnd -> l ^ "&" ^ r
+    | BOr -> l ^ "|" ^ r
+    | Caret -> l ^ "^" ^ r
+and codegen_exp (exp: exp gen_node) :string =
+  let e = unwrap_gen_node exp in
+  match e with
+    | Id _ -> "(undefined /* UNIMPLEMENTED_EXP_ID */)"
+    | Int i -> Int64.to_string i
+    | Float f -> string_of_float f
+    | String s -> s
+    | RawStr s -> "('' /* UNIMPLEMENTED_RAW_STRING */)"
+    | Rune r -> r
+    | Bool b -> string_of_bool b
+    | BinaryOp (op, (left, right)) -> codegen_binary_op op left right
+    | Unaryexp (op, exp) -> "('' /* UNIMPLEMENTED_UNARY_EXP */)"
+    | FuncCall (name, params) -> "('' /* UNIMPLEMENTED_FUNC_CALL */)"
+    | Append (l, v) -> "('' /* UNIMPLEMENTED_APPEND */)"
+
+let codegen_exps (exps: exp gen_node list): string = exps
+  |> List.map codegen_exp
+  |> List.fold_left
+    (fun acc elt -> match acc with
+      | "" -> elt
+      | _ -> acc ^ "," ^ elt
+    )
+    ""
 
 let codegen_stmt (stmt:stmt) :string = match stmt with
-  | Print exps ->
-    "print(" ^
-    (exps |> List.map unwrap_gen_node |> concat_map codegen_exp)
-    ^ ");"
+  | Print exps -> "print(" ^ codegen_exps exps ^ ");"
+  | Println exps -> "println(" ^ codegen_exps exps ^ ");"
   | Return _ -> "return;"
   | s -> "/* UNIMPLEMENTED_STMT */"
 
