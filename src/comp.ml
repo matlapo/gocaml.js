@@ -1,7 +1,7 @@
 open Printf
 open Lexing
 open Weeding
-open Symbol
+open Typecheck
 
 (* prints the error message msg with the associate lexer buffer *)
 let print_error lb msg =
@@ -82,7 +82,7 @@ let typecheck input =
     let ast = Parser.prog Lexer.read lexer_buffer in
       match Weeding.weed ast with
       | [] ->
-        (match Symbol.typecheck_opt ast with
+        (match Typecheck.typecheck_opt ast with
         | Some _ ->
           print_string "OK\n";
           exit 0;
@@ -107,9 +107,9 @@ let symbol input =
     let ast = Parser.prog Lexer.read lexer_buffer in
       match Weeding.weed ast with
       | [] ->
-        (match Symbol.typecheck_opt ast with
+        (match Typecheck.typecheck_opt ast with
         | Some (_, symbols) ->
-          print_string (Symbol.string_of_symbol_table symbols);
+          print_string (Typecheck.string_of_symbol_table symbols);
           exit 0;
         | None ->
           print_error lexer_buffer "Error: Type check error";
@@ -132,7 +132,7 @@ let codegen input =
     let ast = Parser.prog Lexer.read lexer_buffer in
       match Weeding.weed ast with
       | [] ->
-        (match Symbol.typecheck_opt ast with
+        (match Typecheck.typecheck_opt ast with
         | Some (ast, _) ->
           print_string (Codegen.codegen ast);
           exit 0;
