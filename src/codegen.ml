@@ -7,17 +7,21 @@ let unwrap_gen_node (node:'a gen_node) :'a = match node with
   | Typed { value=v } -> v
   | Scoped { value=v } -> v
 
+let paren (code: string) :string = "(" ^ code ^ ")"
+
 let rec codegen_unary_op (op: unary) (exp: exp gen_node) :string =
   let e = codegen_exp exp in
-  match op with
+  let code = match op with
     | Not -> "!" ^ e
     | UMinus -> "-" ^ e
     | UPlus -> "+" ^ e
     | UCaret -> "-1" ^ "^" ^ e
+  in
+  paren code
 and codegen_binary_op (op: binary) (left: exp gen_node) (right: exp gen_node) :string =
   let l = codegen_exp left in
   let r = codegen_exp right in
-  match op with
+  let code = match op with
     | Plus -> l ^ "+" ^ r
     | Minus -> l ^ "-" ^ r
     | Times -> l ^ "*" ^ r
@@ -37,9 +41,11 @@ and codegen_binary_op (op: binary) (left: exp gen_node) (right: exp gen_node) :s
     | BAnd -> l ^ "&" ^ r
     | BOr -> l ^ "|" ^ r
     | Caret -> l ^ "^" ^ r
+  in
+  paren code
 and codegen_exp (exp: exp gen_node) :string =
   let e = unwrap_gen_node exp in
-  match e with
+  let code = match e with
     | Id _ -> "(undefined /* UNIMPLEMENTED_EXP_ID */)"
     | Int i -> Int64.to_string i
     | Float f -> string_of_float f
@@ -51,6 +57,8 @@ and codegen_exp (exp: exp gen_node) :string =
     | Unaryexp (op, exp) -> codegen_unary_op op exp
     | FuncCall (name, params) -> "('' /* UNIMPLEMENTED_FUNC_CALL */)"
     | Append (l, v) -> "('' /* UNIMPLEMENTED_APPEND */)"
+  in
+  paren code
 
 let codegen_exps (exps: exp gen_node list): string = exps
   |> List.map codegen_exp

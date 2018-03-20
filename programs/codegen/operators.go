@@ -7,6 +7,8 @@
 //~7
 //~6
 //~5
+//~
+//~4
 
 package main
 
@@ -24,4 +26,8 @@ func main() {
 	println(3 * 2)
 	println(15 / 3)
 	// TODO: test all operators
+	println()
+
+	// More complicated expressions
+	println(2 * (1 + 1))
 }
