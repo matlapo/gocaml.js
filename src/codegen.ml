@@ -1,6 +1,13 @@
 open Astwithposition
 open BatOption
 
+let map_filter (f: 'a -> 'b option) (l: 'a list) :'b list =
+  l
+    |> List.map f
+    |> List.filter is_some
+    |> List.map get
+
+
 let concat = List.fold_left (^) ""
 let concat_comma =
   List.fold_left
@@ -19,6 +26,12 @@ let unwrap_gen_node (node:'a gen_node) :'a = match node with
 
 let paren (code: string) :string = "(" ^ code ^ ")"
 let mangle (name: string) :string = "_" ^ name
+
+let rec codegen_ref (ref: kind) :string = match ref with
+  | [Variable id] -> mangle id
+  | (Variable id)::tail -> (mangle id) ^ "." ^ (codegen_ref tail)
+  | _ -> "/* UNIMPLEMENTED_ARRAY_ACCESS */"
+let ref_of_id (id: string) :kind = [Variable id]
 
 let rec codegen_unary_op (op: unary) (exp: exp gen_node) :string =
   let e = codegen_exp exp in
@@ -57,8 +70,7 @@ and codegen_binary_op (op: binary) (left: exp gen_node) (right: exp gen_node) :s
 and codegen_exp (exp: exp gen_node) :string =
   let e = unwrap_gen_node exp in
   let code = match e with
-    | Id [Variable id] -> mangle id
-    | Id _ -> "(undefined /* UNIMPLEMENTED COMPLEX IDENTIFIERS */)"
+    | Id ref -> codegen_ref ref
     | Int i -> Int64.to_string i
     | Float f -> string_of_float f
     | String s -> s
@@ -81,18 +93,56 @@ let codegen_var_decl (names: string list) :string =
     |> List.map (fun name -> "let " ^ (mangle name) ^ ";")
     |> concat
 
-let codegen_assign (names: string list) (exps: exp gen_node list) :string =
+let codegen_assign (refs: kind list) (exps: exp gen_node list) :string =
   "[" ^
-  (names |> List.map mangle |> concat_comma) ^
+  (refs |> List.map codegen_ref |> concat_comma) ^
   "]=[" ^
   (codegen_exps exps) ^
   "];"
+
+let codegen_assign_op (op: assign) (ref: kind) (exp: exp gen_node) =
+  let r = codegen_ref ref in
+  let e = codegen_exp exp in
+  match op with
+    | Regular -> raise (Failure "unreachable")
+    | PlusEqual -> r ^ "+=" ^ e ^ ";"
+    | MinusEqual -> r ^ "-=" ^ e ^ ";"
+    | TimesEqual -> r ^ "*=" ^ e ^ ";"
+    | DivEqual -> r ^ "/=" ^ e ^ ";"
+    | AndEqual -> r ^ "&=" ^ e ^ ";"
+    | OrEqual -> r ^ "|=" ^ e ^ ";"
+    | HatEqual -> r ^ "^=" ^ e ^ ";"
+    | PercentEqual -> r ^ "%=" ^ e ^ ";"
+    | AndHatEqual -> r ^ "=" ^ "/* UNIMPLEMENTED AND HAT */" ^ ";"
+    | DoubleGreaterEqual -> r ^ ">>=" ^ e ^ ";"
+    | DoubleSmallerEqual -> r ^ "<<=" ^ e ^ ";"
+
+let codegen_simple_stmt (simple_stmt: simpleStm gen_node) =
+  let s = unwrap_gen_node simple_stmt in
+  match s with
+  | Assign (Regular, (refs, exps)) -> codegen_assign refs exps
+  | Assign (op, ([ref], [exp])) -> (codegen_ref ref) ^ ""
+  | Assign _ -> raise (Failure "Invalid Assignment")
+  | ExpStatement exp -> (codegen_exp exp) ^ ";"
+  | DoublePlus ref -> (codegen_ref ref) ^ "++;"
+  | DoubleMinus ref -> (codegen_ref ref) ^ "--;"
+  | ShortDeclaration (refs, exps) ->
+    (refs
+      (* Only include simple identifiers. Not compound refs like a.b[2] *)
+      |> map_filter (fun ref -> match ref with
+        | [Variable id] -> Some id
+        | _ -> None
+      )
+      |> codegen_var_decl
+    ) ^
+    (codegen_assign refs exps)
+  | Empty -> "/* Empty Simple Statement */"
 
 let codegen_decl_assign (decls: (string list * typesRef option * (exp gen_node) list) list) :string =
   decls
     |> List.map (fun decl -> match decl with
         | (names, _, []) -> codegen_var_decl names
-        | (names, _, exps) -> (codegen_var_decl names) ^ (codegen_assign names exps)
+        | (names, _, exps) -> (codegen_var_decl names) ^ (codegen_assign (List.map ref_of_id names) exps)
       )
     |> concat
 
@@ -120,7 +170,7 @@ let rec codegen_stmt (stmt:stmt gen_node) :string =
     | Loop For _ -> "/* UNIMPLEMENTED FOR */"
     | Return _ -> "return;"
     | Switch _ -> "/* UNIMPLEMENTED SWITCH */"
-    | Simple simpleStm -> "/* UMIMPLEMENTED SIMPLE STMT */"
+    | Simple simple_stmt -> codegen_simple_stmt simple_stmt
     | Break -> "break;"
     | Continue -> "continue;"
     | Default -> "/* UNIMPLEMENTED DEFAULT */"
