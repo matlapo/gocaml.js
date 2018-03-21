@@ -188,9 +188,14 @@ let string_of_decl gn =
     vars
     ^ "\n"
   | Type nts -> string_of_list (fun (name, types) -> "type " ^ string_of_typedef_with_names 0 ([name], types)) "\n" nts
-  | Fct (name, args, ret, stmts) -> "func " ^ name ^ "("
+  | Fct (name, args, NonVoid ret, stmts) -> "func " ^ name ^ "("
     ^ string_of_list (fun (argname, t) -> argname ^ " " ^ string_of_typeref 0 t) ", " args
-    ^ ") " ^ none_or_print (fun r -> string_of_typeref 0 r ^ " ") ret ^ "{\n"
+    ^ ") " ^ string_of_typeref 0 ret ^ " {\n"
+    ^ string_of_stmts 1 stmts
+    ^ "}\n\n"
+  | Fct (name, args, Void, stmts) -> "func " ^ name ^ "("
+    ^ string_of_list (fun (argname, t) -> argname ^ " " ^ string_of_typeref 0 t) ", " args
+    ^ ") " ^ "{\n"
     ^ string_of_stmts 1 stmts
     ^ "}\n\n"
 

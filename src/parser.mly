@@ -205,8 +205,8 @@ fct_args:
 
 // Matches the return type of a function
 fct_return:
-  | { None }
-  | t = type_ref { Some t }
+  | { Void }
+  | t = type_ref { NonVoid t }
   ;
 
 args_list:

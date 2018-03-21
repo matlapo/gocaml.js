@@ -11,11 +11,15 @@ type typesRef =
   | ArrayR of string * (int64 list) (* The list of int64 is the size of each dimension *)
   | SliceR of string * int64 (* The int64 is the number of dimensions *)
 
+type 'a fct_return =
+  | NonVoid of 'a
+  | Void
+
 type scope =
   {
     bindings: (string * typesDef) list;
     types: (string * typesDef) list;
-    functions: (string * typesDef list * typesDef option) list; (* function name - argument types - return type *)
+    functions: (string * typesDef list * typesDef fct_return) list; (* function name - argument types - return type *)
     parent: scope option; (* top level scope doesn't have a parent *)
     children: scope list
   }
@@ -125,6 +129,6 @@ type argument = (string * typesRef) (* arg name + type *)
 type decl =
   | Var of (string list * typesRef option * (exp gen_node) list) list
   | Type of (string * typesDef) list (* name + type def *)
-  | Fct of (string * argument list * typesRef option * stmt gen_node list)
+  | Fct of (string * argument list * typesRef fct_return * stmt gen_node list)
 
 type program = package * decl gen_node list

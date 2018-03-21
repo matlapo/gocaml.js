@@ -21,7 +21,7 @@ let codegen_stmt (stmt:stmt) :string = match stmt with
 
 let codegen_decl (decl:decl) :string = match decl with
   | Type _ -> ""
-  | Fct (name, [], None, stmts) ->
+  | Fct (name, [], Void, stmts) ->
     "function " ^
     name ^
     "(){" ^

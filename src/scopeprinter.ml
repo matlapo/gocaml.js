@@ -47,7 +47,7 @@ let string_of_function_binding (name, args, ret) =
   name ^ " [function] = " ^ "("
   ^ string_of_list (fun a -> string_of_typedef a) ", " args
   ^ ") -> "
-  ^ (match ret with None -> "void" | Some r -> string_of_typedef r)
+  ^ (match ret with Void -> "void" | NonVoid r -> string_of_typedef r)
 
 (* Prints a scope *)
 let rec string_of_scope lvl scope =
