@@ -61,7 +61,7 @@ and codegen_binary_op (op: binary) (left: exp gen_node) (right: exp gen_node) :s
     | GreaterEq -> l ^ ">=" ^ r
     | DGreater -> l ^ ">>" ^ r
     | DSmaller -> l ^ "<<" ^ r
-    | AndHat -> "(undefined /* UNSUPPORTED_AND_HAT */)"
+    | AndHat -> l ^ "& ~" ^ r
     | BAnd -> l ^ "&" ^ r
     | BOr -> l ^ "|" ^ r
     | Caret -> l ^ "^" ^ r
@@ -113,7 +113,7 @@ let codegen_assign_op (op: assign) (ref: kind) (exp: exp gen_node) =
     | OrEqual -> r ^ "|=" ^ e ^ ";"
     | HatEqual -> r ^ "^=" ^ e ^ ";"
     | PercentEqual -> r ^ "%=" ^ e ^ ";"
-    | AndHatEqual -> r ^ "=" ^ "/* UNIMPLEMENTED AND HAT */" ^ ";"
+    | AndHatEqual -> r ^ "=" ^ r ^ "& ~" ^ e ^ ";"
     | DoubleGreaterEqual -> r ^ ">>=" ^ e ^ ";"
     | DoubleSmallerEqual -> r ^ "<<=" ^ e ^ ";"
 
