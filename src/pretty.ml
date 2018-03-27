@@ -75,21 +75,16 @@ let rec string_of_slice_dimensions d =
   if Int64.compare d Int64.one < 0 then "" else
   "[]" ^ string_of_slice_dimensions (Int64.sub d Int64.one)
 
-let string_of_typeref lvl t = match t with
-  | TypeR s -> indent lvl ^ s
-  | ArrayR (name, sizes) -> indent lvl ^ string_of_array_indexes sizes ^ name
-  | SliceR (name, dim) -> indent lvl ^ string_of_slice_dimensions dim ^ name
-
-let rec string_of_typedef lvl type_def = match type_def with
+let rec string_of_gotype lvl type_def = match type_def with
   | TypeT s -> indent lvl ^ s
   | ArrayT (name, sizes) -> indent lvl ^ string_of_array_indexes sizes ^ name
   | SliceT (name, dim) -> indent lvl ^ string_of_slice_dimensions dim ^ name
   | StructT members ->
     " struct {\n"
-    ^ string_of_list (fun t -> string_of_typedef_with_names (lvl + 1) t) "\n" members ^ "\n"
+    ^ string_of_list (fun t -> string_of_gotype_with_names (lvl + 1) t) "\n" members ^ "\n"
     ^ indent lvl ^ "}\n"
-and string_of_typedef_with_names lvl (names, type_def) =
-  string_of_string_list "," names ^ string_of_typedef lvl type_def
+and string_of_gotype_with_names lvl (names, type_def) =
+  string_of_string_list "," names ^ string_of_gotype lvl type_def
 
 let rec string_of_stmts lvl stmts = List.fold_left (fun a s -> a ^ string_of_stmt lvl s ^ "") "" stmts
 and string_of_stmt lvl gn =
@@ -102,13 +97,13 @@ and string_of_stmt lvl gn =
   | Println exps -> indent lvl ^ "println(" ^ string_of_exps exps ^ ")\n"
   | TypeDeclaration decls ->
     string_of_list
-      (fun (name, types) -> indent lvl ^ "type " ^ name ^ " " ^ string_of_typedef 0 types)
+      (fun (name, types) -> indent lvl ^ "type " ^ name ^ " " ^ string_of_gotype 0 types)
       "\n"
       decls
   | Declaration decls -> string_of_list
       (fun (names, typesref, exps) ->
         indent lvl ^ "var " ^ string_of_string_list "," names ^ " "
-        ^ none_or_print (string_of_typeref 0) typesref ^ " "
+        ^ none_or_print (string_of_gotype 0) typesref ^ " "
         ^ string_of_exps exps
       )
       "\n"
@@ -174,7 +169,7 @@ let string_of_decl gn =
       "var " ^
       string_of_string_list "," ids ^
       (match t with
-      | Some t -> " " ^ string_of_typeref 0 t
+      | Some t -> " " ^ string_of_gotype 0 t
       | None -> "")
       ^
       (if List.length exps > 0 then
@@ -187,14 +182,14 @@ let string_of_decl gn =
     ""
     vars
     ^ "\n"
-  | Type nts -> string_of_list (fun (name, types) -> "type " ^ string_of_typedef_with_names 0 ([name], types)) "\n" nts
+  | Type nts -> string_of_list (fun (name, types) -> "type " ^ string_of_gotype_with_names 0 ([name], types)) "\n" nts
   | Fct (name, args, NonVoid ret, stmts) -> "func " ^ name ^ "("
-    ^ string_of_list (fun (argname, t) -> argname ^ " " ^ string_of_typeref 0 t) ", " args
-    ^ ") " ^ string_of_typeref 0 ret ^ " {\n"
+    ^ string_of_list (fun (argname, t) -> argname ^ " " ^ string_of_gotype 0 t) ", " args
+    ^ ") " ^ string_of_gotype 0 ret ^ " {\n"
     ^ string_of_stmts 1 stmts
     ^ "}\n\n"
   | Fct (name, args, Void, stmts) -> "func " ^ name ^ "("
-    ^ string_of_list (fun (argname, t) -> argname ^ " " ^ string_of_typeref 0 t) ", " args
+    ^ string_of_list (fun (argname, t) -> argname ^ " " ^ string_of_gotype 0 t) ", " args
     ^ ") " ^ "{\n"
     ^ string_of_stmts 1 stmts
     ^ "}\n\n"

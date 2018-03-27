@@ -69,7 +69,7 @@ let duplicate_member x = Printf.sprintf "Error: duplicate member name for this s
 let type_redeclaration x = Printf.sprintf "Error: cannot redeclare this type: line %d" x
 
 (* finds an invalid blank id in a type definition *)
-let rec blank_def line t =
+let rec blank_type line t =
   match t with
   | TypeT s -> helper line s
   | ArrayT (s, _) -> helper line s
@@ -79,7 +79,7 @@ let rec blank_def line t =
     |> List.map (fun (ls, ts) ->
       List.map (helper 0) ls
       |> List.flatten
-      |> List.append (blank_def line ts)
+      |> List.append (blank_type line ts)
     )
     |> List.flatten
 
@@ -99,13 +99,6 @@ let type_redeclaration_check line t name =
   match t with
   | TypeT s -> if s = name then [type_redeclaration line] else []
   | _ -> []
-
-(* finds an invalid blank id in a type reference *)
-let blank_ref line t =
-  match t with
-  | TypeR s -> helper line s
-  | ArrayR (s, _) -> helper line s
-  | SliceR (s, _) -> helper line s
 
 (* finds an invalid blank id in an expression node *)
 let rec blank_exp (e: exp gen_node) =
@@ -170,14 +163,14 @@ let rec blank_stm (stm: stmt gen_node) =
     | Declaration l ->
       l
       |> map_flat (fun (s, d, es) ->
-        let d = map_default (blank_ref stm.position.pos_lnum) d in
+        let d = map_default (blank_type stm.position.pos_lnum) d in
         map_flat blank_exp es
         |> List.append d
       )
     | TypeDeclaration l ->
       l
       |> map_flat (fun (s, ts) ->
-        blank_def stm.position.pos_lnum ts
+        blank_type stm.position.pos_lnum ts
         |> List.append (duplicate_member_struct stm.position.pos_lnum ts)
         |> List.append (type_redeclaration_check stm.position.pos_lnum ts s)
         |> List.append (helper stm.position.pos_lnum s)
@@ -397,7 +390,7 @@ let weed (p, d) =
         |> map_flat (fun (v, r, exps) ->
           let exp = map_flat blank_exp exps in
           r
-          |> map_default (blank_ref x.position.pos_lnum)
+          |> map_default (blank_type x.position.pos_lnum)
           |> List.append exp
           |> List.append (decl_var_check x.position.pos_lnum v exps)
         )
@@ -413,7 +406,7 @@ let weed (p, d) =
         let args =
           args
           |> map_flat (fun (_, r) ->
-             blank_ref x.position.pos_lnum r
+             blank_type x.position.pos_lnum r
           ) in
         let s = map_flat blank_stm s in
         name
@@ -428,7 +421,7 @@ let weed (p, d) =
     | Type l ->
       l
       |> map_flat (fun (s, ts) ->
-        blank_def x.position.pos_lnum ts
+        blank_type x.position.pos_lnum ts
         |> List.append (duplicate_member_struct x.position.pos_lnum ts)
         |> List.append (type_redeclaration_check x.position.pos_lnum ts s)
         |> List.append (helper x.position.pos_lnum s) ))

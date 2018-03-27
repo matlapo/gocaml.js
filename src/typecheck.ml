@@ -66,21 +66,6 @@ let typesdef_to_string d =
 (* converts a regular node to a node with the given type *)
 let tnode_of_node (e: exp node) t = { position = e.position; typ = t; value = e.value }
 
-(* given a scope and a type reference, try finding the associated type definition *)
-let rec def_of_ref_opt scope t =
-  match t with
-  | ArrayR (typ, l) -> ArrayT (typ, l) |> some
-  | SliceR (typ, l) -> SliceT (typ, l) |> some
-  | TypeR typ ->
-    let ot =
-      scope.types
-      |> List.assoc_opt typ in
-    match ot with
-    | Some typ -> Some typ
-    | None ->
-      scope.parent
-      |> bind (fun x -> def_of_ref_opt x t)
-
 (* given the types of 2 arguments (for a binary operation) and a list of accepted types for the binary operation, return the resulting type *)
 let check_ops_opt a b l comparable =
   l
@@ -128,7 +113,7 @@ let rec type_of_name_opt scope name =
   let t =
     scope.types
     |> List.assoc_opt name
-    |> bind (fun x -> resolve_typedef_opt scope x) in
+    |> bind (fun x -> resolve_gotype_opt scope x) in
   match t with
   | Some t as found -> found
   | None ->
@@ -137,7 +122,7 @@ let rec type_of_name_opt scope name =
 
 (* given a type definition, make sure that it is a well-defined type (meaning that all the types it refer are also valid).
 Additionally, if the type is a TypeT (so basically just a name) it will try to convert it to a base type, an array, struct or slice (in other words, anything but simply a name!) *)
-and resolve_typedef_opt scope t =
+and resolve_gotype_opt scope t =
   match t with
   | TypeT s ->
     (match try_base_type s with
@@ -147,7 +132,7 @@ and resolve_typedef_opt scope t =
     let l =
       members
       |> List.map (fun (_, t) -> t)
-      |> List.map (fun t -> resolve_typedef_opt scope t)
+      |> List.map (fun t -> resolve_gotype_opt scope t)
       |> List.filter is_some in
     if List.length l <> List.length members then None else def |> some
   | SliceT (t, _) as slice ->
@@ -157,26 +142,13 @@ and resolve_typedef_opt scope t =
     type_of_name_opt scope t
     |> bind (fun x -> Some a)
 
-(* given a type reference, it will try to find the associated type definition in the current scope or above, and then resolve the type definition.
-Note that we type check every type declarations before adding them to the symbole table, BUT we still resolve the type here to get something other than just a type name because
-when this function is called, we not only want to know if the type is valid, but also what is it precisely (is it an array, struct, etc?)*)
-let resolve_typeref_opt scope t: typesDef option =
-  match t with
-  | TypeR typ -> type_of_name_opt scope typ
-  | ArrayR (typ, l) ->
-    type_of_name_opt scope typ
-    |> bind (fun _ -> ArrayT (typ, l) |> some)
-  | SliceR (typ, l) ->
-    type_of_name_opt scope typ
-    |> bind (fun _ -> SliceT (typ, l) |> some)
-
 let check_if_exps_are_all_ints scope exps typecheck_func =
   exps
   |> List.map (fun x -> typecheck_func scope x)
   |> List.map (fun x ->
     x
     |> bind (fun x ->
-      resolve_typedef_opt scope x.typ
+      resolve_gotype_opt scope x.typ
       |> bind (fun x ->
         if x = TypeT base_int then Some x else None
       )
@@ -188,7 +160,7 @@ let typedef_of_array_opt scope (name, exps) typecheck_func =
   scope.bindings
   |> List.assoc_opt name
   |> bind (fun x ->
-    resolve_typedef_opt scope x
+    resolve_gotype_opt scope x
     |> bind (fun t ->
       match x with
       | ArrayT (typ, sizes) ->
@@ -211,7 +183,7 @@ let rec typecheck_kind_element_opt scope e =
     | Variable name ->
       scope.bindings
       |> List.assoc_opt name
-      |> bind (fun x -> resolve_typedef_opt scope x)
+      |> bind (fun x -> resolve_gotype_opt scope x)
     | Array (name, exps) -> typedef_of_array_opt scope (name, exps) typecheck_exp_opt in
     (match try_in_scope with
     | Some t as found -> found
@@ -342,7 +314,7 @@ let merge_scope_opt old_scope new_scope =
 let typecheck_args_opt scope args =
   let typed_args =
     args
-    |> List.map (fun (name, typ) -> resolve_typeref_opt scope typ)
+    |> List.map (fun (name, typ) -> resolve_gotype_opt scope typ)
     |> List.filter is_some in
   if List.length args <> List.length typed_args then None
   else
@@ -532,7 +504,7 @@ let rec typecheck_stm_opt current s =
       let typed_decls =
         decls
         |> List.map (fun (name, x) ->
-          resolve_typedef_opt current x
+          resolve_gotype_opt current x
           |> bind (fun typ -> Some (name, typ)))
         |> List.filter is_some in
       if List.length typed_decls <> List.length decls then None
@@ -717,7 +689,7 @@ and typecheck_var_decl_opt scope (vars, t, exps) =
         let new_scope = { empty_scope with bindings = new_bindings } in
         ((vars, t, exps), new_scope) |> some
       | Some t ->
-        resolve_typeref_opt scope t
+        resolve_gotype_opt scope t
         |> bind (fun typ ->
           let exps_with_annotation =
             typed_exps
@@ -756,7 +728,7 @@ let typecheck_decl_opt scope decl =
       let typed_decls =
         decls
         |> List.map (fun (name, x) ->
-          resolve_typedef_opt scope x
+          resolve_gotype_opt scope x
           |> bind (fun typ -> Some (name, typ)))
         |> List.filter is_some in
       if List.length typed_decls <> List.length decls then None
@@ -769,9 +741,9 @@ let typecheck_decl_opt scope decl =
         |> bind (fun new_scope ->
           (new_scope, Type new_types) |> some
         )
-    | Fct (name, args, otyp, stmts) ->
+    | Fct (name, args, return_type, stmts) ->
       let empty_function_scope = new_scope scope in
-      if check_invalid_main (name, args, otyp) then None
+      if check_invalid_main (name, args, return_type) then None
       else
         args
         |> typecheck_args_opt scope
@@ -781,20 +753,15 @@ let typecheck_decl_opt scope decl =
           typecheck_stm_list_opt stmts empty_function_scope
           |> bind (fun (typed_stmts, new_scope) ->
             let scoped_typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
-            (match otyp with
-            | NonVoid typ -> def_of_ref_opt scope typ |> bind (fun t -> Some (NonVoid t))
-            | Void -> Some Void)
-            |> bind (fun return_type ->
-              if verify_return_statements typed_stmts return_type = true then None
-              else
-                let function_binding = (name, typed_args, return_type) in
-                let scope =
-                  { scope with
-                    children = List.append scope.children [new_scope];
-                    functions = List.append scope.functions [function_binding]
-                  } in
-                (scope, Fct (name, args, otyp, scoped_typed_stmts)) |> some
-              )
+            if verify_return_statements typed_stmts return_type = true then None
+            else
+              let function_binding = (name, typed_args, return_type) in
+              let scope =
+                { scope with
+                  children = List.append scope.children [new_scope];
+                  functions = List.append scope.functions [function_binding]
+                } in
+              (scope, Fct (name, args, return_type, scoped_typed_stmts)) |> some
           )
         )
     )

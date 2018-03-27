@@ -1,15 +1,8 @@
-(* Represents the definition of a new type *)
-type typesDef =
+type gotype =
   | TypeT of string
-  | StructT of (string list * typesDef) list
+  | StructT of (string list * gotype) list
   | ArrayT of string * (int64 list) (* type of array and the list of int64 is the size of each dimension *)
   | SliceT of string * int64 (* type of the slice and the int64 is the number of dimensions *)
-
-(* Represents the reference to an existing type *)
-type typesRef =
-  | TypeR of string
-  | ArrayR of string * (int64 list) (* The list of int64 is the size of each dimension *)
-  | SliceR of string * int64 (* The int64 is the number of dimensions *)
 
 type 'a fct_return =
   | NonVoid of 'a
@@ -17,15 +10,15 @@ type 'a fct_return =
 
 type scope =
   {
-    bindings: (string * typesDef) list;
-    types: (string * typesDef) list;
-    functions: (string * typesDef list * typesDef fct_return) list; (* function name - argument types - return type *)
+    bindings: (string * gotype) list;
+    types: (string * gotype) list;
+    functions: (string * gotype list * gotype fct_return) list; (* function name - argument types - return type *)
     parent: scope option; (* top level scope doesn't have a parent *)
     children: scope list
   }
 
 type 'a node = { position: Lexing.position; value: 'a }
-type 'a tnode = { position: Lexing.position; typ: typesDef; value: 'a }
+type 'a tnode = { position: Lexing.position; typ: gotype; value: 'a }
 type 'a snode = { position: Lexing.position; scope: scope; value: 'a }
 
 type 'a gen_node =
@@ -111,8 +104,8 @@ and stmt =
   | Block of stmt gen_node list
   | Print of exp gen_node list
   | Println of exp gen_node list
-  | Declaration of (string list * typesRef option * (exp gen_node) list) list
-  | TypeDeclaration of (string * typesDef) list
+  | Declaration of (string list * gotype option * (exp gen_node) list) list
+  | TypeDeclaration of (string * gotype) list
   | If of simpleStm gen_node * exp gen_node * (stmt gen_node) list * elseif option
   | Loop of loop
   | Return of exp gen_node option
@@ -124,11 +117,11 @@ and stmt =
 
 type package = string
 
-type argument = (string * typesRef) (* arg name + type *)
+type argument = (string * gotype) (* arg name + type *)
 
 type decl =
-  | Var of (string list * typesRef option * (exp gen_node) list) list
-  | Type of (string * typesDef) list (* name + type def *)
-  | Fct of (string * argument list * typesRef fct_return * stmt gen_node list)
+  | Var of (string list * gotype option * (exp gen_node) list) list
+  | Type of (string * gotype) list (* name + type def *)
+  | Fct of (string * argument list * gotype fct_return * stmt gen_node list)
 
 type program = package * decl gen_node list

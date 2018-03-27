@@ -171,16 +171,9 @@ var_formats:
 
 // List of variables declaration in a distributed declaration
 var_format:
-  | vars = identifier_list t = type_ref { (vars, Some t, []) }
+  | vars = identifier_list t = gotype { (vars, Some t, []) }
   | vars = identifier_list TASSIGN exps = exp_list { (vars, None, exps) }
-  | vars = identifier_list t = type_ref TASSIGN exps = exp_list { (vars, Some t, exps) }
-  ;
-
-// Reference to an existing type
-type_ref:
-  | d = count_dimensions_array base = identifier_with_parenthesis { ArrayR (base, d) }
-  | i = count_dimensions_slice base = identifier_with_parenthesis { SliceR (base, Int64.add i Int64.one) }
-  | base = identifier_with_parenthesis { TypeR base }
+  | vars = identifier_list t = gotype TASSIGN exps = exp_list { (vars, Some t, exps) }
   ;
 
 // Returns the size of each dimension of an array based on the number of square brackets
@@ -206,7 +199,7 @@ fct_args:
 // Matches the return type of a function
 fct_return:
   | { Void }
-  | t = type_ref { NonVoid t }
+  | t = gotype { NonVoid t }
   ;
 
 args_list:
@@ -215,7 +208,7 @@ args_list:
 
 // Takes a list of arguments having the same type (Ex: fun(a, b int)) and turning it into fun(a int, b int)
 arg:
-  | vars = identifier_list t = type_ref { List.map (fun x -> (x, t)) vars }
+  | vars = identifier_list t = gotype { List.map (fun x -> (x, t)) vars }
   ;
 
 
@@ -237,21 +230,21 @@ type_formats:
 
 // Type declaration in a distributed declaration
 type_format:
-  | name = TIDENTIFIER t = type_def { (name, t) }
+  | name = TIDENTIFIER t = gotype { (name, t) }
   ;
 
 // Definition of a type (recursively for structs)
-type_def:
+gotype:
   | d = count_dimensions_array base = identifier_with_parenthesis { ArrayT (base, d) }
   | i = count_dimensions_slice base = identifier_with_parenthesis { SliceT (base, i) }
-  | TSTRUCT TOPENINGBRACE s = type_def_list TCLOSINGBRACE { StructT s }
+  | TSTRUCT TOPENINGBRACE s = gotype_list TCLOSINGBRACE { StructT s }
   | TSTRUCT TOPENINGBRACE TCLOSINGBRACE { StructT [] }
   | base = identifier_with_parenthesis { TypeT base }
   ;
 
-type_def_list:
-  | ids = identifier_list t = type_def TSEMICOLON tdl = type_def_list { (ids, t)::tdl }
-  | ids = identifier_list t = type_def TSEMICOLON { [(ids, t)] }
+gotype_list:
+  | ids = identifier_list t = gotype TSEMICOLON tdl = gotype_list { (ids, t)::tdl }
+  | ids = identifier_list t = gotype TSEMICOLON { [(ids, t)] }
   ;
 
 // ############################

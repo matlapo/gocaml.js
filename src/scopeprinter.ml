@@ -29,7 +29,7 @@ let rec string_of_structdef l =
   ^
   " }"
 
-and string_of_typedef (d: typesDef) = match d with
+and string_of_typedef d = match d with
   | TypeT name -> name
   | StructT members -> string_of_structdef members
   | ArrayT (name, dim) -> string_of_list (fun d -> "[" ^ Int64.to_string d ^ "]") "" dim ^ name
