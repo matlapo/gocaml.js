@@ -7,6 +7,8 @@ mkdir 1-scan+parse/valid
 mkdir 1-scan+parse/invalid
 mkdir 2-typecheck
 mkdir 2-typecheck/invalid
+mkdir 3-semantics+codegen
+mkdir 3-semantics+codegen/valid
 
 # Valid programs
 cp full/* 1-scan+parse/valid
@@ -27,7 +29,15 @@ cp parser/2.7-types/invalid/* 1-scan+parse/invalid
 rm 1-scan+parse/invalid/bad-bracket-slice2.go
 cp parser/2.8-statements/invalid/* 1-scan+parse/invalid
 cp parser/2.9-expressions/invalid/* 1-scan+parse/invalid
+
+# Milestone 2
+# TODO: Remove duplicate files from the repo
 cp milestone2/* 2-typecheck/invalid
+
+# Milestone 3
+cp codegen/declarations.go 3-semantics+codegen/valid
+cp codegen/identifiers.go 3-semantics+codegen/valid
+cp codegen/if.go 3-semantics+codegen/valid
 
 # Remove other folders
 rm -r extra
@@ -36,5 +46,6 @@ rm -r parser
 rm -r scanner
 rm -r typecheck
 rm -r milestone2
+rm -r codegen
 
 cd ..
