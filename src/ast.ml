@@ -1,8 +1,8 @@
 type gotype =
-  | TypeT of string
-  | StructT of (string list * gotype) list
-  | ArrayT of string * (int64 list) (* type of array and the list of int64 is the size of each dimension *)
-  | SliceT of string * int64 (* type of the slice and the int64 is the number of dimensions *)
+  | Defined of string * int (* the int is a unique id / level *)
+  | Array of gotype * Int64.t
+  | Slice of gotype
+  | Struct of (string * gotype) list
 
 type 'a fct_return =
   | NonVoid of 'a
@@ -100,7 +100,7 @@ and loop =
   | For of simpleStm gen_node * exp gen_node option * simpleStm gen_node * stmt gen_node list
 and elseif = (stmt gen_node) list
 and stmt =
-  (* Random block {} *)
+  (* Random block {} *)
   | Block of stmt gen_node list
   | Print of exp gen_node list
   | Println of exp gen_node list

@@ -176,18 +176,6 @@ var_format:
   | vars = identifier_list t = gotype TASSIGN exps = exp_list { (vars, Some t, exps) }
   ;
 
-// Returns the size of each dimension of an array based on the number of square brackets
-count_dimensions_array:
-  | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE l = count_dimensions_array { i::l }
-  | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE { [i] }
-  ;
-
-// Returns the number of dimension of a slice based on the number of square brackets
-count_dimensions_slice:
-  | TOPENINGSQUARE TCLOSINGSQUARE i = count_dimensions_slice { Int64.add i Int64.one }
-  | TOPENINGSQUARE TCLOSINGSQUARE { Int64.zero }
-  ;
-
 // #######################################
 // ### rules for function declarations ###
 // #######################################
@@ -233,18 +221,24 @@ type_format:
   | name = TIDENTIFIER t = gotype { (name, t) }
   ;
 
-// Definition of a type (recursively for structs)
+// Definition of a type
 gotype:
-  | d = count_dimensions_array base = identifier_with_parenthesis { ArrayT (base, d) }
-  | i = count_dimensions_slice base = identifier_with_parenthesis { SliceT (base, i) }
-  | TSTRUCT TOPENINGBRACE s = gotype_list TCLOSINGBRACE { StructT s }
-  | TSTRUCT TOPENINGBRACE TCLOSINGBRACE { StructT [] }
-  | base = identifier_with_parenthesis { TypeT base }
+  | TOPENINGPAR t = gotype TCLOSINGPAR { t }
+  | t = gotype_without_parenthesis { t }
+
+gotype_without_parenthesis:
+  | id = TIDENTIFIER { Defined (id, (Random.int 999999)) }
+  | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE t = gotype { Array (t, i) }
+  | TOPENINGSQUARE TCLOSINGSQUARE t = gotype { Slice t }
+  | TSTRUCT TOPENINGBRACE m = struct_member_def_list TCLOSINGBRACE { Struct m }
   ;
 
-gotype_list:
-  | ids = identifier_list t = gotype TSEMICOLON tdl = gotype_list { (ids, t)::tdl }
-  | ids = identifier_list t = gotype TSEMICOLON { [(ids, t)] }
+struct_member_def_list:
+  | d1 = struct_member_def TSEMICOLON d2 = struct_member_def_list { d1@d2 }
+  | { [] }
+
+struct_member_def:
+  | ids = identifier_list t = gotype { List.map (fun id -> (id, t)) ids }
   ;
 
 // ############################
