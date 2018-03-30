@@ -71,33 +71,26 @@ let type_redeclaration x = Printf.sprintf "Error: cannot redeclare this type: li
 (* finds an invalid blank id in a type definition *)
 let rec blank_type line t =
   match t with
-  | TypeT s -> helper line s
-  | ArrayT (s, _) -> helper line s
-  | SliceT (s, _) -> helper line s
-  | StructT l ->
+  | Defined (s, _) -> helper line s
+  | Array (t, _) -> blank_type line t
+  | Slice t -> blank_type line t
+  | Struct l ->
     l
-    |> List.map (fun (ls, ts) ->
-      List.map (helper 0) ls
-      |> List.flatten
-      |> List.append (blank_type line ts)
-    )
+    |> List.map (fun (s, t) -> blank_type line t)
     |> List.flatten
 
 let duplicate_member_struct line t =
   match t with
-  | StructT l ->
+  | Struct l ->
     let all_strings =
       l
-      |> List.map (fun (ls, _) ->
-          ls
-      )
-      |> List.flatten in
+      |> List.map (fun (s, _) -> s) in
     if contains_duplicate all_strings then [duplicate_member line] else []
   | _ -> []
 
 let type_redeclaration_check line t name =
   match t with
-  | TypeT s -> if s = name then [type_redeclaration line] else []
+  | Defined (s, _) -> if s = name then [type_redeclaration line] else []
   | _ -> []
 
 (* finds an invalid blank id in an expression node *)
