@@ -76,15 +76,13 @@ let rec string_of_slice_dimensions d =
   "[]" ^ string_of_slice_dimensions (Int64.sub d Int64.one)
 
 let rec string_of_gotype lvl type_def = match type_def with
-  | TypeT s -> indent lvl ^ s
-  | ArrayT (name, sizes) -> indent lvl ^ string_of_array_indexes sizes ^ name
-  | SliceT (name, dim) -> indent lvl ^ string_of_slice_dimensions dim ^ name
-  | StructT members ->
+  | Defined (s, _) -> s
+  | Array (t, size) -> "[" ^ Int64.to_string size ^ "]" ^ string_of_gotype lvl t
+  | Slice (t) -> "[]" ^ string_of_gotype lvl t
+  | Struct members ->
     " struct {\n"
-    ^ string_of_list (fun t -> string_of_gotype_with_names (lvl + 1) t) "\n" members ^ "\n"
+    ^ string_of_list (fun (n, t) -> indent (lvl + 1) ^ n ^ " " ^ string_of_gotype (lvl + 1) t) "\n" members ^ "\n"
     ^ indent lvl ^ "}\n"
-and string_of_gotype_with_names lvl (names, type_def) =
-  string_of_string_list "," names ^ string_of_gotype lvl type_def
 
 let rec string_of_stmts lvl stmts = List.fold_left (fun a s -> a ^ string_of_stmt lvl s ^ "") "" stmts
 and string_of_stmt lvl gn =
@@ -182,7 +180,7 @@ let string_of_decl gn =
     ""
     vars
     ^ "\n"
-  | Type nts -> string_of_list (fun (name, types) -> "type " ^ string_of_gotype_with_names 0 ([name], types)) "\n" nts
+  | Type nts -> string_of_list (fun (name, t) -> "type " ^ name ^ string_of_gotype 0 (t)) "\n" nts
   | Fct (name, args, NonVoid ret, stmts) -> "func " ^ name ^ "("
     ^ string_of_list (fun (argname, t) -> argname ^ " " ^ string_of_gotype 0 t) ", " args
     ^ ") " ^ string_of_gotype 0 ret ^ " {\n"
