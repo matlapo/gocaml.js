@@ -1,8 +1,64 @@
+
+
+(* type gotype =
+  | Defined of string * int * gotype
+  | Array of gotype * Int64.t
+  | Slice of gotype
+  | Struct of (string * gotype) list *)
+
+(*
+Will go up the scope.resolvedTypes to find the first float64.
+Then will add int * (type it found) to currentScope.resolvedTypes
+type int float64
+{
+  type myint int
+  var a myint
+}
+
+type myint int //0
+var b myint //0
+{
+  Will look in parents scope.resolvedTypes for 'myint', (find_scopedtype_of_string)
+  Then will set a binding to c with scopeid being the scope where myint is defined
+  var c myint //0
+  {
+    type myint int
+    var a myint
+    Will look at the scopedtype of c and b and see if they are the same.
+    Then will look in parent scopes to find the definition of the types to get the resolved type.
+    Then will see if they add. If they do add, create a tnode with the type being the scoped type of a or b
+    a = c + b
+  }
+}
+{
+
+}
+
+type a struct {
+  x,y int
+}
+type a int;
+{
+  type b a;
+}
+
+var y a *)
+
+type basetype =
+  | BInt
+  | BFloat64
+  | BString
+  | BRune
+
 type gotype =
-  | Defined of string * int (* the int is a unique id / level *)
+  | Basetype of basetype
+  | Defined of string
   | Array of gotype * Int64.t
   | Slice of gotype
   | Struct of (string * gotype) list
+
+type scopeid = int
+type scopedtype = { gotype: gotype; scopeid: scopeid }
 
 type 'a fct_return =
   | NonVoid of 'a
@@ -10,15 +66,16 @@ type 'a fct_return =
 
 type scope =
   {
-    bindings: (string * gotype) list;
-    types: (string * gotype) list;
-    functions: (string * gotype list * gotype fct_return) list; (* function name - argument types - return type *)
+    scopeid: scopeid;
+    bindings: (string * scopedtype) list;
+    types: (string * scopedtype) list; (* b : previous type *)
+    functions: (string * scopedtype list * scopedtype fct_return) list; (* function name - argument types - return type *)
     parent: scope option; (* top level scope doesn't have a parent *)
     children: scope list
   }
 
 type 'a node = { position: Lexing.position; value: 'a }
-type 'a tnode = { position: Lexing.position; typ: gotype; value: 'a }
+type 'a tnode = { position: Lexing.position; typ: scopedtype; value: 'a }
 type 'a snode = { position: Lexing.position; scope: scope; value: 'a }
 
 type 'a gen_node =

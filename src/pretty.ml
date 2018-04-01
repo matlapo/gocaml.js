@@ -75,8 +75,15 @@ let rec string_of_slice_dimensions d =
   if Int64.compare d Int64.one < 0 then "" else
   "[]" ^ string_of_slice_dimensions (Int64.sub d Int64.one)
 
+let string_of_basetype t = match t with
+  | BInt -> "int"
+  | BFloat64 -> "float64"
+  | BString -> "string"
+  | BRune -> "rune"
+
 let rec string_of_gotype lvl type_def = match type_def with
-  | Defined (s, _) -> s
+  | Basetype t -> string_of_basetype t
+  | Defined s -> s
   | Array (t, size) -> "[" ^ Int64.to_string size ^ "]" ^ string_of_gotype lvl t
   | Slice (t) -> "[]" ^ string_of_gotype lvl t
   | Struct members ->

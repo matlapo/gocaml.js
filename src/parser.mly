@@ -227,7 +227,7 @@ gotype:
   | t = gotype_without_parenthesis { t }
 
 gotype_without_parenthesis:
-  | id = TIDENTIFIER { Defined (id, (Random.int 999999)) }
+  | id = TIDENTIFIER { Defined id }
   | TOPENINGSQUARE i = TINTVAL TCLOSINGSQUARE t = gotype { Array (t, i) }
   | TOPENINGSQUARE TCLOSINGSQUARE t = gotype { Slice t }
   | TSTRUCT TOPENINGBRACE m = struct_member_def_list TCLOSINGBRACE { Struct m }
