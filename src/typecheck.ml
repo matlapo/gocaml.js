@@ -37,31 +37,119 @@ let try_base_type (s: string) =
 
 let base_types =
   [
-    base_int, (TypeT base_int);
-    base_float, (TypeT base_float);
-    base_string, (TypeT base_string);
-    base_bool, (TypeT base_bool);
-    base_rune, (TypeT base_rune)
+    base_int, Defined (base_int, 0);
+    base_float, Defined (base_float, 0);
+    base_string, Defined (base_string, 0);
+    base_bool, Defined (base_bool, 0);
+    base_rune, Defined (base_rune, 0)
   ]
 
 let top_level =
   {
-    bindings = [("true", TypeT base_bool); ("false", TypeT base_bool)];
+    bindings = [("true", Defined (base_bool, 0)); ("false", Defined (base_bool, 0))];
     types = base_types;
     functions = [];
     parent = None;
     children = []
   }
 
-let new_scope parent = { bindings = []; types = []; functions = []; parent = Some parent; children = [] }
-let empty_scope = { bindings = []; types = []; functions = []; parent = None; children = [] }
+let new_scope parent = { scopeid = Random.int 99999999; bindings = []; types = []; functions = []; parent = Some parent; children = [] }
+let empty_scope = { scopeid = Random.int 99999999; bindings = []; types = []; functions = []; parent = None; children = [] }
 
-let typesdef_to_string d =
-  match d with
-  | TypeT s -> s
-  | StructT _ -> "struct"
-  | ArrayT (typ, _) -> Printf.sprintf "%s array" typ
-  | SliceT (typ, _) -> Printf.sprintf "%s slice" typ
+(*
+####################
+### MAXIME START ###
+####################
+*)
+
+(* ### TYPE VERIFICATION ### *)
+
+let is_indexable (t: gotype) : bool = match t with
+  | Array _ -> true
+  | Slice _ -> true
+  | _ -> false
+
+let is_selectable (t: gotype) : bool = match t with
+  | Struct _ -> true
+  | _ -> false
+
+let are_type_equals (t1: scopedtype) (t2: scopedtype): bool =
+  t1.gotype = t2.gotype && t1.scopeid = t2.scopeid
+(* Search for equal sign *)
+
+(* ### TYPE RESOLVING ### *)
+
+(** Finds the type associated with a string *)
+let rec scopedtype_of_typename_opt (s: scope) (typename: string): scopedtype option =
+  (* Look for a type in the current scope *)
+  match List.find_opt (fun (id, _) -> id = typename) s.types with
+  (* If found, create a scopedtype with the current scope id *)
+  | Some (id, t) -> Some { gotype = Defined id; scopeid = s.scopeid }
+  | None -> match s.parent with
+    (* Look in parent scope *)
+    | Some p -> scopedtype_of_typename_opt p typename
+    | None -> None
+
+(** Finds the type associated with a variable name *)
+let rec scopedtype_of_varname_opt (s: scope) (varname: string): scopedtype option =
+  match List.find_opt (fun (id, _) -> id = varname) s.bindings with
+  | Some (_, t) -> Some t
+  | None -> match s.parent with
+    | Some p -> scopedtype_of_varname_opt p varname
+    | None -> None
+
+(** Find the basetype related to a scopedtype.
+    It can either be a struct, array, slice or a base type.
+*)
+let rec resolve_to_reducedtype (s: scope) (t: scopedtype): scopedtype option =
+  (* Finds a scope with the specified scopeid.
+  Will only look at the parents of th given scope (including the given scope) *)
+  let rec find_scope_with_scopeid_opt (s: scope) (id: scopeid): scope option =
+    if s.scopeid = id then Some s
+    else
+      s.parent
+      |> bind (fun p -> find_scope_with_scopeid_opt p id)
+  in
+  match t.gotype with
+  | Defined typename ->
+    find_scope_with_scopeid_opt s t.scopeid
+    |> bind (fun p -> List.find_opt (fun (id, _) -> id = typename) p.types)
+    |> bind (fun (_, t) -> resolve_to_reducedtype s t)
+  | _ -> Some t
+
+(* Like resolve_gotype_opt *)
+
+(* ### SCOPE MANIPULATION ### *)
+
+(** Add a type declaration to the current scope
+    @param typename : the identifier of the type
+    @param t : the type associated with the identifier
+    @return the new scope or None if the type is already declared
+*)
+let add_type_declaration_to_scope_opt (s: scope) ((typename: string), (t: scopedtype)): scope option =
+  if List.exists (fun (id, _) -> id = typename) s.types then None
+  else
+    Some {s with types = (typename, t)::s.types}
+
+(** Add a variable binding to the current scope
+    @param varname : the identifier of the variable
+    @param t : the type associated with the variable
+    @return the new scope or None if the variable is already declared
+  *)
+let add_variable_to_scope_opt (s: scope) ((varname: string), (t: scopedtype)): scope option =
+  if List.exists (fun (id, _) -> id = varname) s.bindings then None
+  else
+    Some {s with types = (varname, t)::s.bindings}
+
+(* Link childscope to parent scope and link parent scope to child scope *)
+let add_child_scope (parent: scope): scope = failwith "oops"
+(* new_scope *)
+
+(*
+##################
+### MAXIME END ###
+##################
+*)
 
 (* converts a regular node to a node with the given type *)
 let tnode_of_node (e: exp node) t = { position = e.position; typ = t; value = e.value }
