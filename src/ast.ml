@@ -49,6 +49,7 @@ type basetype =
   | BFloat64
   | BString
   | BRune
+  | BBool
 
 type gotype =
   | Basetype of basetype

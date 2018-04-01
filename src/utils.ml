@@ -69,6 +69,9 @@ let int_of_oct o =
   process_digit 0 digits Int64.zero
 
 let bind x f = Option.bind f x
+let bind2 f (x, y) = match x, y with
+  | Some x, Some y -> f x y
+  | _ -> None
 let id x = x
 let inline (<|) f x = f x
 

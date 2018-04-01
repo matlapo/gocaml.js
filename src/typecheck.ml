@@ -35,23 +35,26 @@ let try_base_type (s: string) =
   else if s = base_rune then s |> some
   else None
 
-let base_types =
-  [
-    base_int, Defined (base_int, 0);
-    base_float, Defined (base_float, 0);
-    base_string, Defined (base_string, 0);
-    base_bool, Defined (base_bool, 0);
-    base_rune, Defined (base_rune, 0)
-  ]
+  let basetype a = { gotype = Basetype a; scopeid = 0 }
 
-let top_level =
-  {
-    bindings = [("true", Defined (base_bool, 0)); ("false", Defined (base_bool, 0))];
-    types = base_types;
-    functions = [];
-    parent = None;
-    children = []
-  }
+  let base_types =
+    [
+      base_int, basetype BInt;
+      base_float, basetype BFloat64;
+      base_string, basetype BString;
+      base_bool, basetype BBool;
+      base_rune, basetype BRune;
+    ]
+
+  let top_level =
+    {
+      scopeid = 0;
+      bindings = [("true", basetype BBool); ("false", basetype BBool)];
+      types = base_types;
+      functions = [];
+      parent = None;
+      children = []
+    }
 
 let new_scope parent = { scopeid = Random.int 99999999; bindings = []; types = []; functions = []; parent = Some parent; children = [] }
 let empty_scope = { scopeid = Random.int 99999999; bindings = []; types = []; functions = []; parent = None; children = [] }
@@ -101,7 +104,7 @@ let rec scopedtype_of_varname_opt (s: scope) (varname: string): scopedtype optio
 (** Find the basetype related to a scopedtype.
     It can either be a struct, array, slice or a base type.
 *)
-let rec resolve_to_reducedtype (s: scope) (t: scopedtype): scopedtype option =
+let rec resolve_to_reducedtype_opt (s: scope) (t: scopedtype): scopedtype option =
   (* Finds a scope with the specified scopeid.
   Will only look at the parents of th given scope (including the given scope) *)
   let rec find_scope_with_scopeid_opt (s: scope) (id: scopeid): scope option =
@@ -114,7 +117,7 @@ let rec resolve_to_reducedtype (s: scope) (t: scopedtype): scopedtype option =
   | Defined typename ->
     find_scope_with_scopeid_opt s t.scopeid
     |> bind (fun p -> List.find_opt (fun (id, _) -> id = typename) p.types)
-    |> bind (fun (_, t) -> resolve_to_reducedtype s t)
+    |> bind (fun (_, t) -> resolve_to_reducedtype_opt s t)
   | _ -> Some t
 
 (* Like resolve_gotype_opt *)
@@ -155,18 +158,21 @@ let add_child_scope (parent: scope): scope = failwith "oops"
 let tnode_of_node (e: exp node) t = { position = e.position; typ = t; value = e.value }
 
 (* given the types of 2 arguments (for a binary operation) and a list of accepted types for the binary operation, return the resulting type *)
-let check_ops_opt a b l comparable =
+let check_ops_opt (s: scope) (a: scopedtype) (b: scopedtype) (l: basetype list) comparable : basetype option =
   l
   |> List.map (fun t ->
-    let t = to_string t in
-    match a, b with
-    | TypeT x, TypeT y -> if x = t && y = t then Some t else None
-    | _ -> None
+    (resolve_to_reducedtype_opt s a, resolve_to_reducedtype_opt s b)
+    |> bind2 (fun a b ->
+      match a, b with
+      | { gotype = Basetype x; _}, { gotype = Basetype y; _} ->
+        if x = t && y = t then Some t else None
+      | _ -> None
+    )
   )
   |> List.find_opt is_some
   |> (fun x ->
     match x with
-    | Some x -> if comparable then Some base_bool else x
+    | Some x -> if comparable then Some BBool else x
     | None -> print_string "Error: ..."; None
   )
 
