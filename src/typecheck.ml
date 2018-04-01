@@ -35,26 +35,26 @@ let try_base_type (s: string) =
   else if s = base_rune then s |> some
   else None
 
-  let basetype a = { gotype = Basetype a; scopeid = 0 }
+let basetype a = { gotype = Basetype a; scopeid = 0 }
 
-  let base_types =
-    [
-      base_int, basetype BInt;
-      base_float, basetype BFloat64;
-      base_string, basetype BString;
-      base_bool, basetype BBool;
-      base_rune, basetype BRune;
-    ]
+let base_types =
+  [
+    base_int, basetype BInt;
+    base_float, basetype BFloat64;
+    base_string, basetype BString;
+    base_bool, basetype BBool;
+    base_rune, basetype BRune;
+  ]
 
-  let top_level =
-    {
-      scopeid = 0;
-      bindings = [("true", basetype BBool); ("false", basetype BBool)];
-      types = base_types;
-      functions = [];
-      parent = None;
-      children = []
-    }
+let top_level =
+  {
+    scopeid = 0;
+    bindings = [("true", basetype BBool); ("false", basetype BBool)];
+    types = base_types;
+    functions = [];
+    parent = None;
+    children = []
+  }
 
 let new_scope parent = { scopeid = Random.int 99999999; bindings = []; types = []; functions = []; parent = Some parent; children = [] }
 let empty_scope = { scopeid = Random.int 99999999; bindings = []; types = []; functions = []; parent = None; children = [] }
