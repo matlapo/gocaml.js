@@ -1,15 +1,31 @@
+//~a
+//~b
+//~3
+//~1
 //~2
 
 package main
 
 func main() {
-  var a, b = 1, 1;
+  if true {
+    println("a")
+  }
 
-  if a:= 2; 3 < 4 {
-    print(a)
-  } else if b := 2; 3 < 4 {
-    print(b)
+  if false {
+    println("oops")
   } else {
-    print("Hello")
+    println("b")
+  }
+
+  var a = 1;
+  if a:= 3; 2 < a {
+    println(a)
+  }
+  println(a)
+
+  if a:= 2; a < 2 {
+    println("nope")
+  } else {
+    println(a)
   }
 }

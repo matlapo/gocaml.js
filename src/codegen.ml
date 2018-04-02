@@ -158,13 +158,28 @@ let rec codegen_stmt (stmt:stmt gen_node) :string =
     | Println exps -> "println(" ^ codegen_exps exps ^ ");"
     | Declaration decls -> codegen_decl_assign decls
     | TypeDeclaration _ -> ""
-    | If (None, condition, stmts, _else) ->
-      "if(" ^ codegen_exp condition ^
-      "){" ^
-      codegen_stmts stmts ^
-      "}" ^
-      Option.map_default codegen_stmts "" _else
-    | If _ -> "/* UNIMPLEMENTED INIT IF*/"
+    | If (initOption, condition, stmts, _else) ->
+      let generated_if =
+        "if(" ^
+          codegen_exp condition ^
+        "){" ^
+          codegen_stmts stmts ^
+        "}" in
+      let generated_else = match _else with
+        | Some stmts ->
+          "else{" ^
+          codegen_stmts stmts ^
+          "}"
+        | None -> "" in
+      (match initOption with
+        | Some init ->
+          "{" ^
+            codegen_simple_stmt init ^
+            generated_if ^
+            generated_else ^
+          "}"
+        | None -> generated_if ^ generated_else
+      )
     | Loop While (cond, stmts) ->
       "while(" ^
       (Option.map_default codegen_exp "true" cond) ^
