@@ -80,6 +80,7 @@ let string_of_basetype t = match t with
   | BFloat64 -> "float64"
   | BString -> "string"
   | BRune -> "rune"
+  | BBool -> "bool"
 
 let rec string_of_gotype lvl type_def = match type_def with
   | Basetype t -> string_of_basetype t
