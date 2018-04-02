@@ -74,7 +74,11 @@ and codegen_exp (exp: exp gen_node) :string =
     | Int i -> Int64.to_string i
     | Float f -> string_of_float f
     | String s -> s
-    | RawStr s -> "('' /* UNIMPLEMENTED_RAW_STRING */)"
+    | RawStr s ->
+      let replace a b s = String.nreplace ~str:s ~sub:a ~by:b in
+      s
+        |> replace "\\" "\\\\"
+        |> replace "\n" "\\n"
     | Rune r -> r
     | Bool b -> string_of_bool b
     | BinaryOp (op, (left, right)) -> codegen_binary_op op left right
