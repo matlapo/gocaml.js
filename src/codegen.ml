@@ -1,11 +1,11 @@
 open Astwithposition
-open BatOption
+open Batteries
 
 let map_filter (f: 'a -> 'b option) (l: 'a list) :'b list =
   l
     |> List.map f
-    |> List.filter is_some
-    |> List.map get
+    |> List.filter Option.is_some
+    |> List.map Option.get
 
 
 let concat = List.fold_left (^) ""
@@ -159,11 +159,11 @@ let rec codegen_stmt (stmt:stmt gen_node) :string =
       "){" ^
       codegen_stmts stmts ^
       "}" ^
-      map_default codegen_stmts "" _else
+      Option.map_default codegen_stmts "" _else
     | If _ -> "/* UNIMPLEMENTED INIT IF*/"
     | Loop While (cond, stmts) ->
       "while(" ^
-      (map_default codegen_exp "true" cond) ^
+      (Option.map_default codegen_exp "true" cond) ^
       "){" ^
       codegen_stmts stmts ^
       "}"

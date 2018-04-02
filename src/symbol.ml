@@ -1,8 +1,7 @@
 open Astwithposition
 open Utils
-open BatOption
+open Batteries
 
-module Option = BatOption
 let bind x f = Option.bind f x
 let id x = x
 let inline (<|) f x = f x
@@ -19,7 +18,7 @@ let rev_assoc l =
 let get_rest_of_list (start: int) l =
   l
   |> List.mapi (fun i x -> if i < start then None else Some x)
-  |> List.filter is_some
+  |> List.filter Option.is_some
   |> List.map Option.get
 
 let contains_duplicate l =
@@ -216,7 +215,7 @@ let check_ops_opt a b l comparable =
     | TypeT x, TypeT y -> if x = t && y = t then Some t else None
     | _ -> None
   )
-  |> List.find_opt is_some
+  |> List.find_opt Option.is_some
   |> (fun x ->
     match x with
     | Some x -> if comparable then Some base_bool else x
@@ -232,7 +231,7 @@ let check_op a l =
     | TypeT x -> if x = t then Some t else None
     | _ -> None
   )
-  |> List.find_opt is_some
+  |> List.find_opt Option.is_some
   |> (fun x ->
     match x with
     | Some x -> x
@@ -246,7 +245,7 @@ let check_vars_declared scope names =
       |> List.map (fun name ->
         if List.mem_assoc name scope.bindings = true then None else Some name
       )
-      |> List.filter is_some in
+      |> List.filter Option.is_some in
     if List.length onames <> List.length names then true else false
 
 (* given a name and a scope, tries to find the associated type definition starting from the given scope up to the top-level scope *)
@@ -274,7 +273,7 @@ and resolve_typedef_opt scope t =
       members
       |> List.map (fun (_, t) -> t)
       |> List.map (fun t -> resolve_typedef_opt scope t)
-      |> List.filter is_some in
+      |> List.filter Option.is_some in
     if List.length l <> List.length members then None else def |> some
   | SliceT (t, _) as slice ->
     type_of_name_opt scope t
@@ -357,7 +356,7 @@ and check_struct_member_opt typ member cont =
         |> List.find_opt (fun x -> x = member)
         |> bind (fun _ -> cont t)
       )
-      |> List.find_opt is_some
+      |> List.find_opt Option.is_some
       |> bind id
     | _ -> None
   )
@@ -470,7 +469,7 @@ let typecheck_args_opt scope args =
   let typed_args =
     args
     |> List.map (fun (name, typ) -> resolve_typeref_opt scope typ)
-    |> List.filter is_some in
+    |> List.filter Option.is_some in
   if List.length args <> List.length typed_args then None
   else
     typed_args
@@ -513,14 +512,14 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
         let otyped_kinds =
           kinds
           |> List.map (fun x -> typecheck_kind_opt current x)
-          |> List.filter is_some in
+          |> List.filter Option.is_some in
         if List.length otyped_kinds <> List.length kinds then None
         else
           let typed_kinds = List.map Option.get otyped_kinds in
           let otyped_exps =
             exps
             |> List.map (fun x -> typecheck_exp_opt current x)
-            |> List.filter is_some in
+            |> List.filter Option.is_some in
           if List.length otyped_exps <> List.length exps then None
           else
             let typed_exps = List.map Option.get otyped_exps in
@@ -540,14 +539,14 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
       let otyped_kinds =
         kinds
         |> List.map (fun x -> typecheck_kind_opt current x)
-        |> List.filter is_some in
+        |> List.filter Option.is_some in
       if List.length otyped_kinds <> List.length kinds then None
       else
         let typed_kinds = List.map Option.get otyped_kinds in
         let otyped_exps =
           exps
           |> List.map (fun x -> typecheck_exp_opt current x)
-          |> List.filter is_some in
+          |> List.filter Option.is_some in
         if List.length otyped_exps <> List.length exps then None
         else
           let typed_exps = List.map Option.get otyped_exps in
@@ -567,14 +566,14 @@ let print_helper current (e: stmt node) l is_println =
   let tnodes =
     l
     |> List.map (fun x -> typecheck_exp_opt current x)
-    |> List.filter is_some in
+    |> List.filter Option.is_some in
   if List.length l <> List.length tnodes then None
   else
     let tnodes = List.map Option.get tnodes in
     let check_types =
       tnodes
       |> List.map (fun x -> match x.typ with | TypeT s -> Some s | _ -> None)
-      |> List.exists is_none in
+      |> List.exists Option.is_none in
     let lst = List.map (fun x -> Typed x) tnodes in
     if check_types = true then None
     else
@@ -591,7 +590,7 @@ let verify_return_statements (l: (stmt snode) list) expected_type =
         | Typed e -> Some e.typ = expected_type |> some
         | _ -> None)
       )
-      |> (default (is_none expected_type))
+      |> (Option.default (Option.is_none expected_type))
     | _ -> true
   )
   |> List.exists (fun x -> x = false)
@@ -672,7 +671,7 @@ let rec typecheck_stm_opt current s =
         |> List.map (fun (name, x) ->
           resolve_typedef_opt current x
           |> bind (fun typ -> Some (name, typ)))
-        |> List.filter is_some in
+        |> List.filter Option.is_some in
       if List.length typed_decls <> List.length decls then None
       else
         let new_types =
@@ -717,7 +716,7 @@ and if_helper current ifs (e: stmt node) typed_simple typed_exp typed_elses =
       |> bind (fun simple ->
         { current with children = [new_scope; simple.scope] } |> some
       )
-      |> default { current with children = [new_scope] } in
+      |> Option.default { current with children = [new_scope] } in
     let else_scope =
         typed_elses
         |> bind (fun elses ->
@@ -840,7 +839,7 @@ and typecheck_var_decl_opt scope (vars, t, exps) =
   let otyped_exps =
     exps
     |> List.map (fun exp -> typecheck_exp_opt scope exp)
-    |> List.filter is_some in
+    |> List.filter Option.is_some in
   if List.length otyped_exps <> List.length exps then None
   else
     if check_vars_declared scope vars then None
@@ -877,7 +876,7 @@ and typecheck_var_decl_opt scope (vars, t, exps) =
 
 let check_invalid_main (name, args, otyp) =
   if name = "main" then
-    List.length args > 0 || is_some otyp
+    List.length args > 0 || Option.is_some otyp
   else
     false
 
@@ -901,7 +900,7 @@ let typecheck_decl_opt scope decl =
         |> List.map (fun (name, x) ->
           resolve_typedef_opt scope x
           |> bind (fun typ -> Some (name, typ)))
-        |> List.filter is_some in
+        |> List.filter Option.is_some in
       if List.length typed_decls <> List.length decls then None
       else
         let new_types =
