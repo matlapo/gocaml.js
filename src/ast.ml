@@ -112,7 +112,9 @@ type unary =
   | UCaret
 
 type exp =
-  | Id of kind
+  | Id of string
+  | Indexing of exp gen_node * exp gen_node
+  | Selection of exp gen_node * string
   | Int of int64
   | Float of float
   | String of string
@@ -122,11 +124,6 @@ type exp =
   | Unaryexp of unary * exp gen_node
   | FuncCall of string * exp gen_node list (* can also represent a typecast operation *)
   | Append of exp gen_node * exp gen_node
-  (* Represents a reference to a variable *)
-and kind = kind_elem list
-and kind_elem =
-  | Variable of string
-  | Array of string * (exp gen_node list) (* name of array + indexes *)
 
 type assign =
   | Regular
@@ -144,11 +141,11 @@ type assign =
 
 (* Exactly like GoLang simpleStm *)
 type simpleStm =
-  | Assign of assign * (kind list * exp gen_node list)
+  | Assign of assign * (exp gen_node list * exp gen_node list)
   | ExpStatement of exp gen_node
-  | DoublePlus of kind
-  | DoubleMinus of kind
-  | ShortDeclaration of (kind list * (exp gen_node) list)
+  | DoublePlus of exp gen_node
+  | DoubleMinus of exp gen_node
+  | ShortDeclaration of (exp gen_node list * (exp gen_node) list)
   | Empty
 
 (* Represents a case of a switch *)

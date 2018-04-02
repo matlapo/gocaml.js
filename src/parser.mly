@@ -94,6 +94,7 @@
 %left TPLUS TMINUS TBITOR TCARET
 %left TTIMES TDIV TMOD TDSMALLER TDGREATER TBITAND TANDHAT
 %left TUPLUS TUMINUS TNOT TUCARET
+%left TPERIOD TOPENINGPAR TOPENINGSQUARE
 
 %start <Ast.program> prog
 %%
@@ -303,11 +304,11 @@ case:
 // Defines a golang simplestm (see https://golang.org/ref/spec#SimpleStmt)
 simpleStm:
   | e = exp { Position { position = $symbolstartpos; value = ExpStatement e } }
-  | k = kind TDPLUS { Position { position = $symbolstartpos; value = DoublePlus k } }
-  | k = kind TDMINUS { Position { position = $symbolstartpos; value = DoubleMinus k } }
-  | var = kind_list TASSIGN e = exp_list { Position { position = $symbolstartpos; value = Assign (Regular, (var, e)) } }
-  | var = kind a = assign_type e = exp { Position { position = $symbolstartpos; value = Assign (a, ([var], [e])) } }
-  | v = kind_list TCOLEQUAL e = exp_list { Position { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
+  | e = exp TDPLUS { Position { position = $symbolstartpos; value = DoublePlus e } }
+  | e = exp TDMINUS { Position { position = $symbolstartpos; value = DoubleMinus e } }
+  | var = exp_list TASSIGN e = exp_list { Position { position = $symbolstartpos; value = Assign (Regular, (var, e)) } }
+  | var = exp a = assign_type e = exp { Position { position = $symbolstartpos; value = Assign (a, ([var], [e])) } }
+  | v = exp_list TCOLEQUAL e = exp_list { Position { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
   | { Position { position = $symbolstartpos; value = Empty } }
   ;
 
@@ -335,28 +336,6 @@ assign_type:
   | TDSEQUAL { DoubleSmallerEqual }
   ;
 
-// ####################################
-// ### rules for variable reference ###
-// ####################################
-kind_list:
-  | k = kind TCOMMA ks = kind_list { k::ks }
-  | k = kind { [k] }
-  ;
-
-kind:
-  | var = kind_elem TPERIOD vars = kind { var::vars }
-  | var = kind_elem { [var] }
-
-kind_elem:
-  | var = TIDENTIFIER { Variable var }
-  | var = TIDENTIFIER i = array_element { Array (var, i) }
-  ;
-
-array_element:
-  | TOPENINGSQUARE e = exp TCLOSINGSQUARE l = array_element { e::l }
-  | TOPENINGSQUARE e = exp TCLOSINGSQUARE { [e] }
-  ;
-
 // #############################
 // ### rules for expressions ###
 // #############################
@@ -376,7 +355,9 @@ exp:
     { Position { position = $symbolstartpos; value = FuncCall (name, e) } }
   | TAPPEND TOPENINGPAR e1 = exp TCOMMA e2 = exp TCLOSINGPAR
     { Position { position = $symbolstartpos; value = Append (e1, e2) } }
-  | id = kind { Position { position = $symbolstartpos; value = Id id } }
+  | id = TIDENTIFIER { Position { position = $symbolstartpos; value = Id id } }
+  | e = exp TOPENINGSQUARE i = exp TCLOSINGSQUARE { Position { position = $symbolstartpos; value = Indexing (e, i) } }
+  | e = exp TPERIOD s = TIDENTIFIER  { Position { position = $symbolstartpos; value = Selection (e, s) } }
   | i = TINTVAL { Position { position = $symbolstartpos; value = Int i } }
   | f = TFLOATVAL { Position { position = $symbolstartpos; value = Float f } }
   | s = TSTRINGVAL { Position { position = $symbolstartpos; value = String s } }

@@ -49,7 +49,9 @@ let extract_gen_node_value gn = match gn with
 let rec string_of_exp gn =
   let e = extract_gen_node_value gn in
   match e with
-  | Id k -> string_of_kind k
+  | Id s -> s
+  | Indexing (e, i) -> string_of_exp e ^ "[" ^ string_of_exp i ^ "]"
+  | Selection (e, s) -> string_of_exp e ^ "." ^ s
   | Int i -> Int64.to_string i
   | Float f -> string_of_float f
   | String s -> s
@@ -60,13 +62,6 @@ let rec string_of_exp gn =
   | Append (e1, e2) -> "append(" ^ string_of_exp e1 ^ "," ^ string_of_exp e2 ^ ")"
   | FuncCall (name, exps) -> name ^ "(" ^ string_of_exps exps ^ ")"
 and string_of_exps exps = string_of_list (fun e -> string_of_exp e) ", " exps
-
-and string_of_kind_elem e = match e with
-  | Variable s -> s
-  | Array (s, exps) -> s ^
-    List.fold_left (fun a e -> a ^ "[" ^ string_of_exp e ^ "]") "" exps
-
-and string_of_kind k = List.fold_left (fun a e -> a ^ string_of_kind_elem e) "" k
 
 let string_of_array_indexes indexes =
   List.fold_left (fun a i -> a ^ "[" ^ Int64.to_string i ^ "]") "" indexes
@@ -142,11 +137,11 @@ and string_of_simple_stmt gn =
   let s = extract_gen_node_value gn in
   match s with
   | ExpStatement exp -> string_of_exp exp
-  | DoublePlus k -> string_of_kind k ^ "++"
-  | DoubleMinus k -> string_of_kind k ^ "--"
-  | ShortDeclaration (kl, exps) -> string_of_list string_of_kind "," kl ^ " := " ^ string_of_exps exps
+  | DoublePlus e -> string_of_exp e ^ "++"
+  | DoubleMinus e -> string_of_exp e ^ "--"
+  | ShortDeclaration (el, exps) -> string_of_list string_of_exp "," el ^ " := " ^ string_of_exps exps
   | Empty -> ""
-  | Assign (a, (kl, exps)) -> string_of_list string_of_kind "," kl ^ " "
+  | Assign (a, (el, exps)) -> string_of_list string_of_exp "," el ^ " "
     ^ string_of_assign a ^ " " ^ string_of_exps exps
 and string_of_assign a = match a with
   | Regular -> "="
