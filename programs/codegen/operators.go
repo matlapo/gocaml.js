@@ -20,6 +20,7 @@ func main() {
 	println(+24)
 	println(^2)
 	println(7 &^ 6)
+	println()
 
 	// Binary operators
 	println(1 + 1)
@@ -27,7 +28,6 @@ func main() {
 	println(3 * 2)
 	println(15 / 3)
 	// TODO: test all operators
-	println()
 	println()
 
 	// More complicated expressions
