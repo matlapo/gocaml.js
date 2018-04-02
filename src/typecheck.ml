@@ -120,7 +120,13 @@ let rec resolve_to_reducedtype_opt (s: scope) (t: scopedtype): scopedtype option
     |> bind (fun (_, t) -> resolve_to_reducedtype_opt s t)
   | _ -> Some t
 
-let scopedtype_of_gotype (s: scope) (t: gotype) : scopedtype option = failwith "GOTYPEOFBLA"
+let rec scopedtype_of_gotype (s: scope) (t: gotype) : scopedtype option =
+  match t with
+  | Defined typename ->
+    (match List.find_opt (fun (id, _) -> id = typename) s.types with
+    | Some _ -> Some { gotype = Defined typename; scopeid = s.scopeid }
+    | None -> s.parent |> bind (fun p -> scopedtype_of_gotype p t))
+  | _ -> Some { gotype = t; scopeid = s.scopeid }
 
 (* ### SCOPE MANIPULATION ### *)
 
@@ -144,8 +150,6 @@ let add_variable_to_scope_opt (s: scope) ((varname: string), (t: scopedtype)): s
   else
     Some {s with types = (varname, t)::s.bindings}
 
-(* Link childscope to parent scope and link parent scope to child scope *)
-let add_child_scope (parent: scope): scope = failwith "oops"
 (* new_scope *)
 
 (*
