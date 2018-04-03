@@ -99,7 +99,6 @@ let rec blank_exp (e: exp gen_node) =
     match e with
     | Position e ->
       (match e.value with
-      | Id l -> blank_kind e.position.pos_lnum l
       | BinaryOp (_, (a, b)) ->
         blank_exp a
         |> List.append (blank_exp b)
@@ -111,19 +110,10 @@ let rec blank_exp (e: exp gen_node) =
       | Append (a, b) ->
         blank_exp a
         |> List.append (blank_exp b)
+      | Indexing (a,b) -> List.append (blank_exp a) (blank_exp b)
+      | Selection (a, s) -> List.append (blank_exp a) (if s = blank_s then [blank_error e.position.pos_lnum] else [])
       | _ -> [])
     | _ -> []
-and blank_kind line k =
-  k
-  |> map_flat (fun x ->
-    match x with
-    | Variable s -> helper line s
-    | Array (s, l) ->
-      l
-      |> List.map blank_exp
-      |> List.append [helper line s]
-      |> List.flatten
-  )
 
 (* finds an invalid blank id in a simple statement node *)
 let blank_simple (simp: simpleStm gen_node) =
@@ -135,14 +125,14 @@ let blank_simple (simp: simpleStm gen_node) =
       let l =
         match a with
         | Regular -> []
-        | _ -> map_flat (blank_kind simp.position.pos_lnum) l in
+        | _ -> map_flat blank_exp l in
       List.append e l
     | ExpStatement e -> blank_exp e
     | ShortDeclaration (l, e) ->
       map_flat blank_exp e
-      |> List.append (List.map (blank_kind simp.position.pos_lnum) l |> List.flatten)
-    | DoubleMinus s -> blank_kind simp.position.pos_lnum s
-    | DoublePlus s -> blank_kind simp.position.pos_lnum s
+      |> List.append (List.map blank_exp l |> List.flatten)
+    | DoubleMinus s -> blank_exp s
+    | DoublePlus s -> blank_exp s
     | Empty -> [])
   | _ -> []
 

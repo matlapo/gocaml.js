@@ -65,22 +65,15 @@ let empty_scope = { scopeid = Random.int 99999999; bindings = []; types = []; fu
 ####################
 *)
 
-(* ### TYPE VERIFICATION ### *)
-
-let is_indexable (t: gotype) : bool = match t with
-  | Array _ -> true
-  | Slice _ -> true
-  | _ -> false
-
-let is_selectable (t: gotype) : bool = match t with
-  | Struct _ -> true
-  | _ -> false
-
-let are_type_equals (t1: scopedtype) (t2: scopedtype): bool =
-  t1.gotype = t2.gotype && t1.scopeid = t2.scopeid
-(* Search for equal sign *)
-
 (* ### TYPE RESOLVING ### *)
+
+(* Finds a scope with the specified scopeid.
+Will only look at the parents of th given scope (including the given scope) *)
+let rec find_scope_with_scopeid_opt (s: scope) (id: scopeid): scope option =
+  if s.scopeid = id then Some s
+  else
+    s.parent
+    |> bind (fun p -> find_scope_with_scopeid_opt p id)
 
 (** Finds the type associated with a string *)
 let rec scopedtype_of_typename_opt (s: scope) (typename: string): scopedtype option =
@@ -105,14 +98,6 @@ let rec scopedtype_of_varname_opt (s: scope) (varname: string): scopedtype optio
     It can either be a struct, array, slice or a base type.
 *)
 let rec resolve_to_reducedtype_opt (s: scope) (t: scopedtype): scopedtype option =
-  (* Finds a scope with the specified scopeid.
-  Will only look at the parents of th given scope (including the given scope) *)
-  let rec find_scope_with_scopeid_opt (s: scope) (id: scopeid): scope option =
-    if s.scopeid = id then Some s
-    else
-      s.parent
-      |> bind (fun p -> find_scope_with_scopeid_opt p id)
-  in
   match t.gotype with
   | Defined typename ->
     find_scope_with_scopeid_opt s t.scopeid
@@ -127,6 +112,68 @@ let rec scopedtype_of_gotype (s: scope) (t: gotype) : scopedtype option =
     | Some _ -> Some { gotype = Defined typename; scopeid = s.scopeid }
     | None -> s.parent |> bind (fun p -> scopedtype_of_gotype p t))
   | _ -> Some { gotype = t; scopeid = s.scopeid }
+
+(* Find the base type inside of an array. (needs to resolve gotype inside arrays scope) *)
+let resolve_inside_type_of_indexable (s: scope) (t: scopedtype) : scopedtype option =
+  (* Get the gotype of type inside the array *)
+  match t.gotype with
+  | Array (insidetype, _)
+  | Slice insidetype -> (
+    (* Find the scope where the array type was defined *)
+    find_scope_with_scopeid_opt s t.scopeid
+    |> bind (fun indexablescope ->
+      (* Find the scopedtype of the type inside the array *)
+      scopedtype_of_gotype indexablescope insidetype
+    )
+  )
+  (* If the type is not indexable, error *)
+  | _ -> None
+
+(* Returns the type of a selection *)
+let selection_type_opt (s: scope) (t: scopedtype) (a: string) : scopedtype option =
+  (* Get the scope where the selection was defined *)
+  find_scope_with_scopeid_opt s t.scopeid
+  |> bind (fun selectionscope ->
+    (* Check if the type resolves to a struct *)
+    resolve_to_reducedtype_opt s t
+    |> bind (fun resolved_type -> 
+      match resolved_type.gotype with
+      | Struct members ->
+        (* Check if the selection is a valid member of the struct *)
+        members
+        |> List.find_opt (fun (name, _) -> name = a)
+        |> bind (fun (_, member_type) ->
+          (* Find the scopedtype of the member by doing a type search from the scope where the struct as defined *)
+          scopedtype_of_gotype selectionscope member_type
+        )
+      | _ -> None
+    )
+  )
+  
+  
+
+(* ### TYPE VERIFICATION ### *)
+
+let is_indexable (s: scope)(t: scopedtype) : bool option =
+  resolve_to_reducedtype_opt s t
+  |> bind (fun scoped ->
+    match scoped.gotype with
+    | Array _ -> Some true
+    | Slice _ -> Some true
+    | _ -> Some false
+  )
+
+let is_selectable (s: scope) (t: scopedtype) : bool option =
+  resolve_to_reducedtype_opt s t
+  |> bind (fun scoped ->
+    match scoped.gotype with
+    | Struct _ -> Some true
+    | _ -> Some false
+  )
+
+let are_type_equals (t1: scopedtype) (t2: scopedtype): bool =
+  t1.gotype = t2.gotype && t1.scopeid = t2.scopeid
+(* Search for equal sign *)
 
 (* ### SCOPE MANIPULATION ### *)
 
@@ -207,16 +254,41 @@ let check_vars_declared scope names =
       |> List.filter is_some in
     if List.length onames <> List.length names then true else false
 
+let position_to_tnode (e: 'a node) (value: 'a) (typ: scopedtype) =
+  { position = e.position; value = value; typ = typ }
+
 (* given an expression node, typecheck_opt the expression and return an expression tnode (a node record with a field for its type) *)
 let rec typecheck_exp_opt scope e =
   match e with
   | Position e ->
     (match e.value with
-    | Id kind -> failwith "oups"
-      (* typecheck_kind_opt scope kind
-      |> bind (fun d ->
-        tnode_of_node e d |> some
-      ) *)
+    | Id s ->
+      scopedtype_of_varname_opt scope s
+      |> bind (fun scoped ->
+        tnode_of_node e scoped |> some
+      )
+    | Indexing (target, index) ->
+      (typecheck_exp_opt scope target, typecheck_exp_opt scope index)
+      |> bind2 (fun target index ->
+        (is_indexable scope target.typ, resolve_to_reducedtype_opt scope index.typ)
+        |> bind2 (fun indexable index_basetype ->
+          if indexable && are_type_equals index_basetype (basetype BInt) then
+            resolve_inside_type_of_indexable scope target.typ
+            |> bind (fun t ->
+              position_to_tnode e (Indexing (Typed target, Typed index)) t |> some
+            )
+          else
+            None
+        )
+      )
+    | Selection (target, selection) ->
+      typecheck_exp_opt scope target
+      |> bind (fun target ->
+        selection_type_opt scope target.typ selection
+        |> bind (fun selection_type ->
+            position_to_tnode e (Selection (Typed target, selection)) selection_type |> some
+        )
+      )
     | Int i -> tnode_of_node e (basetype BInt) |> some
     | Float f -> tnode_of_node e (basetype BFloat64) |> some
     | RawStr s
@@ -250,7 +322,7 @@ let rec typecheck_exp_opt scope e =
             | Mod -> [BInt], false in
           check_ops_opt scope a.typ b.typ types comparable
           |> bind (fun x ->
-            tnode_of_node e x |> some
+            tnode_of_node e x |> some (* TODO: ;laskdf *)
           )
         )
       )
@@ -316,8 +388,8 @@ let double_helper (e: simpleStm node) current kind isplus = failwith "DOUBLE SIG
   ) *)
 
 (* given a simple statement node, typecheck it *)
-let rec typecheck_simple_opt current s: simpleStm snode option = failwith "SIMPLE STMT"
-  (* match s with
+let rec typecheck_simple_opt current s: simpleStm snode option =
+  match s with
   | Position e ->
     (match e.value with
     | Assign (assign_type, (kinds, exps)) ->
@@ -339,7 +411,7 @@ let rec typecheck_simple_opt current s: simpleStm snode option = failwith "SIMPL
       | None ->
         let otyped_kinds =
           kinds
-          |> List.map (fun x -> typecheck_kind_opt current x)
+          |> List.map (fun x -> typecheck_exp_opt current x)
           |> List.filter is_some in
         if List.length otyped_kinds <> List.length kinds then None
         else
@@ -353,7 +425,7 @@ let rec typecheck_simple_opt current s: simpleStm snode option = failwith "SIMPL
             let typed_exps = List.map Option.get otyped_exps in
             let test =
               typed_kinds
-              |> List.map2 (fun exp kind -> kind = exp.typ) typed_exps
+              |> List.map2 (fun exp kind -> are_type_equals kind.typ exp.typ) typed_exps
               |> List.exists (fun x -> x = false) in
             if test then None
             else
@@ -366,7 +438,7 @@ let rec typecheck_simple_opt current s: simpleStm snode option = failwith "SIMPL
     | ShortDeclaration (kinds, exps) ->
       let otyped_kinds =
         kinds
-        |> List.map (fun x -> typecheck_kind_opt current x)
+        |> List.map (fun x -> typecheck_exp_opt current x)
         |> List.filter is_some in
       if List.length otyped_kinds <> List.length kinds then None
       else
@@ -380,14 +452,14 @@ let rec typecheck_simple_opt current s: simpleStm snode option = failwith "SIMPL
           let typed_exps = List.map Option.get otyped_exps in
           let test =
             typed_kinds
-            |> List.map2 (fun exp kind -> kind = exp.typ) typed_exps
+            |> List.map2 (fun exp kind -> are_type_equals kind.typ exp.typ) typed_exps
             |> List.exists (fun x -> x = false) in
           if test then None
           else
             let gen_nodes = List.map (fun x -> Typed x) typed_exps in
             { position = e.position; scope = current; value = ShortDeclaration (kinds, gen_nodes) } |> some
     | _ -> None)
-  | _ -> None *)
+  | _ -> None
 
 (* print helper function for typecheck print and println statements *)
 let print_helper current (e: stmt node) l is_println =
