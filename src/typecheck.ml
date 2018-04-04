@@ -136,7 +136,7 @@ let selection_type_opt (s: scope) (t: scopedtype) (a: string) : scopedtype optio
   |> bind (fun selectionscope ->
     (* Check if the type resolves to a struct *)
     resolve_to_reducedtype_opt s t
-    |> bind (fun resolved_type -> 
+    |> bind (fun resolved_type ->
       match resolved_type.gotype with
       | Struct members ->
         (* Check if the selection is a valid member of the struct *)
@@ -149,8 +149,8 @@ let selection_type_opt (s: scope) (t: scopedtype) (a: string) : scopedtype optio
       | _ -> None
     )
   )
-  
-  
+
+
 
 (* ### TYPE VERIFICATION ### *)
 
@@ -375,17 +375,26 @@ let typecheck_args_opt scope args =
     |> List.map Option.get
     |> some
 
-let double_helper (e: simpleStm node) current kind isplus = failwith "DOUBLE SIGN HELPER"
-  (* DO NOT DELETE, CHANGE THE CALL TO KIND FUNCTIONS *)
-  (* typecheck_kind_opt current kind
-  |> bind (fun x ->
-    match x with
-    | TypeT s ->
-      if not (s = base_int || s = base_float || s = base_rune) then None
+let double_helper (e: simpleStm node) current target isplus =
+  typecheck_exp_opt current target
+  |> bind (fun typed_exp ->
+    resolve_to_reducedtype_opt current typed_exp.typ
+    |> bind(fun resolved_type ->
+      if not (resolved_type = basetype BInt
+        || resolved_type = basetype BFloat64
+        || resolved_type = basetype BRune) then None
       else
-        { position = e.position; scope = current; value = if isplus then DoublePlus kind else DoubleMinus kind } |> some
-    | _ -> None
-  ) *)
+        { position = e.position;
+          scope = current;
+          value =
+            if isplus then
+              DoublePlus (Typed typed_exp)
+            else
+              DoubleMinus (Typed typed_exp)
+        }
+        |> some
+    )
+  )
 
 (* given a simple statement node, typecheck it *)
 let rec typecheck_simple_opt current s: simpleStm snode option =
