@@ -814,7 +814,7 @@ let typecheck_decl_opt scope decl =
         let oargs =
           args
           |> List.map (fun (name, t) -> (name, scopedtype_of_gotype scope t))
-          |> List.filter (fun (name, o) -> false) in
+          |> List.filter (fun (_, o) -> is_some o) in
         if List.length oargs <> List.length args then None
         else
           oargs
