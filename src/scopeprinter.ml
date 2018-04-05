@@ -19,38 +19,43 @@ let rec string_of_structdef l =
   (
     l
     |> List.fold_left (fun acc (names, def) ->
-          acc
-          ^ string_of_list (fun s -> s) "," names
-          ^ " "
-          ^ string_of_typedef def ^ "; "
+          acc ^ names ^ " " ^ string_of_gotype def ^ "; "
         )
         ""
   )
   ^
   " }"
 
-and string_of_typedef d = match d with
-  | TypeT name -> name
-  | StructT members -> string_of_structdef members
-  | ArrayT (name, dim) -> string_of_list (fun d -> "[" ^ Int64.to_string d ^ "]") "" dim ^ name
-  | SliceT (name, dim) -> repeat_string "[]" (Int64.to_int dim) ^ name
+and string_of_basetype t = match t with
+  | BInt -> "(base)int"
+  | BFloat64 -> "(base)float64"
+  | BString -> "(base)string"
+  | BRune -> "(base)rune"
+  | BBool -> "(base)bool"
+
+and string_of_gotype d = match d with
+  | Basetype t -> string_of_basetype t
+  | Defined s -> "(defined)" ^ s
+  | Struct members -> string_of_structdef members
+  | Array (t, size) -> "[" ^ Int64.to_string size ^ "]" ^ string_of_gotype t
+  | Slice t -> "[]" ^ string_of_gotype t
 
 let string_of_var_binding (name, def) =
-  name ^ " [var] = " ^ string_of_typedef def
+  name ^ " [var] = " ^ string_of_gotype def.gotype
 
 let string_of_type_binding (name, def) =
-  name ^ " [type] = " ^ string_of_typedef def
+  name ^ " [type] = " ^ string_of_gotype def.gotype
 
 let indent lvl = repeat_string "  " lvl
 
 let string_of_function_binding (name, args, ret) =
   name ^ " [function] = " ^ "("
-  ^ string_of_list (fun a -> string_of_typedef a) ", " args
+  ^ string_of_list (fun a -> string_of_gotype a.gotype) ", " args
   ^ ") -> "
-  ^ (match ret with Void -> "void" | NonVoid r -> string_of_typedef r)
+  ^ (match ret with Void -> "void" | NonVoid r -> string_of_gotype r.gotype)
 
 (* Prints a scope *)
-let rec string_of_scope lvl scope =
+let rec string_of_scope lvl (scope: Ast.scope) =
   (* Prints the variable bindings of a scope *)
   (scope.bindings |> string_of_list (fun b -> indent lvl ^ string_of_var_binding b) "\n")
   ^ "\n" ^
