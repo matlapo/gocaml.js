@@ -150,8 +150,6 @@ let selection_type_opt (s: scope) (t: scopedtype) (a: string) : scopedtype optio
     )
   )
 
-
-
 (* ### TYPE VERIFICATION ### *)
 
 let is_indexable (s: scope)(t: scopedtype) : bool option =
@@ -367,7 +365,7 @@ let merge_scope_opt old_scope new_scope =
 let typecheck_args_opt scope args =
   let typed_args =
     args
-    |> List.map (fun (_, typ) -> resolve_to_reducedtype_opt scope typ)
+    |> List.map (fun (_, typ) -> scopedtype_of_gotype scope typ)
     |> List.filter is_some in
   if List.length args <> List.length typed_args then None
   else
@@ -811,37 +809,33 @@ let typecheck_decl_opt scope decl =
       let empty_function_scope = new_scope scope in
       if check_invalid_main (name, args, return_type) then None
       else
-        let oargs =
-          args
-          |> List.map (fun (name, t) -> (name, scopedtype_of_gotype scope t))
-          |> List.filter (fun (_, o) -> is_some o) in
-        if List.length oargs <> List.length args then None
-        else
-          oargs
-          |> List.map (fun (name, otyp) -> (name, Option.get otyp))
-          |> typecheck_args_opt scope
-          |> bind (fun typed_args ->
-            let arguments_scope = List.map2 (fun (name, _) typ -> (name, typ)) args typed_args in
-            let empty_function_scope = { empty_function_scope with bindings = arguments_scope } in
-            typecheck_stm_list_opt stmts empty_function_scope
-            |> bind (fun (typed_stmts, new_scope) ->
-              let scoped_typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
-              (match return_type with
-              | Void -> Some Void
-              | NonVoid t -> scopedtype_of_gotype scope t |> bind (fun t -> NonVoid t |> some))
-              |> bind (fun scoped_return_type ->
-                if verify_return_statements typed_stmts scoped_return_type = true then None
-                else
-                  let function_binding = (name, typed_args, scoped_return_type) in
-                  let scope =
-                    { scope with
-                      children = List.append scope.children [new_scope];
-                      functions = List.append scope.functions [function_binding]
-                    } in
-                  (scope, Fct (name, args, return_type, scoped_typed_stmts)) |> some
-              )
+        args
+        |> typecheck_args_opt scope
+        |> bind (fun typed_args ->
+          (* Add the type we resolved to all the arguments. *)
+          let arguments_scope = List.map2 (fun (name, _) typ -> (name, typ)) args typed_args in
+          let initial_function_scope = { empty_function_scope with bindings = arguments_scope } in
+          typecheck_stm_list_opt stmts initial_function_scope
+          |> bind (fun (typed_stmts, new_scope) ->
+            (* Add the scope to each statement *)
+            let scoped_typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
+            (* Typecheck the return type. *)
+            (match return_type with
+            | Void -> Some Void
+            | NonVoid t -> scopedtype_of_gotype scope t |> bind (fun t -> NonVoid t |> some))
+            |> bind (fun scoped_return_type ->
+              if verify_return_statements typed_stmts scoped_return_type = true then None
+              else
+                let function_binding = (name, typed_args, scoped_return_type) in
+                let scope =
+                  { scope with
+                    children = List.append scope.children [new_scope];
+                    functions = List.append scope.functions [function_binding]
+                  } in
+                (scope, Fct (name, args, return_type, scoped_typed_stmts)) |> some
             )
           )
+        )
     )
   | _ -> None
 
