@@ -105,11 +105,24 @@ let rec resolve_to_reducedtype_opt (s: scope) (t: scopedtype): scopedtype option
     |> bind (fun (_, t) -> resolve_to_reducedtype_opt s t)
   | _ -> Some t
 
+let basetype_of_string_opt s = match s with
+  | "int" -> Some (Basetype BInt)
+  | "float64" -> Some (Basetype BFloat64)
+  | "string" -> Some (Basetype BString)
+  | "rune" -> Some (Basetype BRune)
+  | "bool" -> Some (Basetype BBool)
+  | _ -> None
+
 let rec scopedtype_of_gotype (s: scope) (t: gotype) : scopedtype option =
   match t with
   | Defined typename ->
     (match List.find_opt (fun (id, _) -> id = typename) s.types with
-    | Some _ -> Some { gotype = Defined typename; scopeid = s.scopeid }
+    | Some _ ->
+      if s.scopeid <> 0 then
+        Some { gotype = Defined typename; scopeid = s.scopeid }
+      (* If the Defined goes back to the initial scope, it is a base type.*)
+      else
+        (basetype_of_string_opt typename) |> bind (fun t -> Some { gotype = t; scopeid = 0 })
     | None -> s.parent |> bind (fun p -> scopedtype_of_gotype p t))
   | _ -> Some { gotype = t; scopeid = s.scopeid }
 
