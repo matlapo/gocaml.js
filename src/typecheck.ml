@@ -1,6 +1,7 @@
 open Ast
 open BatOption
 open Utils
+open Scopeprinter
 module Option = BatOption
 
 let id_undeclared id = Printf.sprintf "Variable %s is used before being declared" id
@@ -765,17 +766,17 @@ and typecheck_var_decl_opt scope (vars, t, exps) =
         ((vars, t, exps), new_scope) |> some
       | Some t ->
         scopedtype_of_gotype scope t
-        |> bind (fun scopedx -> resolve_to_reducedtype_opt scope scopedx)
-        |> bind (fun typ ->
+        |> bind (fun scopedt ->
           let exps_with_annotation =
             typed_exps
-            |> List.filter (fun x -> x.typ = typ)
+            |> List.filter (fun x -> x.typ = scopedt)
             |> List.map (fun x -> Typed x) in
           if List.length exps_with_annotation <> List.length typed_exps then None
           else
+            (* Get back the type that wasn't reduced (needed for the binding). *)
             let new_bindings =
               vars
-              |> List.map (fun name -> (name, typ)) in
+              |> List.map (fun name -> (name, scopedt)) in
             let new_scope = { empty_scope with bindings = new_bindings } in
             ((vars, Some t, exps), new_scope) |> some
         )
