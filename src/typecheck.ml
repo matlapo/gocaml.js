@@ -207,7 +207,7 @@ let add_type_declaration_to_scope_opt (s: scope) ((typename: string), (t: scoped
 let add_variable_to_scope_opt (s: scope) ((varname: string), (t: scopedtype)): scope option =
   if List.exists (fun (id, _) -> id = varname) s.bindings then None
   else
-    Some {s with types = (varname, t)::s.bindings}
+    Some {s with bindings = (varname, t)::s.bindings}
 
 (* new_scope *)
 
@@ -457,28 +457,38 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
     | DoublePlus kind -> double_helper e current kind true
     | DoubleMinus kind -> double_helper e current kind false
     | ShortDeclaration (kinds, exps) ->
-      let otyped_kinds =
-        kinds
-        |> List.map (fun x -> typecheck_exp_opt current x)
-        |> List.filter is_some in
-      if List.length otyped_kinds <> List.length kinds then None
-      else
-        let typed_kinds = List.map Option.get otyped_kinds in
-        let otyped_exps =
-          exps
-          |> List.map (fun x -> typecheck_exp_opt current x)
-          |> List.filter is_some in
-        if List.length otyped_exps <> List.length exps then None
+      (* Match the each kind with its associated exp *)
+      List.map2 (fun k e -> (k, e)) kinds exps
+      (* Accumulate the new scope (for new declaration) and the typed exps *)
+      |> List.fold_left (fun scope_and_exps (k, e) ->
+        scope_and_exps
+        |> bind (fun (scope, l) ->
+          (* Make sure the expression typechecks *)
+          (typecheck_exp_opt scope e)
+          |> bind (fun typed_exp ->
+            (* If the kind does not typecheck, the variable does not exist yet. *)
+            match typecheck_exp_opt scope k with
+            (* If the variable already exists, just compare the types. *)
+            | Some k -> (if (are_type_equals k.typ typed_exp.typ) then Some (scope, (Typed typed_exp)::l) else None)
+            (* If the variable does not exist, extra the id and add it to the accumulated scope *)
+            | None -> (match k with
+              | Position { value = Id name; _} ->
+                add_variable_to_scope_opt scope (name, typed_exp.typ)
+                |> bind (fun new_scope ->
+                  Some (new_scope, (Typed typed_exp)::l)
+                )
+              | _ -> None )
+          )
+        )
+      ) (Some (current, []))
+      (* When all the exps have been typed, return the short declaration with the new scope. *)
+      |> bind (fun (new_scope, l) ->
+        (* If no new bindings were created, it means that no new variable were
+          introduced in the short declaration. This is not allowed. *)
+        if List.length new_scope.bindings = List.length current.bindings then None
         else
-          let typed_exps = List.map Option.get otyped_exps in
-          let test =
-            typed_kinds
-            |> List.map2 (fun exp kind -> are_type_equals kind.typ exp.typ) typed_exps
-            |> List.exists (fun x -> x = false) in
-          if test then None
-          else
-            let gen_nodes = List.map (fun x -> Typed x) typed_exps in
-            { position = e.position; scope = current; value = ShortDeclaration (kinds, gen_nodes) } |> some
+          { position = e.position; scope = new_scope; value = ShortDeclaration (kinds, l) } |> some
+      )
     | _ -> None)
   | _ -> None
 
