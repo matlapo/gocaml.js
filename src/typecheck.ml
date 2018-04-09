@@ -36,6 +36,13 @@ let try_base_type (s: string) =
   else if s = base_rune then s |> some
   else None
 
+let is_numeric (t: basetype) =
+  match t with
+    | BInt
+    | BFloat64
+    | BRune -> true
+    | _ -> false
+
 let basetype a = { gotype = Basetype a; scopeid = 0 }
 
 let base_types =
@@ -291,7 +298,6 @@ let check_both_list_same_exps_types (a: scopedtype list) (b: scopedtype list) =
   |> List.exists (fun x -> x = false)
   |> (fun x -> not x)
 
-
 (* given an expression node, typecheck_opt the expression and return an expression tnode (a node record with a field for its type) *)
 let rec typecheck_exp_opt scope e =
   match e with
@@ -376,6 +382,7 @@ let rec typecheck_exp_opt scope e =
         )
       )
     | FuncCall (name, exps) ->
+<<<<<<< HEAD
       find_function_signature_opt scope name
       |> bind (fun signature ->
         typecheck_exp_list_opt scope exps
@@ -403,6 +410,27 @@ let rec typecheck_exp_opt scope e =
           )
         )
       )
+=======
+      (* first, check if the function call is actually a valid type cast *)
+      (match check_if_type_cast e scope name exps with
+      | Some t -> Some t
+      | None ->
+        (* if not, then it must a function call, make sure it type check and return the resulting type for this node *)
+        find_function_signature_opt scope name
+        |> bind (fun signature ->
+          typecheck_exp_list_opt scope exps
+          |> bind (fun typed_exps ->
+            let scoped_exps = List.map (fun { typ = x; _ } -> x) typed_exps in
+            if check_both_list_same_exps_types scoped_exps signature.arguments then
+              match signature.returnt with
+              | Void -> tnode_of_node e { gotype = Null; scopeid = scope.scopeid } |> some
+              | NonVoid t -> tnode_of_node e t |> some
+            else
+              None
+          )
+        ))
+    | _ -> None)
+>>>>>>> 9192a1746a4fa25f4d4b4f9b3a7950220be498fc
   | Typed e -> Some e
   | Scoped e -> None
 
@@ -416,6 +444,41 @@ and typecheck_exp_list_opt (scope: scope) (exps: exp gen_node list) =
     olist
     |> List.map Option.get
     |> some
+
+(*
+function that checks if a function call is a typecast of the form type(expr). We have to check:
+1. expr must be a single expression
+2. type is a type that exists (in this scope or previous ones)
+3. reduce the type to a base type, if possible
+4. typecheck the expr (i.e the argument)
+5. reduce the type of expr to a base type, if possible
+6. Apply the type rule associated with type casting in Go
+
+note: all these operations can fail, hence the serie of binds
+*)
+and check_if_type_cast (e: exp node) (scope: scope) (name: string) (exps: exp gen_node list) =
+  if List.length exps <> 1 then None
+  else
+    let exp = List.hd exps in
+    scopedtype_of_typename_opt scope name
+    |> bind (fun scoped_type ->
+      resolve_to_reducedtype_opt scope scoped_type
+      |> bind (fun type_reduced ->
+        typecheck_exp_opt scope exp
+        |> bind (fun tnode ->
+          resolve_to_reducedtype_opt scope tnode.typ
+          |> bind (fun exp_reduced ->
+            match (type_reduced.gotype, exp_reduced.gotype) with
+            | (Basetype a, Basetype b) ->
+              (* if both types are the same basetype OR both are numeric OR type(expr) where type resolves to string and expr to int or rune *)
+              if a = b || (is_numeric a && is_numeric b) || (a = BString && (b = BInt || b = BRune)) then
+                tnode_of_node e type_reduced |> some
+              else None
+            | _ -> None
+          )
+        )
+      )
+    )
 
 (* given two scopes, merge them together so that all their bindings are all at the same level. If the resulting bindings contain duplicates, it returns None *)
 let merge_scope_opt old_scope new_scope =
