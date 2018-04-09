@@ -183,9 +183,12 @@ let is_selectable (s: scope) (t: scopedtype) : bool option =
     | _ -> Some false
   )
 
-let are_type_equals (t1: scopedtype) (t2: scopedtype): bool =
-  t1.gotype = t2.gotype && t1.scopeid = t2.scopeid
-(* Search for equal sign *)
+let are_type_equals (t1: scopedtype) (t2: scopedtype): bool = match t1.gotype with
+  (* Compare scope ids only when it's a defined type. *)
+  | Defined _ -> t1.gotype = t2.gotype && t1.scopeid = t2.scopeid
+  (* Do not check scopeid otherwise. This is because, for example, two [3]int array
+    are considered the same type even if they were not defined in the same scope. *)
+  | _ -> t1.gotype = t2.gotype
 
 (* ### SCOPE MANIPULATION ### *)
 
