@@ -711,7 +711,7 @@ and loop_helper e scope loop =
       ) in
     typecheck_simple_opt scope init
     |> bind (fun init ->
-      let scope = { scope with bindings = init.scope.bindings } in
+      let scope = new_scope init.scope in
       typecheck_simple_opt scope inc
       |> bind (fun inc ->
         typecheck_stm_list_opt stmts scope
