@@ -57,6 +57,7 @@ type gotype =
   | Array of gotype * Int64.t
   | Slice of gotype
   | Struct of (string * gotype) list
+  | Null
 
 type scopeid = int
 type scopedtype = { gotype: gotype; scopeid: scopeid }
