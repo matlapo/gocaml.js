@@ -225,6 +225,8 @@ let add_variable_to_scope_opt (s: scope) ((varname: string), (t: scopedtype)): s
 (* converts a regular node to a node with the given type *)
 let tnode_of_node (e: exp node) t = { position = e.position; typ = t; value = e.value }
 
+let tnode_of_node_and_value (e: exp node) t v = { position = e.position; typ = t; value = v }
+
 let snode_of_node (s: stmt node) scope = { position = s.position; scope = scope; value = s.value }
 
 (* given the types of 2 arguments (for a binary operation) and a list of accepted types for the binary operation, return the resulting type *)
@@ -387,7 +389,20 @@ let rec typecheck_exp_opt scope e =
             None
         )
       )
-    | _ -> None)
+    | Append (array, element) ->
+      (typecheck_exp_opt scope array, typecheck_exp_opt scope element)
+      |> bind2 (fun typed_array typed_element ->
+        (* Checks if the type is an array/slice and returns the inside type. *)
+        resolve_inside_type_of_indexable scope typed_array.typ
+        |> bind (fun type_inside_array ->
+          (* Compared the type inside the array with the type of the element. *)
+          if are_types_equal type_inside_array typed_element.typ then
+            Some (tnode_of_node_and_value e typed_array.typ (Append (Typed typed_array, Typed typed_element)))
+          else
+            None
+          )
+        )
+      )
   | Typed e -> Some e
   | Scoped e -> None
 
