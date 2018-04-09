@@ -466,18 +466,33 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
           (* Make sure the expression typechecks *)
           (typecheck_exp_opt scope e)
           |> bind (fun typed_exp ->
-            (* If the kind does not typecheck, the variable does not exist yet. *)
-            match typecheck_exp_opt scope k with
-            (* If the variable already exists, just compare the types. *)
-            | Some k -> (if (are_type_equals k.typ typed_exp.typ) then Some (scope, (Typed typed_exp)::l) else None)
-            (* If the variable does not exist, extra the id and add it to the accumulated scope *)
-            | None -> (match k with
-              | Position { value = Id name; _} ->
-                add_variable_to_scope_opt scope (name, typed_exp.typ)
-                |> bind (fun new_scope ->
-                  Some (new_scope, (Typed typed_exp)::l)
+            (* This block of code checks if a new variable needs to be added to the current scope. *)
+            match k with
+            (* Extract the kind expression *)
+            | Position { value = kind } -> (match kind with
+              (* If it's just an identifier, check if it's defined in the current scope only *)
+              | Id s -> if (List.exists (fun (name, _) -> name = s) scope.bindings) then
+                  (* If the identifier is defined, nothing to add to the scope *)
+                  Some (k, scope)
+                else
+                  (* Add the variable to the scope if it's not defined *)
+                  add_variable_to_scope_opt scope (s, typed_exp.typ)
+                  (* Return the new scope with the added binding *)
+                  |> bind (fun scope -> Some (k, scope))
+              (* If the expression is not a simple identifier, nothing to add to the scope *)
+              | _ -> Some (k, scope)
+              )
+              (* Typecheck the expression with the potentially altered scope *)
+              |> bind (fun (k, scope) -> typecheck_exp_opt scope k
+                (* If the kind is well typed, check the type equality *)
+                |> bind (fun k ->
+                  if (are_type_equals k.typ typed_exp.typ) then
+                    Some (scope, (Typed typed_exp)::l)
+                  else
+                    None
                 )
-              | _ -> None )
+              )
+            | _ -> failwith "IMPOSSIBLE"
           )
         )
       ) (Some (current, []))
