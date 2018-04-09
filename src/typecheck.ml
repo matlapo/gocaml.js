@@ -269,6 +269,13 @@ let check_vars_declared scope names =
 let position_to_tnode (e: 'a node) (value: 'a) (typ: scopedtype) =
   { position = e.position; value = value; typ = typ }
 
+let rec find_function_signature_opt (scope: scope) (name: string) =
+  match List.find_opt (fun (id, sign) -> id = name) scope.functions with
+  | Some (_, t) -> Some t
+  | None -> match scope.parent with
+    | Some p -> find_function_signature_opt p name
+    | None -> None
+
 (* given an expression node, typecheck_opt the expression and return an expression tnode (a node record with a field for its type) *)
 let rec typecheck_exp_opt scope e =
   match e with
@@ -352,6 +359,8 @@ let rec typecheck_exp_opt scope e =
           tnode_of_node e x |> some
         )
       )
+    | FuncCall (name, exps) -> None
+
     | _ -> None)
   | Typed e -> Some e
   | Scoped e -> None
@@ -868,7 +877,8 @@ let typecheck_decl_opt scope decl =
             |> bind (fun scoped_return_type ->
               if verify_return_statements typed_stmts scoped_return_type = true then None
               else
-                let function_binding = (name, typed_args, scoped_return_type) in
+                let signature = { arguments = typed_args; returnt = scoped_return_type } in
+                let function_binding = (name, signature) in
                 let scope =
                   { scope with
                     children = List.append scope.children [new_scope];
