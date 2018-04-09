@@ -345,7 +345,7 @@ let rec typecheck_exp_opt scope e =
       typecheck_exp_opt scope a
       |> bind (fun a ->
         typecheck_exp_opt scope b
-        |> bind (fun b -> (* TODO resolve the types *)
+        |> bind (fun b -> (* TODO: resolve the types *)
           let types, comparable =
              match bin with
             | Plus -> [BInt; BFloat64; BString; BRune], false
@@ -359,7 +359,7 @@ let rec typecheck_exp_opt scope e =
             | Smaller
             | Greater
             | SmallerEq
-            | GreaterEq -> [BInt; BFloat64; BString; BRune], true (* TODO ordered? *)
+            | GreaterEq -> [BInt; BFloat64; BString; BRune], true (* TODO: ordered? *)
             | DGreater
             | DSmaller
             | AndHat
