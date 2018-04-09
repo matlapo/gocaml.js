@@ -68,6 +68,8 @@ let duplicate_member x = Printf.sprintf "Error: duplicate member name for this s
 
 let type_redeclaration x = Printf.sprintf "Error: cannot redeclare this type: line %d" x
 
+let missing_return_statement x = Printf.sprintf "Error: not all paths in the function return a value: line %d" x
+
 (* finds an invalid blank id in a type definition *)
 let rec blank_type line t =
   match t with
@@ -201,6 +203,49 @@ let rec blank_stm (stm: stmt gen_node) =
       |> List.append s
     | _ -> [])
   | _ -> []
+
+let rec check_return_inside_function (l: stmt gen_node list) seen_return =
+  match l with
+  | [] -> seen_return
+  | s::ss ->
+    match s with
+    | Position s ->
+      (match s.value with
+      | Return _ -> true
+      | Block block ->
+        check_return_inside_function block seen_return
+        || check_return_inside_function ss seen_return
+      | If (_, _, ifs, oelses) ->
+        let if_body = check_return_inside_function ifs seen_return in
+        let rest = check_return_inside_function ss seen_return in
+        (match oelses with
+        | Some elses ->
+          (* if there are no return statements found after the if-else block,
+          then each branch most contain a return statement *)
+          if not rest then
+            if_body
+            && check_return_inside_function elses false
+          else
+            true (* if there are return statements after the if-block, then this block doesn't matter for us *)
+        | None -> if not rest then if_body else true)
+      | Loop loop ->
+        let body =
+          match loop with
+          | While (_, x) -> x
+          | For (_, _, _, x) -> x in
+        check_return_inside_function body seen_return
+        || check_return_inside_function ss seen_return
+      | Switch (_, _, cases) ->
+        (* exactly the same logic as the if-blocks *)
+        let rest = check_return_inside_function ss seen_return in
+        if not rest then
+          (* all cases must have a return statement, which corresponds to a big logic AND *)
+          cases
+          |> List.fold_left (fun acc (_, stmts) -> acc && check_return_inside_function stmts false) true
+        else
+          true
+      | _ -> check_return_inside_function ss seen_return)
+    | _ -> false
 
 (* makes sure that a switch statement has at most one default case *)
 (* TODO not recursive *)
@@ -379,21 +424,26 @@ let weed (p, d) =
           |> List.append exp
           |> List.append (decl_var_check x.position.pos_lnum v exps)
         )
-      | Fct (name, args, _, s) ->
+      | Fct (name, args, ret, stmts) ->
         (* TODO make better filter structure *)
         let duplicate_args = if contains_duplicate args then [duplicate_args x.position.pos_lnum] else [] in
-        let continue = map_flat check_cont_break s in
-        let default = map_flat check_default s in
-        let assign = map_flat assign_check s in
-        let fct = map_flat check_fcn_call s in
-        let post = map_flat check_post_loop s in
+        let continue = map_flat check_cont_break stmts in
+        let default = map_flat check_default stmts in
+        let assign = map_flat assign_check stmts in
+        let fct = map_flat check_fcn_call stmts in
+        let post = map_flat check_post_loop stmts in
         let name = helper x.position.pos_lnum name in
         let args =
           args
           |> map_flat (fun (_, r) ->
              blank_type x.position.pos_lnum r
           ) in
-        let s = map_flat blank_stm s in
+        let s = map_flat blank_stm stmts in
+        let all_branch_return =
+          match ret with
+          | Void -> []
+          | NonVoid _ ->
+            if check_return_inside_function stmts false then [] else [ missing_return_statement x.position.pos_lnum ] in
         name
         |> List.append duplicate_args
         |> List.append s
@@ -403,6 +453,7 @@ let weed (p, d) =
         |> List.append assign
         |> List.append fct
         |> List.append post
+        |> List.append all_branch_return
     | Type l ->
       l
       |> map_flat (fun (s, ts) ->

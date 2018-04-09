@@ -225,6 +225,8 @@ let add_variable_to_scope_opt (s: scope) ((varname: string), (t: scopedtype)): s
 (* converts a regular node to a node with the given type *)
 let tnode_of_node (e: exp node) t = { position = e.position; typ = t; value = e.value }
 
+let snode_of_node (s: stmt node) scope = { position = s.position; scope = scope; value = s.value }
+
 (* given the types of 2 arguments (for a binary operation) and a list of accepted types for the binary operation, return the resulting type *)
 let check_ops_opt (s: scope) (a: scopedtype) (b: scopedtype) (l: basetype list) comparable : scopedtype option =
   l
@@ -500,6 +502,11 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
     | Empty -> { position = e.position; scope = current; value = Empty } |> some
     | DoublePlus kind -> double_helper e current kind true
     | DoubleMinus kind -> double_helper e current kind false
+    | ExpStatement exp ->
+      typecheck_exp_opt current exp
+      |> bind (fun x ->
+        { position = e.position; scope = current; value = ExpStatement exp } |> some
+      )
     | ShortDeclaration (kinds, exps) ->
       (* Match the each kind with its associated exp *)
       List.map2 (fun k e -> (k, e)) kinds exps
@@ -548,7 +555,7 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
         else
           { position = e.position; scope = new_scope; value = ShortDeclaration (kinds, l) } |> some
       )
-    | _ -> None)
+    )
   | _ -> None
 
 (* print helper function for typecheck print and println statements *)
@@ -635,7 +642,6 @@ let rec typecheck_stm_opt current s =
             )
         )
       )
-
     | Print l -> print_helper current e l false
     | Println l -> print_helper current e l true
     | Declaration l ->
