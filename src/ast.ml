@@ -65,12 +65,18 @@ type 'a fct_return =
   | NonVoid of 'a
   | Void
 
+type signature =
+  {
+    arguments: scopedtype list;
+    returnt: scopedtype fct_return
+  }
+
 type scope =
   {
     scopeid: scopeid;
     bindings: (string * scopedtype) list;
     types: (string * scopedtype) list; (* b : previous type *)
-    functions: (string * scopedtype list * scopedtype fct_return) list; (* function name - argument types - return type *)
+    functions: (string * signature) list; (* function name - argument types - return type *)
     parent: scope option; (* top level scope doesn't have a parent *)
     children: scope list
   }
