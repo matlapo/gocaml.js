@@ -579,8 +579,9 @@ let rec typecheck_stm_opt current s =
           | { gotype = Basetype s; _} -> if s = BBool then Typed typed |> some else None
           | _ -> None
         ) in
-        (* Add the create simplestm's scope to the current scope list of children *)
+        (* Add the created simplestm's scope to the current scope list of children *)
         let current = { current with children = simple_scope::current.children } in
+        let simple_scope = {simple_scope with parent = Some current} in
         typed_exp
         (* FIXME: debug else scoping *)
         |> bind (fun typed_exp ->
