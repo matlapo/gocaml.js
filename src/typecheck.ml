@@ -382,35 +382,6 @@ let rec typecheck_exp_opt scope e =
         )
       )
     | FuncCall (name, exps) ->
-<<<<<<< HEAD
-      find_function_signature_opt scope name
-      |> bind (fun signature ->
-        typecheck_exp_list_opt scope exps
-        |> bind (fun typed_exps ->
-          let scoped_exps = List.map (fun { typ = x; _ } -> x) typed_exps in
-          if check_both_list_same_exps_types scoped_exps signature.arguments then
-            match signature.returnt with
-            | Void -> tnode_of_node e { gotype = Null; scopeid = scope.scopeid } |> some
-            | NonVoid t -> tnode_of_node e t |> some
-          else
-            None
-        )
-      )
-    | Append (array, element) ->
-      (typecheck_exp_opt scope array, typecheck_exp_opt scope element)
-      |> bind2 (fun typed_array typed_element ->
-        (* Checks if the type is an array/slice and returns the inside type. *)
-        resolve_inside_type_of_indexable scope typed_array.typ
-        |> bind (fun type_inside_array ->
-          (* Compared the type inside the array with the type of the element. *)
-          if are_types_equal type_inside_array typed_element.typ then
-            Some (tnode_of_node_and_value e typed_array.typ (Append (Typed typed_array, Typed typed_element)))
-          else
-            None
-          )
-        )
-      )
-=======
       (* first, check if the function call is actually a valid type cast *)
       (match check_if_type_cast e scope name exps with
       | Some t -> Some t
@@ -429,8 +400,20 @@ let rec typecheck_exp_opt scope e =
               None
           )
         ))
-    | _ -> None)
->>>>>>> 9192a1746a4fa25f4d4b4f9b3a7950220be498fc
+    | Append (array, element) ->
+      (typecheck_exp_opt scope array, typecheck_exp_opt scope element)
+      |> bind2 (fun typed_array typed_element ->
+        (* Checks if the type is an array/slice and returns the inside type. *)
+        resolve_inside_type_of_indexable scope typed_array.typ
+        |> bind (fun type_inside_array ->
+          (* Compared the type inside the array with the type of the element. *)
+          if are_types_equal type_inside_array typed_element.typ then
+            Some (tnode_of_node_and_value e typed_array.typ (Append (Typed typed_array, Typed typed_element)))
+          else
+            None
+          )
+        )
+      )
   | Typed e -> Some e
   | Scoped e -> None
 
