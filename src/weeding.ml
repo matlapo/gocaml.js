@@ -79,6 +79,7 @@ let rec blank_type line t =
     |> List.map (fun (s, t) -> blank_type line t)
     |> List.flatten
   | Basetype _ -> []
+  | Null -> []
 
 let duplicate_member_struct line t =
   match t with
