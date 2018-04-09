@@ -183,9 +183,12 @@ let is_selectable (s: scope) (t: scopedtype) : bool option =
     | _ -> Some false
   )
 
-let are_type_equals (t1: scopedtype) (t2: scopedtype): bool =
-  t1.gotype = t2.gotype && t1.scopeid = t2.scopeid
-(* Search for equal sign *)
+let are_type_equals (t1: scopedtype) (t2: scopedtype): bool = match t1.gotype with
+  (* Compare scope ids only when it's a defined type. *)
+  | Defined _ -> t1.gotype = t2.gotype && t1.scopeid = t2.scopeid
+  (* Do not check scopeid otherwise. This is because, for example, two [3]int array
+    are considered the same type even if they were not defined in the same scope. *)
+  | _ -> t1.gotype = t2.gotype
 
 (* ### SCOPE MANIPULATION ### *)
 
@@ -348,7 +351,7 @@ let rec typecheck_exp_opt scope e =
             | Mod -> [BInt], false in
           check_ops_opt scope a.typ b.typ types comparable
           |> bind (fun x ->
-            tnode_of_node e x |> some (* TODO: ;laskdf *)
+            tnode_of_node e x |> some (* TODO: LHS and RHS are not typed *)
           )
         )
       )
@@ -505,18 +508,33 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
           (* Make sure the expression typechecks *)
           (typecheck_exp_opt scope e)
           |> bind (fun typed_exp ->
-            (* If the kind does not typecheck, the variable does not exist yet. *)
-            match typecheck_exp_opt scope k with
-            (* If the variable already exists, just compare the types. *)
-            | Some k -> (if (are_type_equals k.typ typed_exp.typ) then Some (scope, (Typed typed_exp)::l) else None)
-            (* If the variable does not exist, extra the id and add it to the accumulated scope *)
-            | None -> (match k with
-              | Position { value = Id name; _} ->
-                add_variable_to_scope_opt scope (name, typed_exp.typ)
-                |> bind (fun new_scope ->
-                  Some (new_scope, (Typed typed_exp)::l)
+            (* This block of code checks if a new variable needs to be added to the current scope. *)
+            match k with
+            (* Extract the kind expression *)
+            | Position { value = kind } -> (match kind with
+              (* If it's just an identifier, check if it's defined in the current scope only *)
+              | Id s -> if (List.exists (fun (name, _) -> name = s) scope.bindings) then
+                  (* If the identifier is defined, nothing to add to the scope *)
+                  Some (k, scope)
+                else
+                  (* Add the variable to the scope if it's not defined *)
+                  add_variable_to_scope_opt scope (s, typed_exp.typ)
+                  (* Return the new scope with the added binding *)
+                  |> bind (fun scope -> Some (k, scope))
+              (* If the expression is not a simple identifier, nothing to add to the scope *)
+              | _ -> Some (k, scope)
+              )
+              (* Typecheck the expression with the potentially altered scope *)
+              |> bind (fun (k, scope) -> typecheck_exp_opt scope k
+                (* If the kind is well typed, check the type equality *)
+                |> bind (fun k ->
+                  if (are_type_equals k.typ typed_exp.typ) then
+                    Some (scope, (Typed typed_exp)::l)
+                  else
+                    None
                 )
-              | _ -> None )
+              )
+            | _ -> failwith "IMPOSSIBLE"
           )
         )
       ) (Some (current, []))
@@ -580,39 +598,38 @@ let rec typecheck_stm_opt current s =
         Some { position = e.position; scope = new_scope; value = Block (List.map (fun x -> Scoped x) stms) }
       )
     | If (simple, oexp, ifs, oelses) ->
-      let simple_scope = new_scope current in
-      let typed_exp =
-        typecheck_exp_opt current oexp
+      (* Typechecking the simple statement using a new scope *)
+      typecheck_simple_opt (new_scope current) simple
+      |> bind (fun typed_simple ->
+        (* Keep the scope made for the simple statement *)
+        let simple_scope = typed_simple.scope in
+        (* Typechecking the if expression using the scope of the simple statement *)
+        let typed_exp =
+        typecheck_exp_opt simple_scope oexp
         |> bind (fun typed ->
           match typed.typ with
           | { gotype = Basetype s; _} -> if s = BBool then Typed typed |> some else None
           | _ -> None
         ) in
-      let typed_simple = typecheck_simple_opt simple_scope simple in
-      let current =
-        match typed_simple with
-        | Some s -> { current with bindings =  List.append current.bindings s.scope.bindings }
-        | None -> current in
-      let typed_elses =
-        oelses
-        |> bind (fun elses ->
-          typecheck_stm_list_opt elses current
-          |> bind (fun (snodes, _) ->
-            snodes
-            |> List.map (fun x -> Scoped x)
-            |> some
-          )
-        ) in
-      typed_simple
-      |> bind (fun typed_simple ->
+        (* Add the created simplestm's scope to the current scope list of children *)
+        let current = { current with children = simple_scope::current.children } in
+        let simple_scope = {simple_scope with parent = Some current} in
         typed_exp
         |> bind (fun typed_exp ->
           match oelses with
-          | None -> if_helper current ifs e typed_simple typed_exp None
+          | None -> if_helper simple_scope ifs e typed_simple typed_exp None
           | Some _ ->
-            typed_elses
-            |> bind (fun typed_else ->
-              if_helper current ifs e typed_simple typed_exp (Some typed_else)
+            oelses
+            |> bind (fun elses ->
+              let else_scope = new_scope simple_scope in
+              typecheck_stm_list_opt elses else_scope
+              |> bind (fun (snodes, else_scope) ->
+                let typed_elses_gen = snodes |> List.map (fun x -> Scoped x) in
+                match (typed_elses_gen |> List.rev |> List.hd) with
+                | Scoped typed_elses ->
+                  if_helper simple_scope ifs e typed_simple typed_exp (Some typed_elses_gen)
+                | _ -> None
+              )
             )
         )
       )
@@ -645,7 +662,7 @@ let rec typecheck_stm_opt current s =
     | Simple simple ->
       typecheck_simple_opt current simple
       |> bind (fun simple ->
-        Some { position = e.position; scope = current; value = Simple (Scoped simple) }
+        Some { position = e.position; scope = simple.scope; value = Simple (Scoped simple) }
       )
     | Return exp ->
       (match exp with
@@ -667,11 +684,11 @@ let rec typecheck_stm_opt current s =
   | Typed e -> None
   | Scoped e -> Some e
 
-and if_helper current ifs (e: stmt node) typed_simple typed_exp typed_elses =
-  let if_scope = new_scope current in
-  typecheck_stm_list_opt ifs if_scope
-  |> bind (fun (stms, new_scope) ->
-    let new_current_scope = { current with children = [new_scope; typed_simple.scope] } in
+and if_helper simple_scope ifs (e: stmt node) typed_simple typed_exp typed_elses =
+  let body_scope = new_scope simple_scope in
+  typecheck_stm_list_opt ifs body_scope
+  |> bind (fun (stms, body_scope) ->
+    let body_scope = { body_scope with parent = Some simple_scope } in
     let else_scope =
         typed_elses
         |> bind (fun elses ->
@@ -681,15 +698,17 @@ and if_helper current ifs (e: stmt node) typed_simple typed_exp typed_elses =
           |> (fun x -> match x with Scoped s -> Some s.scope | _ -> None)
       ) in
     let scoped_stms = List.map (fun x -> Scoped x) stms in
-    let typed_simple = Scoped typed_simple in
+    let typed_simple_gen = Scoped typed_simple in
     match typed_elses with
     | None ->
-        Some { position = e.position; scope = new_current_scope; value = If (typed_simple, typed_exp, scoped_stms, typed_elses) }
+      let updated_scope = { simple_scope with children = [body_scope]} in
+      Some { position = e.position; scope = BatOption.get updated_scope.parent; value = If (typed_simple_gen, typed_exp, scoped_stms, typed_elses) }
     | Some _ ->
       else_scope
       |> bind (fun else_scope ->
-        let new_current_scope = { new_current_scope with children = List.append new_current_scope.children [else_scope] } in
-        Some { position = e.position; scope = new_current_scope; value = If (typed_simple, typed_exp, scoped_stms, typed_elses) }
+        let else_scope = { else_scope with parent = Some simple_scope } in
+        let updated_scope = { simple_scope with children = [body_scope; else_scope] } in
+        Some { position = e.position; scope = BatOption.get updated_scope.parent; value = If (typed_simple_gen, typed_exp, scoped_stms, typed_elses) }
       )
   )
 
@@ -725,7 +744,7 @@ and loop_helper e scope loop =
       ) in
     typecheck_simple_opt scope init
     |> bind (fun init ->
-      let scope = { scope with bindings = init.scope.bindings } in
+      let scope = new_scope init.scope in
       typecheck_simple_opt scope inc
       |> bind (fun inc ->
         typecheck_stm_list_opt stmts scope

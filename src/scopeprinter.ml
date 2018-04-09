@@ -48,7 +48,7 @@ let string_of_type_binding (name, def) =
 
 let indent lvl = repeat_string "  " lvl
 
-let string_of_function_binding (name, args, ret) =
+let string_of_function_binding (name, { arguments = args; returnt = ret}) =
   name ^ " [function] = " ^ "("
   ^ string_of_list (fun a -> string_of_gotype a.gotype) ", " args
   ^ ") -> "
@@ -72,7 +72,7 @@ let rec string_of_scope lvl (scope: Ast.scope) =
   )
 
 (* Prints the top-level scope of an application *)
-let string_of_top_level_symbol_table scope = 
+let string_of_top_level_symbol_table scope =
   indent 1 ^ "{\n" ^
   (* Print the variable bindings *)
   (scope.bindings |> string_of_list (fun b -> indent 2 ^ string_of_var_binding b) "\n")
