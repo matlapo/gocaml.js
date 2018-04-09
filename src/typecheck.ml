@@ -276,6 +276,13 @@ let rec find_function_signature_opt (scope: scope) (name: string) =
     | Some p -> find_function_signature_opt p name
     | None -> None
 
+let check_both_list_same_exps_types (a: scopedtype list) (b: scopedtype list) =
+  a
+  |> List.map2 (fun x y -> are_type_equals x y) b
+  |> List.exists (fun x -> x = false)
+  |> (fun x -> not x)
+
+
 (* given an expression node, typecheck_opt the expression and return an expression tnode (a node record with a field for its type) *)
 let rec typecheck_exp_opt scope e =
   match e with
@@ -359,11 +366,34 @@ let rec typecheck_exp_opt scope e =
           tnode_of_node e x |> some
         )
       )
-    | FuncCall (name, exps) -> None
-
+    | FuncCall (name, exps) ->
+      find_function_signature_opt scope name
+      |> bind (fun signature ->
+        typecheck_exp_list_opt scope exps
+        |> bind (fun typed_exps ->
+          let scoped_exps = List.map (fun { typ = x; _ } -> x) typed_exps in
+          if check_both_list_same_exps_types scoped_exps signature.arguments then
+            match signature.returnt with
+            | Void -> tnode_of_node e { gotype = Null; scopeid = scope.scopeid } |> some
+            | NonVoid t -> tnode_of_node e t |> some
+          else
+            None
+        )
+      )
     | _ -> None)
   | Typed e -> Some e
   | Scoped e -> None
+
+and typecheck_exp_list_opt (scope: scope) (exps: exp gen_node list) =
+  let olist =
+    exps
+    |> List.map (fun x -> typecheck_exp_opt scope x)
+    |> List.filter is_some in
+  if List.length olist <> List.length exps then None
+  else
+    olist
+    |> List.map Option.get
+    |> some
 
 (* given two scopes, merge them together so that all their bindings are all at the same level. If the resulting bindings contain duplicates, it returns None *)
 let merge_scope_opt old_scope new_scope =
