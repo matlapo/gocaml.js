@@ -341,7 +341,7 @@ let rec typecheck_exp_opt scope e =
             | Mod -> [BInt], false in
           check_ops_opt scope a.typ b.typ types comparable
           |> bind (fun x ->
-            tnode_of_node e x |> some (* TODO: ;laskdf *)
+            tnode_of_node e x |> some (* TODO: LHS and RHS are not typed *)
           )
         )
       )
@@ -565,7 +565,6 @@ let rec typecheck_stm_opt current s =
         Some { position = e.position; scope = new_scope; value = Block (List.map (fun x -> Scoped x) stms) }
       )
     | If (simple, oexp, ifs, oelses) ->
-      (* FIXME: debug simple statement scoping (see 3.12-if-statement.go) *)
       (* Typechecking the simple statement using a new scope *)
       typecheck_simple_opt (new_scope current) simple
       |> bind (fun typed_simple ->
@@ -583,7 +582,6 @@ let rec typecheck_stm_opt current s =
         let current = { current with children = simple_scope::current.children } in
         let simple_scope = {simple_scope with parent = Some current} in
         typed_exp
-        (* FIXME: debug else scoping *)
         |> bind (fun typed_exp ->
           match oelses with
           | None -> if_helper simple_scope ifs e typed_simple typed_exp None
@@ -672,7 +670,6 @@ and if_helper simple_scope ifs (e: stmt node) typed_simple typed_exp typed_elses
     | None ->
       let updated_scope = { simple_scope with children = [body_scope]} in
       Some { position = e.position; scope = BatOption.get updated_scope.parent; value = If (typed_simple_gen, typed_exp, scoped_stms, typed_elses) }
-    (* TODO: Debug else *)
     | Some _ ->
       else_scope
       |> bind (fun else_scope ->
