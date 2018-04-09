@@ -190,9 +190,11 @@ let is_selectable (s: scope) (t: scopedtype) : bool option =
     | _ -> Some false
   )
 
-let are_type_equals (t1: scopedtype) (t2: scopedtype): bool = match t1.gotype with
+let are_types_equal (t1: scopedtype) (t2: scopedtype): bool = match t1.gotype with
   (* Compare scope ids only when it's a defined type. *)
   | Defined _ -> t1.gotype = t2.gotype && t1.scopeid = t2.scopeid
+  (* Null types can't be compared. *)
+  | Null -> false
   (* Do not check scopeid otherwise. This is because, for example, two [3]int array
     are considered the same type even if they were not defined in the same scope. *)
   | _ -> t1.gotype = t2.gotype
@@ -290,7 +292,7 @@ let rec find_function_signature_opt (scope: scope) (name: string) =
 
 let check_both_list_same_exps_types (a: scopedtype list) (b: scopedtype list) =
   a
-  |> List.map2 (fun x y -> are_type_equals x y) b
+  |> List.map2 (fun x y -> are_types_equal x y) b
   |> List.exists (fun x -> x = false)
   |> (fun x -> not x)
 
@@ -309,7 +311,7 @@ let rec typecheck_exp_opt scope e =
       |> bind2 (fun target index ->
         (is_indexable scope target.typ, resolve_to_reducedtype_opt scope index.typ)
         |> bind2 (fun indexable index_basetype ->
-          if indexable && are_type_equals index_basetype (basetype BInt) then
+          if indexable && are_types_equal index_basetype (basetype BInt) then
             resolve_inside_type_of_indexable scope target.typ
             |> bind (fun t ->
               position_to_tnode e (Indexing (Typed target, Typed index)) t |> some
@@ -536,7 +538,7 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
             let typed_exps = List.map Option.get otyped_exps in
             let test =
               typed_kinds
-              |> List.map2 (fun exp kind -> are_type_equals kind.typ exp.typ) typed_exps
+              |> List.map2 (fun exp kind -> are_types_equal kind.typ exp.typ) typed_exps
               |> List.exists (fun x -> x = false) in
             if test then None
             else
@@ -581,7 +583,7 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
               |> bind (fun (k, scope) -> typecheck_exp_opt scope k
                 (* If the kind is well typed, check the type equality *)
                 |> bind (fun k ->
-                  if (are_type_equals k.typ typed_exp.typ) then
+                  if (are_types_equal k.typ typed_exp.typ) then
                     Some (scope, (Typed typed_exp)::l)
                   else
                     None

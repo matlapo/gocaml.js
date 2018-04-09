@@ -86,6 +86,7 @@ let rec string_of_gotype lvl type_def = match type_def with
     " struct {\n"
     ^ string_of_list (fun (n, t) -> indent (lvl + 1) ^ n ^ " " ^ string_of_gotype (lvl + 1) t) "\n" members ^ "\n"
     ^ indent lvl ^ "}\n"
+  | Null -> "void"
 
 let rec string_of_stmts lvl stmts = List.fold_left (fun a s -> a ^ string_of_stmt lvl s ^ "") "" stmts
 and string_of_stmt lvl gn =

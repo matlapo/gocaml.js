@@ -39,6 +39,7 @@ and string_of_gotype d = match d with
   | Struct members -> string_of_structdef members
   | Array (t, size) -> "[" ^ Int64.to_string size ^ "]" ^ string_of_gotype t
   | Slice t -> "[]" ^ string_of_gotype t
+  | Null -> "void"
 
 let string_of_var_binding (name, def) =
   name ^ " [var] = " ^ string_of_gotype def.gotype
