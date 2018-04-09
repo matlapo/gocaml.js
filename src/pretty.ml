@@ -133,7 +133,6 @@ and string_of_stmt lvl gn =
   | Simple sstmt -> if (extract_gen_node_value sstmt) = Empty then string_of_simple_stmt sstmt else indent lvl ^ string_of_simple_stmt sstmt ^ "\n"
   | Break -> indent lvl ^ "break\n"
   | Continue -> indent lvl ^ "continue\n"
-  | Default -> indent lvl ^ "default\n"
 and string_of_simple_stmt gn =
   let s = extract_gen_node_value gn in
   match s with

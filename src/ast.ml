@@ -130,7 +130,6 @@ and stmt =
   | Simple of simpleStm gen_node
   | Break
   | Continue
-  | Default
 
 type package = string
 
