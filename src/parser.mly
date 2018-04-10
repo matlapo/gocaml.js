@@ -114,6 +114,7 @@ keyword:
   | TMAP       {}
   | TRANGE     {}
   | TDOTS      {}
+  | TDEFAULT   {}
   ;
 
 // Helpers
