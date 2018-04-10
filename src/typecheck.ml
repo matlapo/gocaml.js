@@ -190,7 +190,11 @@ let is_selectable (s: scope) (t: scopedtype) : bool option =
     | _ -> Some false
   )
 
-let are_types_equal (t1: scopedtype) (t2: scopedtype): bool = match t1.gotype with
+let are_types_equal (t1: scopedtype) (t2: scopedtype): bool =
+  (* print_string (string_of_gotype t1.gotype ^ "\n");
+  print_string (string_of_gotype t2.gotype ^ "\n");
+  print_string (if t1.gotype = t2.gotype then "YES\n" else "NO\n"); *)
+  match t1.gotype with
   (* Compare scope ids only when it's a defined type. *)
   | Defined _ -> t1.gotype = t2.gotype && t1.scopeid = t2.scopeid
   (* Null types can't be compared. *)
@@ -235,6 +239,8 @@ let tnode_of_node (e: exp node) t = { position = e.position; typ = t; value = e.
 let tnode_of_node_and_value (e: exp node) t v = { position = e.position; typ = t; value = v }
 
 let snode_of_node (s: stmt node) scope = { position = s.position; scope = scope; value = s.value }
+
+let snode_of_node_and_value (s: stmt node) scope v = { position = s.position; scope = scope; value = v }
 
 (* given the types of 2 arguments (for a binary operation) and a list of accepted types for the binary operation, return the resulting type *)
 let check_ops_opt (s: scope) (a: scopedtype) (b: scopedtype) (l: basetype list) comparable : scopedtype option =
@@ -339,7 +345,7 @@ let rec typecheck_exp_opt scope e =
       typecheck_exp_opt scope a
       |> bind (fun a ->
         typecheck_exp_opt scope b
-        |> bind (fun b -> (* TODO resolve the types *)
+        |> bind (fun b -> (* TODO: resolve the types *)
           let types, comparable =
              match bin with
             | Plus -> [BInt; BFloat64; BString; BRune], false
@@ -353,7 +359,7 @@ let rec typecheck_exp_opt scope e =
             | Smaller
             | Greater
             | SmallerEq
-            | GreaterEq -> [BInt; BFloat64; BString; BRune], true (* TODO ordered? *)
+            | GreaterEq -> [BInt; BFloat64; BString; BRune], true (* TODO: ordered? *)
             | DGreater
             | DSmaller
             | AndHat
@@ -684,8 +690,39 @@ let verify_return_statements (l: (stmt snode) list) expected_type =
   )
   |> List.exists (fun x -> x = false)
 
+let rec typecheck_case_list_opt (scope: scope) (cases: case list) (match_type: scopedtype): (case list) option =
+  (* Verify each case individualy *)
+  cases
+  |> List.map (fun (exps, stmts) ->
+    let case_scope = new_scope scope in
+    (* Typecheck the statements *)
+    (* TODO: case_scope is not passed back to the parent scope as a children *)
+    typecheck_stm_list_opt stmts case_scope
+    |> bind (fun (typed_stmts, accumulated_scope) ->
+      let typed_stmts_gen = List.map (fun s -> Scoped s) typed_stmts in
+      match exps with
+      (* If it is a default case *)
+      | None -> Some (None, typed_stmts_gen)
+      (* If it is a normal case *)
+      | Some exps ->
+        (* Typecheck the case expressions *)
+        typecheck_exp_list_opt scope exps
+        |> bind (fun typed_exps ->
+          let typed_exps_gen = List.map (fun e -> Typed e) typed_exps in
+          (* Check if all expressions have the same type as the switch matching type. *)
+          if not (List.for_all (fun e -> are_types_equal e.typ match_type) typed_exps) then None
+          else Some (Some typed_exps_gen, typed_stmts_gen)
+        )
+    )
+  )
+  |> (fun typed_cases ->
+    (* Check if no case failed typechecking *)
+    if List.exists is_none typed_cases then None
+    else Some (List.map BatOption.get typed_cases)
+    )
+
 (* given a statement node, typecheck it *)
-let rec typecheck_stm_opt current s =
+and typecheck_stm_opt current s =
   match s with
   | Position e ->
     (match e.value with
@@ -777,7 +814,30 @@ let rec typecheck_stm_opt current s =
         let new_scope = { current with children = List.append current.children [x.scope] } in
         { x with scope = new_scope } |> some
       )
-    | _ -> None)
+    | Switch (simple, exp, cases) ->
+      let simple_scope = new_scope current in
+      (* Typecheck the simple statement *)
+      typecheck_simple_opt simple_scope simple
+      |> bind (fun typed_simple ->
+        (* Get the scope after the simple statement executed *)
+        let simple_scope = typed_simple.scope in
+        (match exp with
+        (* If there is an exp, cases expression must match the switch expression. *)
+        | Some exp -> typecheck_exp_opt simple_scope exp
+          |> bind (fun typed_exp -> typecheck_case_list_opt simple_scope cases typed_exp.typ)
+        (* If there is no exp, cases expression must be of type bool. *)
+        | None -> typecheck_case_list_opt simple_scope cases (basetype BBool))
+        |> bind (fun typed_cases ->
+          (* Add the scope of the switch to the current scope *)
+          let current = { current with children = simple_scope::current.children } in
+          let s = extract_position s in
+          (* TODO: Here I am passing the untyped exp. *)
+          snode_of_node_and_value s current (Switch (Scoped typed_simple, exp, typed_cases)) |> some
+          )
+      )
+    | Break
+    | Continue -> snode_of_node e current |> some
+    )
 
   | Typed e -> None
   | Scoped e -> Some e
@@ -866,7 +926,7 @@ and loop_helper e scope loop =
       )
     )
 
-(* geiven a list of statement nodes, typecheck_opt them *)
+(* given a list of statement nodes, typecheck_opt them *)
 and typecheck_stm_list_opt l scope =
     l
     |> List.fold_left (fun acc g_node ->
