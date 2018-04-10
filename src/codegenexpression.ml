@@ -43,7 +43,10 @@ and codegen_bare_exp (e: exp) :string =
       let array_code = codegen_exp array in
       let index_code = codegen_exp index in
       "at(" ^ array_code ^ "," ^ index_code ^ ")"
-    | Selection (_,_) -> "/* UNIMPLEMENTED*/"
+    | Selection (struct_expr, member) ->
+      (codegen_exp struct_expr) ^
+      "." ^
+      member
     | Int i -> Int64.to_string i
     | Float f -> string_of_float f
     | String s -> s
