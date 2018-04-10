@@ -45,7 +45,17 @@ let rec zero_value_of_type (s: scope) (t: gotype): string =
         | Defined _ -> raise (Failure "unreachable")
         | t -> zero_value_of_type s t
       )
-    | Array _ -> raise (Failure "unimplemented")
-    | Slice _ -> raise (Failure "unimplemented")
-    | Struct _ -> raise (Failure "unimplemented")
+    | Array (t, length) ->
+      let t_zero = zero_value_of_type s t in
+      "[" ^
+      (List.make (Int64.to_int length) t_zero |> concat_comma) ^
+      "]"
+    | Slice _ -> "[]"
+    | Struct fields ->
+      "{" ^
+        (fields
+          |> List.map (fun (name, t) -> name ^ ":" ^ (zero_value_of_type s t) ^ ",")
+          |> concat
+        ) ^
+      "}"
     | Null -> raise (Failure "Can't compute the zero value of type Null")
