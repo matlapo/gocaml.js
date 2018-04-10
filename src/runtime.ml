@@ -1,10 +1,17 @@
 let prelude = "
+const format = (arg) => {
+  if (Array.isArray(arg)) {
+      return `[${arg.map(format).join(' ')}]`;
+    }
+    return arg.toString();
+}
+
 const print = (...args) => {
-  process.stdout.write(args.join(''));
+  process.stdout.write(args.map(format).join(''));
 };
 
 const println = (...args) => {
-  process.stdout.write(args.join(' ') + '\\n');
+  process.stdout.write(args.map(format).join(' ') + '\\n');
 }
 
 const at = (array, index) => {
