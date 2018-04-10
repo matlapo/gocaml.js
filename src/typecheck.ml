@@ -520,6 +520,14 @@ let extract_position (node: 'a gen_node) =
   | Position t -> t
   | _ -> failwith "cannot extract node"
 
+let is_underscore node =
+  match (extract_position node).value with
+   | Id name ->
+      if name = "_" then true else false
+   | _ -> false
+
+let null_scopeid = { gotype = Null; scopeid = 0 }
+
 (* given a simple statement node, typecheck it *)
 let rec typecheck_simple_opt current s: simpleStm snode option =
   match s with
@@ -542,47 +550,44 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
         | DoubleSmallerEqual -> Some [Int] in
       (match typ with
       | None ->
-        (* make sure that ids on the LHS are not "_", because if so then we don't want to typecheck them *)
         let typecheck_rhs =
-          kinds
+          exps
           |> List.map2 (fun id exp ->
-            match id with
-            | Position e ->
-              let result = (Some id, typecheck_exp_opt current exp) in
-              (match e.value with
-               | Id name ->
-                  if name = "_" then
-                    (None, typecheck_exp_opt current exp)
-                  else result
-               | _ -> result)
-            | _ -> failwith "impossible"
-          ) exps
+            (id, typecheck_exp_opt current exp)
+          ) kinds
           |> List.filter (fun (_, exp) -> is_some exp) in
-        (* make sure that all the expressions on the RHS typechecks *)
+        (* make sure that all the expressions on the RHS typecheck *)
         if List.length typecheck_rhs <> List.length exps then None
         else
-          let no_underscores =
+          let typecheck_lhs =
             typecheck_rhs
-            |> List.filter (fun (id, _) -> is_some id)
-            |> List.map (fun (id, exp) -> (Option.get id, exp))
-            |> List.map (fun (id, oexp) -> (typecheck_exp_opt current id, Option.get oexp)) in
-          if List.length no_underscores <> List.length typecheck_rhs then None
+            |> List.map (fun (id, oexp) ->
+              if is_underscore id then (tnode_of_node (extract_position id) null_scopeid |> some, Option.get oexp)
+              else (typecheck_exp_opt current id, Option.get oexp)
+            )
+            |> List.filter (fun (oid, _) -> is_some oid) in
+          if List.length typecheck_lhs <> List.length typecheck_rhs then None
           else
-          let typed_assignments =
-            no_underscores
-            |> List.map (fun (id, exp) -> (Option.get id, exp))
-            |> List.map (fun (id, exp) -> (id.typ, exp.typ)) in
-          if List.exists (fun (id, exp) -> are_types_equal id exp |> not) typed_assignments then None
-          else
-            let kinds = List.map extract_position kinds in
-            let exps = List.map extract_position exps in
-            let gen_node_kinds =
-              List.map2 (fun (id, _) old -> tnode_of_node old id) typed_assignments kinds
-              |> List.map (fun x -> Typed x) in
-            let gen_node_exps =
-              List.map2 (fun (_, exp) old -> tnode_of_node old exp) typed_assignments exps
-              |> List.map (fun x -> Typed x) in
-            { position = e.position; scope = current; value = Assign (assign_type, (gen_node_kinds, gen_node_exps)) } |> some
+            let typed_assignments =
+              typecheck_lhs
+              |> List.map (fun (id, exp) -> (Option.get id, exp))
+              |> List.map (fun (id, exp) -> (id.typ, exp.typ)) in
+            let invalid_assignment =
+              typed_assignments
+              |> List.exists (fun (id, exp) ->
+                match id.gotype with | Null -> false | _ -> are_types_equal id exp |> not
+              ) in
+            if invalid_assignment then None
+            else
+              let kinds = List.map extract_position kinds in
+              let exps = List.map extract_position exps in
+              let gen_node_kinds =
+                List.map2 (fun (id, _) old -> tnode_of_node old id) typed_assignments kinds
+                |> List.map (fun x -> Typed x) in
+              let gen_node_exps =
+                List.map2 (fun (_, exp) old -> tnode_of_node old exp) typed_assignments exps
+                |> List.map (fun x -> Typed x) in
+              { position = e.position; scope = current; value = Assign (assign_type, (gen_node_kinds, gen_node_exps)) } |> some
       | Some l -> None)
     | Empty -> { position = e.position; scope = current; value = Empty } |> some
     | DoublePlus kind -> double_helper e current kind true
