@@ -36,10 +36,13 @@ and codegen_binary_op (op: binary) (left: exp gen_node) (right: exp gen_node) :s
     | Caret -> l ^ "^" ^ r
   in
   paren code
-and codegen_bare_exp (exp: exp) :string =
-  let code = match exp with
+and codegen_bare_exp (e: exp) :string =
+  let code = match e with
     | Id ref -> mangle ref
-    | Indexing (_,_) -> "/* UNIMPLEMENTED*/"
+    | Indexing (array, index) ->
+      let array_code = codegen_exp array in
+      let index_code = codegen_exp index in
+      "at(" ^ array_code ^ "," ^ index_code ^ ")"
     | Selection (_,_) -> "/* UNIMPLEMENTED*/"
     | Int i -> Int64.to_string i
     | Float f -> string_of_float f
