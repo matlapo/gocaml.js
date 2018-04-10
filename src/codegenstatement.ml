@@ -108,7 +108,16 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
       "){" ^
       codegen_stmts stmts ^
       "}"
-    | Loop For _ -> "/* UNIMPLEMENTED FOR */"
+    | Loop For (init, cond, increment, stmts) ->
+      "for(" ^
+      (codegen_simple_stmt init) ^
+      ";" ^
+      (cond |> Option.map_default (codegen_exp true) "") ^
+      ";" ^
+      (codegen_simple_stmt increment) ^
+      "){" ^
+      (codegen_stmts stmts) ^
+      "}"
     | Return Some expr -> "return" ^ (codegen_exp true expr) ^ ";"
     | Return None -> "return;"
     | Switch _ -> "/* UNIMPLEMENTED SWITCH */"
