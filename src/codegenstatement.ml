@@ -3,11 +3,6 @@ open Ast
 open Codegenexpression
 open Codegenutils
 
-let codegen_var_decl (names: string list) :string =
-  names
-    |> List.map (fun name -> "let " ^ name ^ ";")
-    |> concat
-
 (* "\x5B" = "[", but opening square brackets screw up indentation in my IDE. *)
 let codegen_bare_assign (refs: exp list) (exps: exp list) :string =
   "\x5B" ^
@@ -45,9 +40,14 @@ let codegen_bare_simple_stmt (simple_stmt: simpleStm) =
   | DoubleMinus ref -> (codegen_exp false ref) ^ "--;"
   | ShortDeclaration (refs, exps) ->
     (refs
-      (* TODO: Filter to exclude predeclared identifiers and complex identifiers *)
-      |> List.map (codegen_exp false)
-      |> codegen_var_decl
+      |> List.map unwrap_gen_node
+      |> List.filter_map (fun ref -> match ref with
+          | Id s -> Some s
+          | _ -> None
+        )
+      (* TODO: Filter to exclude predeclared identifiers *)
+      |> List.map (fun name -> "let " ^ (mangle name) ^ ";")
+      |> concat
     ) ^
     (codegen_assign refs exps)
   | Empty -> "/* Empty Simple Statement */"
