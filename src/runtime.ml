@@ -1,9 +1,16 @@
 let prelude = "
+const isObject() = (value) => {
+  const type = typeof value;
+  return value != null && (type == 'object' || type == 'function');
+}
+
 const format = (arg) => {
   if (Array.isArray(arg)) {
-      return `[${arg.map(format).join(' ')}]`;
-    }
-    return arg.toString();
+    return `[${arg.map(format).join(' ')}]`;
+  } else if (isObject(arg)) {
+    return format(arg.values());
+  }
+  return arg.toString();
 }
 
 const print = (...args) => {
