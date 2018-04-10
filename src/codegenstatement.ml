@@ -65,7 +65,7 @@ let codegen_decl (decl: (string list * gotype option * (exp gen_node) list)): st
   "]=[" ^
   (rhs |> concat_comma) ^
   "];"
-let codegen_decl_assign (decls: (string list * gotype option * (exp gen_node) list) list) :string =
+let codegen_decls (decls: (string list * gotype option * (exp gen_node) list) list) :string =
   decls
     |> List.map codegen_decl
     |> concat
@@ -76,7 +76,7 @@ let rec codegen_stmt (stmt:stmt gen_node) :string =
     | Block stmts -> "{" ^ codegen_stmts stmts ^ "}"
     | Print exps -> "print(" ^ codegen_exps exps ^ ");"
     | Println exps -> "println(" ^ codegen_exps exps ^ ");"
-    | Declaration decls -> codegen_decl_assign decls
+    | Declaration decls -> codegen_decls decls
     | TypeDeclaration _ -> ""
     | If (initOption, condition, stmts, _else) ->
       let generated_if =
