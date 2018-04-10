@@ -1,6 +1,7 @@
 open Ast
 open Utils
 open Batteries
+open Lexing
 
 let bind x f = Option.bind f x
 let id x = x
