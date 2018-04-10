@@ -40,6 +40,9 @@ function testFile(pathString, command, options) {
         const output = result.output.join('');
 
         if (command === 'codegen') {
+            const compilerOutput = output;
+            expect(compilerOutput).toBe("");
+
             const programPath = pathString.replace(/\.go$/, ".js");
             const programResult = spawnSync(
                 `${__dirname}/../execute.sh`,
