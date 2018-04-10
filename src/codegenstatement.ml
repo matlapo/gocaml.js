@@ -30,7 +30,7 @@ let codegen_assign_op (op: assign) (ref: exp gen_node) (exp: exp gen_node) =
     | DoubleGreaterEqual -> r ^ ">>=" ^ e ^ ";"
     | DoubleSmallerEqual -> r ^ "<<=" ^ e ^ ";"
 
-let codegen_bare_simple_stmt (simple_stmt: simpleStm) =
+let codegen_bare_simple_stmt (s: scope) (simple_stmt: simpleStm) =
   match simple_stmt with
   | Assign (Regular, (refs, exps)) -> codegen_assign refs exps
   | Assign (op, ([ref], [exp])) -> codegen_assign_op op ref exp
@@ -51,7 +51,7 @@ let codegen_bare_simple_stmt (simple_stmt: simpleStm) =
     ) ^
     (codegen_assign refs exps)
   | Empty -> "/* Empty Simple Statement */"
-let codegen_simple_stmt (simple_stmt: simpleStm gen_node) = codegen_bare_simple_stmt (unwrap_gen_node simple_stmt)
+let codegen_simple_stmt (s: scope) (simple_stmt: simpleStm gen_node) = codegen_bare_simple_stmt s (unwrap_gen_node simple_stmt)
 
 let codegen_decl (s: scope) (decl: (string list * gotype option * (exp gen_node) list)): string =
   let (names, t, exps) = decl in
@@ -70,11 +70,11 @@ let codegen_decls (s: scope) (decls: (string list * gotype option * (exp gen_nod
     |> List.map (codegen_decl s)
     |> concat
 
-let with_init (init: simpleStm gen_node) (innerCode: string): string = match unwrap_gen_node init with
+let with_init (s: scope) (init: simpleStm gen_node) (innerCode: string): string = match unwrap_gen_node init with
   | Empty -> innerCode
   | _ ->
     "{" ^
-      codegen_simple_stmt init ^
+      codegen_simple_stmt s init ^
       innerCode ^
     "}"
 
@@ -119,7 +119,7 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
           codegen_stmts stmts ^
           "}"
         | None -> "" in
-      with_init init (generated_if ^ generated_else)
+      with_init scope init (generated_if ^ generated_else)
     | Loop While (cond, stmts) ->
       "while(" ^
       (Option.map_default (codegen_exp true) "true" cond) ^
@@ -128,11 +128,11 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
       "}"
     | Loop For (init, cond, increment, stmts) ->
       "for(" ^
-      (codegen_simple_stmt init) ^
+      (codegen_simple_stmt scope init) ^
       ";" ^
       (cond |> Option.map_default (codegen_exp true) "") ^
       ";" ^
-      (codegen_simple_stmt increment) ^
+      (codegen_simple_stmt scope increment) ^
       "){" ^
       (codegen_stmts stmts) ^
       "}"
@@ -157,13 +157,13 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
             "}"
         )
         |> String.join "else " in
-          with_init init (
+          with_init scope init (
           "{" ^
             "let target =" ^ target_code ^ ";" ^
             ifs_code ^
           "}"
       )
-    | Simple simple_stmt -> codegen_simple_stmt simple_stmt
+    | Simple simple_stmt -> codegen_simple_stmt scope simple_stmt
     | Break -> "break;"
     | Continue -> "continue;"
 and codegen_stmts (stmts: stmt gen_node list) :string = stmts |> List.map codegen_stmt |> concat
