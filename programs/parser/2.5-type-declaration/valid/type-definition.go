@@ -14,6 +14,7 @@ type array [5]int
 
 func test(x [5]int, y []int, a int) []int {
   bla[5] = bla.fak[5].sadasfew
+  return y
 }
 
 func main() {
