@@ -1,8 +1,7 @@
 open Ast
 open Utils
-open BatOption
+open Batteries
 
-module Option = BatOption
 let bind x f = Option.bind f x
 let id x = x
 

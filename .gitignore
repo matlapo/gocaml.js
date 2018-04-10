@@ -1,4 +1,6 @@
 programs/1-scan+parse
+programs/2-typecheck
+programs/3-semantics+codegen
 programs/**/*.js
 
 # Created by https://www.gitignore.io/api/macos,ocaml,windows,visualstudiocode

@@ -126,7 +126,7 @@ let symbol input =
     print_error lexer_buffer ("Error: Unexpected " ^ token);
     exit 1
 
-(*
+
 let codegen input =
   let lexer_buffer = Lexing.from_string input in
   try
@@ -150,7 +150,7 @@ let codegen input =
   | Parser.Error ->
     let token = Lexing.lexeme lexer_buffer in
     print_error lexer_buffer ("Error: Unexpected " ^ token);
-    exit 1 *)
+    exit 1
 
 let in_to_string ic =
   let rec r ic o =
@@ -175,7 +175,7 @@ let () =
     else if mode = "pretty" then pretty file_content
     else if mode = "typecheck" then typecheck file_content
     else if mode = "symbol" then symbol file_content
-    (* else if mode = "codegen" then codegen file_content *)
+    else if mode = "codegen" then codegen file_content
     else printf "%s is not a valid compiler mode\n" mode; exit 1;
   else
     print_string "You must pass two argument: scan|tokens <source file path>\n";

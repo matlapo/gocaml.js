@@ -49,16 +49,13 @@ function testFile(pathString, command, options) {
             const programOutput = programResult.output.join('');
             const fileContents = fs.readFileSync(pathString).toString();
 
-            console.log(pathString);
-            console.log(programOutput);
             if (/\/\/!/.test(fileContents)) {
                 expect(programResult.status).not.toBe(0);
             } else {
                 const expectedOutput = fileContents
-                    .match(/(?:\/\/~[^\n]*\n)*(?:\/\/~[^\n]*)/)[0]
-                    .replace(/^\/\/~/, '')
-                    .replace(/\n\/\/~/, '//~');
-                
+                    .match(/(?:\/\/~[^\n]*\n)*/)[0]
+                    .replace(/^\/\/~(.*)$/gm, '$1');
+
                 expect(programResult.status).toBe(0);
                 expect(programOutput).toBe(expectedOutput);
             }
@@ -74,7 +71,7 @@ function testFile(pathString, command, options) {
             } else {
                 throw new Error('unreachable');
             }
-        } 
+        }
     });
 }
 

@@ -13,13 +13,13 @@ For our own convienience, we use a different directory structure for our test pr
 
 Since the Trottier SOCS machine have a version of OCaml that dates from 2014, this project won't build on them. To build the project, you will need to
 * Install OPAM
-* `opam install menhir ocamlbuild`
+* `opam install menhir ocamlbuild batteries`
 * `./build.sh`
 
 # Setup
 ## Tools
 * Install OPAM
-* `opam install menhir merlin ocamlbuild`
+* `opam install menhir merlin ocamlbuild batteries`
 * For IDE integration, install the VSCode extension `ReasonML`
 * Install Node.js
 * To run the tests
@@ -45,7 +45,3 @@ Example: `jest focused extra`
 ### Running only certain test files
 To run only certain specific tests, use the `-t` option.
 For example: `jest focused -t factorial.go`
-
-# Credits
-## The OCaml Batteries Included Library
-Due to technical constraints, the only way to use [OCaml Batteries Included](https://github.com/ocaml-batteries-team/batteries-included) and still be able to build on the Trottier SOCS machines was to include the library in source control. We are using the BatOption module which can be found in `/src/batOption.ml`.
