@@ -61,9 +61,8 @@ and codegen_binary_op (op: binary) (left: exp gen_node) (right: exp gen_node) :s
     | Caret -> l ^ "^" ^ r
   in
   paren code
-and codegen_exp (exp: exp gen_node) :string =
-  let e = unwrap_gen_node exp in
-  let code = match e with
+and codegen_bare_exp (exp: exp) :string =
+  let code = match exp with
     | Id ref -> mangle ref
     | Indexing (_,_) -> "/* UNIMPLEMENTED*/"
     | Selection (_,_) -> "/* UNIMPLEMENTED*/"
@@ -82,22 +81,43 @@ and codegen_exp (exp: exp gen_node) :string =
     | Append (l, v) -> "('' /* UNIMPLEMENTED_APPEND */)"
   in
   paren code
-and codegen_exps (exps: exp gen_node list): string =
+and codegen_exp (exp: exp gen_node) :string = codegen_bare_exp (unwrap_gen_node exp)
+and codegen_bare_exps (exps: exp list): string =
   exps
-    |> List.map codegen_exp
+    |> List.map codegen_bare_exp
     |> concat_comma
+and codegen_exps (exps: exp gen_node list): string = codegen_bare_exps (List.map unwrap_gen_node exps)
+
+
+let zero_value_of_basetype (t: basetype): string = match t with
+  | BInt -> "0"
+  | BFloat64 -> "0.0"
+  | BString -> "\"\""
+  | BRune -> "0"
+  | BBool -> "0.0"
+
+let zero_value_of_type (t: gotype): string = match t with
+  | Basetype bt -> zero_value_of_basetype bt
+  | Defined _ -> raise (Failure "Can't compute the zero value of a defined type")
+  | Array _ -> raise (Failure "unimplemented")
+  | Slice _ -> raise (Failure "unimplemented")
+  | Struct _ -> raise (Failure "unimplemented")
+  | Null -> raise (Failure "Can't compute the zero value of type Null")
 
 let codegen_var_decl (names: string list) :string =
   names
     |> List.map (fun name -> "let " ^ (mangle name) ^ ";")
     |> concat
 
-let codegen_assign (refs: exp gen_node list) (exps: exp gen_node list) :string =
-  "[" ^
-  (refs |> List.map codegen_exp |> concat_comma) ^
-  "]=[" ^
-  (codegen_exps exps) ^
+(* "\x5B" = "[", but opening square brackets screw up indentation in my IDE. *)
+let codegen_bare_assign (refs: exp list) (exps: exp list) :string =
+  "\x5B" ^
+  (refs |> codegen_bare_exps) ^
+  "]=\x5B" ^
+  (codegen_bare_exps exps) ^
   "];"
+let codegen_assign (refs: exp gen_node list) (exps: exp gen_node list) :string =
+  codegen_bare_assign (List.map unwrap_gen_node refs) (List.map unwrap_gen_node exps)
 
 let codegen_assign_op (op: assign) (ref: exp gen_node) (exp: exp gen_node) =
   let r = codegen_exp ref in
@@ -116,9 +136,8 @@ let codegen_assign_op (op: assign) (ref: exp gen_node) (exp: exp gen_node) =
     | DoubleGreaterEqual -> r ^ ">>=" ^ e ^ ";"
     | DoubleSmallerEqual -> r ^ "<<=" ^ e ^ ";"
 
-let codegen_simple_stmt (simple_stmt: simpleStm gen_node) =
-  let s = unwrap_gen_node simple_stmt in
-  match s with
+let codegen_bare_simple_stmt (simple_stmt: simpleStm) =
+  match simple_stmt with
   | Assign (Regular, (refs, exps)) -> codegen_assign refs exps
   | Assign (op, ([ref], [exp])) -> (codegen_exp ref) ^ ""
   | Assign _ -> raise (Failure "Invalid Assignment")
@@ -133,14 +152,23 @@ let codegen_simple_stmt (simple_stmt: simpleStm gen_node) =
     ) ^
     (codegen_assign refs exps)
   | Empty -> "/* Empty Simple Statement */"
+let codegen_simple_stmt (simple_stmt: simpleStm gen_node) = codegen_bare_simple_stmt (unwrap_gen_node simple_stmt)
 
+let codegen_decl (decl: (string list * gotype option * (exp gen_node) list)): string =
+  let (names, t, exps) = decl in
+  let rhs = match (t, exps) with
+    | (Some gotype, []) ->
+      let length = List.length names in
+      List.map zero_value_of_type (List.make length gotype)
+    | (_, exps) -> List.map codegen_exp exps in
+  "let [" ^
+  (names |> List.map mangle |> concat_comma) ^
+  "]=[" ^
+  (rhs |> concat_comma) ^
+  "];"
 let codegen_decl_assign (decls: (string list * gotype option * (exp gen_node) list) list) :string =
   decls
-    |> List.map (fun decl -> match decl with
-        | (names, _, []) -> codegen_var_decl names
-        (* | (names, _, exps) -> (codegen_var_decl names) ^ (codegen_assign (List.map ref_of_id names) exps) *)
-        | _ -> "/* UNIMPLEMENTED */"
-      )
+    |> List.map codegen_decl
     |> concat
 
 let rec codegen_stmt (stmt:stmt gen_node) :string =
