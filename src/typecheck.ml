@@ -299,10 +299,12 @@ let rec find_function_signature_opt (scope: scope) (name: string) =
     | None -> None
 
 let check_both_list_same_exps_types (a: scopedtype list) (b: scopedtype list) =
-  a
-  |> List.map2 (fun x y -> are_types_equal x y) b
-  |> List.exists (fun x -> x = false)
-  |> (fun x -> not x)
+  if List.length a <> List.length b then false
+  else
+    a
+    |> List.map2 (fun x y -> are_types_equal x y) b
+    |> List.exists (fun x -> x = false)
+    |> (fun x -> not x)
 
 (* given an expression node, typecheck_opt the expression and return an expression tnode (a node record with a field for its type) *)
 let rec typecheck_exp_opt scope e =
@@ -1053,7 +1055,9 @@ let typecheck_decl_opt scope decl =
         |> typecheck_args_opt scope
         |> bind (fun typed_args ->
           (* Add the type we resolved to all the arguments. *)
-          let arguments_scope = List.map2 (fun (name, _) typ -> (name, typ)) args typed_args in
+          let arguments_scope =
+            List.map2 (fun (name, _) typ -> (name, typ)) args typed_args
+            |> List.filter (fun (name, _) -> name <> "_") in
           let initial_function_scope = { empty_function_scope with bindings = arguments_scope } in
           typecheck_stm_list_opt stmts initial_function_scope
           |> bind (fun (typed_stmts, new_scope) ->
