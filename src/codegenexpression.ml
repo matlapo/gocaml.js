@@ -59,7 +59,12 @@ and codegen_bare_exp (e: exp) :string =
     | BinaryOp (op, (left, right)) -> codegen_binary_op op left right
     | Unaryexp (op, exp) -> codegen_unary_op op exp
     | FuncCall (name, params) -> (mangle name) ^ "(" ^ (codegen_exps params) ^ ")"
-    | Append (l, v) -> "('' /* UNIMPLEMENTED_APPEND */)"
+    | Append (slice_expr, elt_expr) ->
+      "append(" ^
+      (codegen_exp slice_expr) ^
+      "," ^
+      (codegen_exp elt_expr) ^
+      ")"
   in
   paren code
 and codegen_exp (exp: exp gen_node) :string = codegen_bare_exp (unwrap_gen_node exp)

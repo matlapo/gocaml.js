@@ -15,6 +15,8 @@ const at = (array, index) => {
   return array[index];
 }
 
+const append = (slice, element) => [...slice, element];
+
 const _true = true;
 const _false = false;
 
