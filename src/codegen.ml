@@ -11,7 +11,7 @@ let codegen_decl (scope: scope) (decl:decl) :string = match decl with
     "function " ^
     (mangle name) ^
     "(" ^
-    (args |> List.map fst |> concat_comma) ^
+    (args |> List.map fst |> List.map mangle |> concat_comma) ^
     "){" ^
     (stmts |> concat_map codegen_stmt) ^
     "}"

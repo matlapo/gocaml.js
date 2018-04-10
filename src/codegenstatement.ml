@@ -109,7 +109,8 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
       codegen_stmts stmts ^
       "}"
     | Loop For _ -> "/* UNIMPLEMENTED FOR */"
-    | Return _ -> "return;"
+    | Return Some expr -> "return" ^ (codegen_exp true expr) ^ ";"
+    | Return None -> "return;"
     | Switch _ -> "/* UNIMPLEMENTED SWITCH */"
     | Simple simple_stmt -> codegen_simple_stmt simple_stmt
     | Break -> "break;"
