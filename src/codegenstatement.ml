@@ -70,6 +70,32 @@ let codegen_decls (s: scope) (decls: (string list * gotype option * (exp gen_nod
     |> List.map (codegen_decl s)
     |> concat
 
+let with_init (init: simpleStm gen_node) (innerCode: string): string = match unwrap_gen_node init with
+  | Empty -> innerCode
+  | _ ->
+    "{" ^
+      codegen_simple_stmt init ^
+      innerCode ^
+    "}"
+
+let is_empty (expr: stmt gen_node) = match unwrap_gen_node expr with
+  | Simple simple_stmt -> (match unwrap_gen_node simple_stmt with
+    | Empty -> true
+    | _ -> false )
+  | _ -> false
+
+let rec fold_cases (cases: case list) = match cases with
+  | [] -> []
+  | case::[] -> [case]
+  | (values_opt1, no_stmts)::(values_opt2, stmts)::rest when List.for_all is_empty no_stmts ->
+    let values_opt = (match (values_opt1, values_opt2) with
+      | (None, None) -> None
+      | (Some values, None)|(None, Some values) -> Some values
+      | (Some values1, Some values2) -> Some (values1@values2)
+    ) in
+    (values_opt, stmts)::rest
+  | case::rest -> case::(fold_cases rest)
+
 let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
   let (scope, stmt) = match stmt_gen_node with
     | Scoped { scope=scope; value=stmt } -> (scope, stmt)
@@ -80,7 +106,7 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
     | Println exps -> "println(" ^ codegen_exps true exps ^ ");"
     | Declaration decls -> codegen_decls scope decls
     | TypeDeclaration _ -> ""
-    | If (initOption, condition, stmts, _else) ->
+    | If (init, condition, stmts, _else) ->
       let generated_if =
         "if(" ^
           codegen_exp true condition ^
@@ -93,15 +119,7 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
           codegen_stmts stmts ^
           "}"
         | None -> "" in
-      (match unwrap_gen_node initOption with
-        | Empty -> generated_if ^ generated_else
-        | init ->
-          "{" ^
-            codegen_simple_stmt initOption ^
-            generated_if ^
-            generated_else ^
-          "}"
-      )
+      with_init init (generated_if ^ generated_else)
     | Loop While (cond, stmts) ->
       "while(" ^
       (Option.map_default (codegen_exp true) "true" cond) ^
@@ -120,7 +138,31 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
       "}"
     | Return Some expr -> "return" ^ (codegen_exp true expr) ^ ";"
     | Return None -> "return;"
-    | Switch _ -> "/* UNIMPLEMENTED SWITCH */"
+    | Switch (init, target, cases) ->
+      let target_code = Option.map_default (codegen_exp true) "true" target in
+      let ifs_code = cases
+        |> fold_cases
+        |> List.map (
+          fun (exprs_opt, stmts) ->
+            let condition_code = match exprs_opt with
+              | Some exprs -> exprs
+                |> List.map (codegen_exp true)
+                |> List.map (fun expr_code -> expr_code ^ "=== target")
+                |> String.join "||"
+              | None -> "true" in
+            "if(" ^
+            condition_code ^
+            "){" ^
+            (codegen_stmts stmts) ^
+            "}"
+        )
+        |> String.join "else " in
+          with_init init (
+          "{" ^
+            "let target =" ^ target_code ^ ";" ^
+            ifs_code ^
+          "}"
+      )
     | Simple simple_stmt -> codegen_simple_stmt simple_stmt
     | Break -> "break;"
     | Continue -> "continue;"
