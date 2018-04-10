@@ -102,6 +102,7 @@ let rec blank_exp (e: exp gen_node) =
     match e with
     | Position e ->
       (match e.value with
+      | Id s -> if s = blank_s then [blank_error e.position.pos_lnum] else []
       | BinaryOp (_, (a, b)) ->
         blank_exp a
         |> List.append (blank_exp b)
