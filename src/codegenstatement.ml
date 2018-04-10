@@ -53,30 +53,32 @@ let codegen_bare_simple_stmt (simple_stmt: simpleStm) =
   | Empty -> "/* Empty Simple Statement */"
 let codegen_simple_stmt (simple_stmt: simpleStm gen_node) = codegen_bare_simple_stmt (unwrap_gen_node simple_stmt)
 
-let codegen_decl (decl: (string list * gotype option * (exp gen_node) list)): string =
+let codegen_decl (s: scope) (decl: (string list * gotype option * (exp gen_node) list)): string =
   let (names, t, exps) = decl in
   let rhs = match (t, exps) with
     | (Some gotype, []) ->
       let length = List.length names in
-      List.map zero_value_of_type (List.make length gotype)
+      List.make length (zero_value_of_type s gotype)
     | (_, exps) -> List.map codegen_exp exps in
   "let [" ^
   (names |> List.map mangle |> concat_comma) ^
   "]=[" ^
   (rhs |> concat_comma) ^
   "];"
-let codegen_decls (decls: (string list * gotype option * (exp gen_node) list) list) :string =
+let codegen_decls (s: scope) (decls: (string list * gotype option * (exp gen_node) list) list) :string =
   decls
-    |> List.map codegen_decl
+    |> List.map (codegen_decl s)
     |> concat
 
-let rec codegen_stmt (stmt:stmt gen_node) :string =
-  let s = unwrap_gen_node stmt in
-  match s with
+let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
+  let (scope, stmt) = match stmt_gen_node with
+    | Scoped { scope=scope; value=stmt } -> (scope, stmt)
+    | _ -> raise (Failure "unreachable") in
+  match stmt with
     | Block stmts -> "{" ^ codegen_stmts stmts ^ "}"
     | Print exps -> "print(" ^ codegen_exps exps ^ ");"
     | Println exps -> "println(" ^ codegen_exps exps ^ ");"
-    | Declaration decls -> codegen_decls decls
+    | Declaration decls -> codegen_decls scope decls
     | TypeDeclaration _ -> ""
     | If (initOption, condition, stmts, _else) ->
       let generated_if =

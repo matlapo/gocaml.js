@@ -34,10 +34,18 @@ let zero_value_of_basetype (t: basetype): string = match t with
   | BRune -> "0"
   | BBool -> "0.0"
 
-let zero_value_of_type (t: gotype): string = match t with
-  | Basetype bt -> zero_value_of_basetype bt
-  | Defined _ -> raise (Failure "Can't compute the zero value of a defined type")
-  | Array _ -> raise (Failure "unimplemented")
-  | Slice _ -> raise (Failure "unimplemented")
-  | Struct _ -> raise (Failure "unimplemented")
-  | Null -> raise (Failure "Can't compute the zero value of type Null")
+let rec zero_value_of_type (s: scope) (t: gotype): string =
+  match t with
+    | Basetype bt -> zero_value_of_basetype bt
+    | Defined typename -> (
+      let scopedType = Option.get (Typecheck.scopedtype_of_typename_opt s typename) in
+      let reducedScopedType = Option.get (Typecheck.resolve_to_reducedtype_opt s scopedType) in
+      let reducedType = reducedScopedType.gotype in
+      match reducedType with
+        | Defined _ -> raise (Failure "unreachable")
+        | t -> zero_value_of_type s t
+      )
+    | Array _ -> raise (Failure "unimplemented")
+    | Slice _ -> raise (Failure "unimplemented")
+    | Struct _ -> raise (Failure "unimplemented")
+    | Null -> raise (Failure "Can't compute the zero value of type Null")

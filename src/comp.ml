@@ -134,8 +134,8 @@ let codegen input =
       match Weeding.weed ast with
       | [] ->
         (match Typecheck.typecheck_opt ast with
-        | Some (ast, _) ->
-          print_string (Codegen.codegen ast);
+        | Some (ast, scope) ->
+          print_string (Codegen.codegen scope ast);
           exit 0;
         | None ->
           print_error lexer_buffer "Error: Type check error";
