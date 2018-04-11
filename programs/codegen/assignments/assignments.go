@@ -1,4 +1,3 @@
-//~[]
 //~3
 //~2
 //~6
@@ -22,7 +21,6 @@ func main() {
   a.z.x[1] = 3
   a.z.y[2][3] = 2
   a.a = 6
-  print(a.y[2])
   print(a.z.x[1])
   print(a.z.y[2][3])
   print(a.a)
