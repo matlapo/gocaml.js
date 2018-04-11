@@ -108,7 +108,6 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
   match stmt with
     | Block stmts ->
       "{" ^
-        (scope_id_comment scope) ^
         codegen_stmts stmts ^
       "}"
     | Print exps -> "print(" ^ codegen_exps scope true exps ^ ");"
@@ -120,13 +119,11 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
         "if(" ^
           codegen_exp scope true condition ^
         "){" ^
-          (scope_id_comment scope) ^
           codegen_stmts stmts ^
         "}" in
       let generated_else = match _else with
         | Some stmts ->
           "else{" ^
-            (scope_id_comment scope) ^
             codegen_stmts stmts ^
           "}"
         | None -> "" in

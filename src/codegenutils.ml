@@ -33,8 +33,6 @@ let mangle (scope: scope) (name: string) :string =
     |> Option.default scope.scopeid in
   "_" ^ (string_of_int scope_id) ^ "_" ^ name
 
-let scope_id_comment (scope: scope): string = "// Scope id: " ^ (string_of_int scope.scopeid) ^ "\n"
-
 let zero_value_of_basetype (t: basetype): string = match t with
   | BInt -> "0"
   | BFloat64 -> "0.0"

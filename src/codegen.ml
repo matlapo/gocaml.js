@@ -13,7 +13,6 @@ let codegen_decl (scope: scope) (decl:decl) :string = match decl with
     "(" ^
     (args |> List.map fst |> List.map (mangle scope) |> concat_comma) ^
     "){" ^
-      (scope_id_comment scope) ^
       (stmts |> concat_map codegen_stmt) ^
     "}"
 
