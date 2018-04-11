@@ -15,6 +15,8 @@ let cannot_find_gotype x typ = Printf.sprintf "Error: cannot find type definitio
 let cannot_find_gotype_string x typ = Printf.sprintf "Error: cannot find type definition for the type %s at line: %d" typ x
 let type_not_indexable x typ = Printf.sprintf "Error: type %s is not indexable at line %d" (Scopeprinter.string_of_gotype typ) x
 let not_a_struct x typ = Printf.sprintf "Error: type %s is not a struct at line %d" (Scopeprinter.string_of_gotype typ) x
+let invalid_type_cast x = Printf.sprintf "Error: invalid type cast operation at line %d" x
+let types_not_comparable x left right = Printf.sprintf "Error: %s and %s are not comparable at line %d" (Scopeprinter.string_of_gotype left) (Scopeprinter.string_of_gotype right) x
 
 let already_an_error_printed = ref false
 let error (x: string) = if not !already_an_error_printed then (already_an_error_printed := true; Printf.eprintf "%s\n" x) else ()
@@ -111,15 +113,15 @@ let rec scopedtype_of_typename_opt lineno (s: scope) (typename: string): scopedt
   | None -> match s.parent with
     (* Look in parent scope *)
     | Some p -> scopedtype_of_typename_opt lineno p typename
-    | None -> cannot_find_gotype_string lineno typename |> error;  None
+    | None -> cannot_find_gotype_string lineno typename |> error; None
 
 (** Finds the type associated with a variable name *)
-let rec scopedtype_of_varname_opt (s: scope) (varname: string): scopedtype option =
+let rec scopedtype_of_varname_opt lineno (s: scope) (varname: string): scopedtype option =
   match List.find_opt (fun (id, _) -> id = varname) s.bindings with
   | Some (_, t) -> Some t
   | None -> match s.parent with
-    | Some p -> scopedtype_of_varname_opt p varname
-    | None -> None
+    | Some p -> scopedtype_of_varname_opt lineno p varname
+    | None -> unknown_binding lineno varname |> error; None
 
 (** Find the basetype related to a scopedtype.
     It can either be a struct, array, slice or a base type.
@@ -257,8 +259,9 @@ let snode_of_node (s: stmt node) scope prev = { position = s.position; scope = s
 
 let snode_of_node_and_value (s: stmt node) scope prev v = { position = s.position; scope = scope; prevscope = prev; value = v }
 
+
 (* given the types of 2 arguments (for a binary operation) and a list of accepted types for the binary operation, return the resulting type *)
-let check_ops_opt (s: scope) (left: scopedtype) (right: scopedtype) (l: basetype list) comparable equality : scopedtype option =
+let check_ops_opt lineno (s: scope) (left: scopedtype) (right: scopedtype) (l: basetype list) comparable equality : scopedtype option =
   l
   |> List.map (fun t ->
     (resolve_to_reducedtype_opt s left, resolve_to_reducedtype_opt s right)
@@ -266,18 +269,18 @@ let check_ops_opt (s: scope) (left: scopedtype) (right: scopedtype) (l: basetype
       match a, b with
       | { gotype = Basetype x; _}, { gotype = Basetype y; _} ->
         if x = t && y = t then Some t
-        else None
+        else (wrong_type lineno b.gotype a.gotype |> error; None)
       | _ ->
         if equality then
-          if are_types_equal left right then Some t else None
-        else None
+          if are_types_equal left right then Some t else (types_not_comparable lineno a.gotype b.gotype |> error; None)
+        else (wrong_type lineno b.gotype a.gotype |> error; None)
     )
   )
   |> List.find_opt is_some
   |> (fun x ->
     match x with
     | Some x -> if comparable then Some (basetype BBool) else Some left
-    | None -> print_string "Error: ..."; None
+    | None -> None
   )
 
 (* given type of an argument (for a unary operation) and a list of accepted types for the operation, return the resulting type *)
@@ -332,7 +335,7 @@ let rec typecheck_exp_opt scope e =
   | Position e ->
     (match e.value with
     | Id s ->
-      scopedtype_of_varname_opt scope s
+      scopedtype_of_varname_opt e.position.pos_lnum scope s
       |> bind (fun scoped ->
         tnode_of_node e scoped |> some
       )
@@ -367,7 +370,7 @@ let rec typecheck_exp_opt scope e =
       typecheck_exp_opt scope a
       |> bind (fun a ->
         typecheck_exp_opt scope b
-        |> bind (fun b -> (* TODO: resolve the types *)
+        |> bind (fun b ->
           let types, comparable, equality =
              match bin with
             | Plus -> [BInt; BFloat64; BString; BRune], false, false
@@ -389,7 +392,7 @@ let rec typecheck_exp_opt scope e =
             | BOr
             | Caret
             | Mod -> [BInt], false, false in
-          check_ops_opt scope a.typ b.typ types comparable equality
+          check_ops_opt e.position.pos_lnum scope a.typ b.typ types comparable equality
           |> bind (fun x ->
             tnode_of_node_and_value e x (BinaryOp (bin, (Typed a, Typed b))) |> some
           )
@@ -464,7 +467,7 @@ function that checks if a function call is a typecast of the form type(expr). We
 3. reduce the type to a base type, if possible
 4. typecheck the expr (i.e the argument)
 5. reduce the type of expr to a base type, if possible
-6. Apply the type rule associated with type casting in Go
+6. Apply the type rule associated with type casting in G
 
 note: all these operations can fail, hence the serie of binds
 *)
@@ -485,12 +488,13 @@ and check_if_type_cast (e: exp node) (scope: scope) (name: string) (exps: exp ge
               (* if both types are the same basetype OR both are numeric OR type(expr) where type resolves to string and expr to int or rune *)
               if a = b || (is_numeric a && is_numeric b) || (a = BString && (b = BInt || b = BRune)) then
                 tnode_of_node_and_value e scoped_type (FuncCall (name ,[Typed tnode])) |> some
-              else None
-            | _ -> None
+              else (invalid_type_cast e.position.pos_lnum |> error; None)
+            | _ -> not_a_base_type e.position.pos_lnum type_reduced.gotype |> error; None
           )
         )
       )
     )
+
 
 (* given two scopes, merge them together so that all their bindings are all at the same level. If the resulting bindings contain duplicates, it returns None *)
 let merge_scope_opt old_scope new_scope =
@@ -498,7 +502,7 @@ let merge_scope_opt old_scope new_scope =
     match new_bindings with
     | [] -> Some old_scope
     | (name, typ)::xs ->
-      if List.mem_assoc name old_scope = true then (print_string "Error: "; print_endline name; None)
+      if List.mem_assoc name old_scope = true then None
       else helper (List.append old_scope [(name, typ)]) xs in
   helper old_scope.bindings new_scope.bindings
   |> bind (fun bindings ->
