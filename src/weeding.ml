@@ -161,7 +161,6 @@ let rec blank_stm (stm: stmt gen_node) =
         blank_type stm.position.pos_lnum ts
         |> List.append (duplicate_member_struct stm.position.pos_lnum ts)
         |> List.append (type_redeclaration_check stm.position.pos_lnum ts s)
-        |> List.append (helper stm.position.pos_lnum s)
       )
     | If (s, e, l, el) ->
       let s = blank_simple s in
@@ -460,7 +459,6 @@ let weed (p, d) =
       |> map_flat (fun (s, ts) ->
         blank_type x.position.pos_lnum ts
         |> List.append (duplicate_member_struct x.position.pos_lnum ts)
-        |> List.append (type_redeclaration_check x.position.pos_lnum ts s)
-        |> List.append (helper x.position.pos_lnum s) ))
+        |> List.append (type_redeclaration_check x.position.pos_lnum ts s)))
     | _ -> []
   )
