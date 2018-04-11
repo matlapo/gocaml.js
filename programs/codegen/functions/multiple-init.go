@@ -1,4 +1,11 @@
-package main;
+//~a
+//~b
 
-func init() {}
-func init() {}
+package main
+
+func init() {
+	println("a")
+}
+func init() {
+	println("b")
+}
