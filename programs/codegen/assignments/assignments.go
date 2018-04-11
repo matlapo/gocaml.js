@@ -17,11 +17,11 @@ func main() {
   var a a
   a.x[0] = 3
   var b []int
-  a.y[2] = b
+  a.z.y[2] = b
   a.z.x[1] = 3
   a.z.y[2][3] = 2
   a.a = 6
-  print(a.z.x[1])
-  print(a.z.y[2][3])
-  print(a.a)
+  println(a.z.x[1])
+  println(a.z.y[2][3])
+  println(a.a)
 }
