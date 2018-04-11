@@ -40,7 +40,10 @@ and codegen_bare_exp (s: scope) (p: bool) (e: exp) :string =
     | Indexing (array, index) ->
       let array_code = codegen_exp s p array in
       let index_code = codegen_exp s p index in
-      "at(" ^ array_code ^ "," ^ index_code ^ ")"
+      if p then
+        "at(" ^ array_code ^ "," ^ index_code ^ ")"
+      else
+        array_code ^ "[" ^ index_code ^ "]"
     | Selection (struct_expr, member) ->
       (codegen_exp s p struct_expr) ^
       "." ^

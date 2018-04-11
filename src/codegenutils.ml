@@ -16,15 +16,26 @@ let concat_comma =
       | _ -> acc ^ "," ^ elt
     )
     ""
-
 let concat_map (f: 'a -> string) (l: 'a list) :string = l |> List.map f |> List.fold_left (^) ""
+let paren (code: string) :string = "(" ^ code ^ ")"
 
 let unwrap_gen_node (node:'a gen_node) :'a = match node with
   | Position { value=v } -> v
   | Typed { value=v } -> v
   | Scoped { value=v } -> v
 
-let paren (code: string) :string = "(" ^ code ^ ")"
+let type_of_expr (scope: scope) (node: exp gen_node): gotype = match node with
+  | Typed { typ=t } -> (match t.gotype with
+    | Defined typename -> (
+        let scopedType = Option.get (Typecheck.scopedtype_of_typename_opt scope typename) in
+        let reducedScopedType = Option.get (Typecheck.resolve_to_reducedtype_opt scope scopedType) in
+        let reducedType = reducedScopedType.gotype in
+        match reducedType with
+          | Defined _ -> raise (Failure "unreachable")
+          | t -> t
+      )
+    | resolved_type -> resolved_type)
+  | _ -> raise (Failure "unreachable")
 
 let mangle (scope: scope) (name: string) :string =
   if name = "_" then "_"

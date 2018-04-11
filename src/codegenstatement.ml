@@ -4,14 +4,19 @@ open Codegenexpression
 open Codegenutils
 
 (* "\x5B" = "[", but opening square brackets screw up indentation in my IDE. *)
-let codegen_bare_assign (s: scope) (refs: exp list) (exps: exp list) :string =
+let codegen_bare_assign (s: scope) (refs: exp list) (exps: exp gen_node list) :string =
   "\x5B" ^
   (refs |> codegen_bare_exps s false) ^
   "]=\x5B" ^
-  (codegen_bare_exps s true exps) ^
+  (exps
+    |> List.map (fun (expr: exp gen_node) -> match type_of_expr s expr with
+      | Array _ -> "(" ^ codegen_exp s false expr ^ ").slice()" (* Copy arrays instead of passing them by reference *)
+      | _ -> codegen_exp s false expr
+    )
+    |> concat_comma) ^
   "];"
 let codegen_assign (s: scope) (refs: exp gen_node list) (exps: exp gen_node list) :string =
-  codegen_bare_assign s (List.map unwrap_gen_node refs) (List.map unwrap_gen_node exps)
+  codegen_bare_assign s (List.map unwrap_gen_node refs) exps
 
 let codegen_assign_op (s: scope) (op: assign) (ref: exp gen_node) (exp: exp gen_node) =
   let r = codegen_exp s false ref in
