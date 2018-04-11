@@ -31,15 +31,13 @@ const at = (array, index) => {
 
 const append = (slice, element) => [...slice, element];
 
-const _true = true;
-const _false = false;
+const _0_true = true;
+const _0_false = false;
 
 {
 "
 
 let postlude = "
-
-_main();
 }
 
 process.exit(0);
