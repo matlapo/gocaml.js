@@ -136,7 +136,9 @@ let basetype_of_string_opt s = match s with
   | "bool" -> Some (Basetype BBool)
   | _ -> None
 
-let rec scopedtype_of_gotype (s: scope) (t: gotype) : scopedtype option =
+let cannot_find_gotype x typ = Printf.sprintf "Error: cannot find type definition for the type %s at line: %d" (Scopeprinter.string_of_gotype typ) x
+
+let rec scopedtype_of_gotype lineno (s: scope) (t: gotype) : scopedtype option =
   match t with
   | Defined typename ->
     (match List.find_opt (fun (id, _) -> id = typename) s.types with
@@ -146,11 +148,14 @@ let rec scopedtype_of_gotype (s: scope) (t: gotype) : scopedtype option =
       (* If the Defined goes back to the initial scope, it is a base type.*)
       else
         (basetype_of_string_opt typename) |> bind (fun t -> Some { gotype = t; scopeid = 0 })
-    | None -> s.parent |> bind (fun p -> scopedtype_of_gotype p t))
+    | None ->
+      (match s.parent with
+      | Some p -> scopedtype_of_gotype lineno p t
+      | None -> cannot_find_gotype lineno t |> error; None))
   | _ -> Some { gotype = t; scopeid = s.scopeid }
 
 (* Find the base type inside of an array. (needs to resolve gotype inside arrays scope) *)
-let resolve_inside_type_of_indexable (s: scope) (t: scopedtype) : scopedtype option =
+let resolve_inside_type_of_indexable lineno (s: scope) (t: scopedtype) : scopedtype option =
   (* Get the gotype of type inside the array *)
   match t.gotype with
   | Array (insidetype, _)
@@ -159,14 +164,14 @@ let resolve_inside_type_of_indexable (s: scope) (t: scopedtype) : scopedtype opt
     find_scope_with_scopeid_opt s t.scopeid
     |> bind (fun indexablescope ->
       (* Find the scopedtype of the type inside the array *)
-      scopedtype_of_gotype indexablescope insidetype
+      scopedtype_of_gotype lineno indexablescope insidetype
     )
   )
   (* If the type is not indexable, error *)
   | _ -> None
 
 (* Returns the type of a selection *)
-let selection_type_opt (s: scope) (t: scopedtype) (a: string) : scopedtype option =
+let selection_type_opt lineno (s: scope) (t: scopedtype) (a: string) : scopedtype option =
   (* Get the scope where the selection was defined *)
   find_scope_with_scopeid_opt s t.scopeid
   |> bind (fun selectionscope ->
@@ -180,7 +185,7 @@ let selection_type_opt (s: scope) (t: scopedtype) (a: string) : scopedtype optio
         |> List.find_opt (fun (name, _) -> name = a)
         |> bind (fun (_, member_type) ->
           (* Find the scopedtype of the member by doing a type search from the scope where the struct as defined *)
-          scopedtype_of_gotype selectionscope member_type
+          scopedtype_of_gotype lineno selectionscope member_type
         )
       | _ -> None
     )
@@ -342,7 +347,7 @@ let rec typecheck_exp_opt scope e =
         (is_indexable scope target.typ, resolve_to_reducedtype_opt scope index.typ)
         |> bind2 (fun indexable index_basetype ->
           if indexable && are_types_equal index_basetype (basetype BInt) then
-            resolve_inside_type_of_indexable scope target.typ
+            resolve_inside_type_of_indexable e.position.pos_lnum scope target.typ
             |> bind (fun t ->
               position_to_tnode e (Indexing (Typed target, Typed index)) t |> some
             )
@@ -353,7 +358,7 @@ let rec typecheck_exp_opt scope e =
     | Selection (target, selection) ->
       typecheck_exp_opt scope target
       |> bind (fun target ->
-        selection_type_opt scope target.typ selection
+        selection_type_opt e.position.pos_lnum scope target.typ selection
         |> bind (fun selection_type ->
             position_to_tnode e (Selection (Typed target, selection)) selection_type |> some
         )
@@ -433,7 +438,7 @@ let rec typecheck_exp_opt scope e =
       (typecheck_exp_opt scope array, typecheck_exp_opt scope element)
       |> bind2 (fun typed_array typed_element ->
         (* Checks if the type is an array/slice and returns the inside type. *)
-        resolve_inside_type_of_indexable scope typed_array.typ
+        resolve_inside_type_of_indexable e.position.pos_lnum scope typed_array.typ
         |> bind (fun type_inside_array ->
           (* Compared the type inside the array with the type of the element. *)
           if are_types_equal type_inside_array typed_element.typ then
@@ -512,10 +517,10 @@ let merge_scope_opt old_scope new_scope =
   )
 
 (* given the arguments of a function (i.e (name, gotype)), typecheck all the type references *)
-let typecheck_args_opt scope args =
+let typecheck_args_opt lineno scope args =
   let typed_args =
     args
-    |> List.map (fun (_, typ) -> scopedtype_of_gotype scope typ)
+    |> List.map (fun (_, typ) -> scopedtype_of_gotype lineno scope typ)
     |> List.filter is_some in
   if List.length args <> List.length typed_args then None
   else
@@ -818,7 +823,7 @@ and typecheck_stm_opt current s =
       let typed_decls =
         decls
         |> List.map (fun (name, x) ->
-          scopedtype_of_gotype current x
+          scopedtype_of_gotype e.position.pos_lnum current x
           |> bind (fun scopedx -> resolve_to_reducedtype_opt current scopedx)
           |> bind (fun typ -> Some (name, typ)))
         |> List.filter is_some in
@@ -1039,7 +1044,7 @@ and typecheck_var_decl_opt lineno scope (vars, t, exps) =
         let exps =
           typed_exps
           |> List.map (fun x -> Typed x) in
-        scopedtype_of_gotype scope t
+        scopedtype_of_gotype lineno scope t
         |> bind (fun scopedt ->
           let exps_with_annotation =
             typed_exps
@@ -1072,10 +1077,10 @@ let check_invalid_main (name, args, otyp) =
 *)
 let typecheck_decl_opt scope decl =
   match decl with
-  | Position x ->
-    (match x.value with
+  | Position n ->
+    (match n.value with
     | Var l ->
-      typecheck_decl_list_opt l (typecheck_var_decl_opt x.position.pos_lnum) scope
+      typecheck_decl_list_opt l (typecheck_var_decl_opt n.position.pos_lnum) scope
       |> bind (fun (scope, ol) ->
           (scope, Var ol) |> some
       )
@@ -1083,7 +1088,7 @@ let typecheck_decl_opt scope decl =
       let typed_decls =
         decls
         |> List.map (fun (name, x) ->
-          scopedtype_of_gotype scope x
+          scopedtype_of_gotype n.position.pos_lnum scope x
           |> bind (fun scopedx -> resolve_to_reducedtype_opt scope scopedx)
           |> bind (fun typ -> Some (name, typ)))
         |> List.filter is_some in
@@ -1102,7 +1107,7 @@ let typecheck_decl_opt scope decl =
       if check_invalid_main (name, args, return_type) then None
       else
         args
-        |> typecheck_args_opt scope
+        |> typecheck_args_opt n.position.pos_lnum scope
         |> bind (fun typed_args ->
           (* Add the type we resolved to all the arguments. *)
           let arguments_scope =
@@ -1110,7 +1115,7 @@ let typecheck_decl_opt scope decl =
             |> List.filter (fun (name, _) -> name <> "_") in
           (match return_type with
           | Void -> Some Void
-          | NonVoid t -> scopedtype_of_gotype scope t |> bind (fun t -> NonVoid t |> some))
+          | NonVoid t -> scopedtype_of_gotype n.position.pos_lnum scope t |> bind (fun t -> NonVoid t |> some))
           |> bind (fun scoped_return_type ->
             let signature = { arguments = typed_args; returnt = scoped_return_type } in
             let function_binding = (name, signature) in
