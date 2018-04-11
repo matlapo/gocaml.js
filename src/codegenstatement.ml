@@ -55,7 +55,7 @@ let codegen_bare_simple_stmt (s: scope) (simple_stmt: simpleStm) =
         |> concat
       ) ^
       (codegen_assign s refs exps)
-    | Empty -> "/* Empty Simple Statement */"
+    | Empty -> "/* Empty Simple Statement */;"
 
 let codegen_simple_stmt (stmt_scope: scope) (simple_stmt: simpleStm gen_node) =
   let scope = match simple_stmt with
@@ -142,10 +142,8 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
     | Loop For (init, cond, increment, stmts) ->
       "for(" ^
       (codegen_simple_stmt scope init) ^
-      ";" ^
-      (cond |> Option.map_default (codegen_exp scope true) "") ^
-      ";" ^
-      (codegen_simple_stmt scope increment) ^
+      (cond |> Option.map_default (codegen_exp scope true) "") ^ ";" ^
+      (String.slice ~last:(-1) (codegen_simple_stmt scope increment)) ^
       "){" ^
       (codegen_stmts stmts) ^
       "}"
