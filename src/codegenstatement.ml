@@ -152,6 +152,7 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
     | Return Some expr -> "return" ^ (codegen_exp scope true expr) ^ ";"
     | Return None -> "return;"
     | Switch (init, target, cases) ->
+      let init_scope = scope_of_simple_stmt init in
       let target_code = Option.map_default (codegen_exp scope true) "true" target in
       let ifs_code = cases
         |> fold_cases
@@ -159,7 +160,7 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
           fun (exprs_opt, stmts) ->
             let condition_code = match exprs_opt with
               | Some exprs -> exprs
-                |> List.map (codegen_exp scope true)
+                |> List.map (codegen_exp init_scope true)
                 |> List.map (fun expr_code -> expr_code ^ "=== target")
                 |> String.join "||"
               | None -> "true" in
