@@ -73,7 +73,6 @@ and codegen_bare_exp (s: scope) (p: bool) (e: exp) :string =
             )
           |> concat_comma
         ) ^
-        (codegen_exps s p params) ^
       ")"
     | Append (slice_expr, elt_expr) ->
       "append(" ^
