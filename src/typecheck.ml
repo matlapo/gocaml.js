@@ -250,21 +250,25 @@ let snode_of_node (s: stmt node) scope prev = { position = s.position; scope = s
 let snode_of_node_and_value (s: stmt node) scope prev v = { position = s.position; scope = scope; prevscope = prev; value = v }
 
 (* given the types of 2 arguments (for a binary operation) and a list of accepted types for the binary operation, return the resulting type *)
-let check_ops_opt (s: scope) (a: scopedtype) (b: scopedtype) (l: basetype list) comparable : scopedtype option =
+let check_ops_opt (s: scope) (left: scopedtype) (right: scopedtype) (l: basetype list) comparable equality : scopedtype option =
   l
   |> List.map (fun t ->
-    (resolve_to_reducedtype_opt s a, resolve_to_reducedtype_opt s b)
+    (resolve_to_reducedtype_opt s left, resolve_to_reducedtype_opt s right)
     |> bind2 (fun a b ->
       match a, b with
       | { gotype = Basetype x; _}, { gotype = Basetype y; _} ->
-        if x = t && y = t then Some t else None
-      | _ -> None
+        if x = t && y = t then Some t
+        else None
+      | _ ->
+        if equality then
+          if are_types_equal left right then Some t else None
+        else None
     )
   )
   |> List.find_opt is_some
   |> (fun x ->
     match x with
-    | Some x -> if comparable then Some (basetype BBool) else Some a
+    | Some x -> if comparable then Some (basetype BBool) else Some left
     | None -> print_string "Error: ..."; None
   )
 
@@ -355,28 +359,28 @@ let rec typecheck_exp_opt scope e =
       |> bind (fun a ->
         typecheck_exp_opt scope b
         |> bind (fun b -> (* TODO: resolve the types *)
-          let types, comparable =
+          let types, comparable, equality =
              match bin with
-            | Plus -> [BInt; BFloat64; BString; BRune], false
+            | Plus -> [BInt; BFloat64; BString; BRune], false, false
             | Minus
             | Times
-            | Div -> [BInt; BFloat64; BRune], false
+            | Div -> [BInt; BFloat64; BRune], false, false
             | Equals
-            | NotEquals -> [BInt; BFloat64; BString; BBool; BRune], true
+            | NotEquals -> [BInt; BFloat64; BString; BBool; BRune], true, true
             | And
-            | Or -> [BBool], true
+            | Or -> [BBool], true, false
             | Smaller
             | Greater
             | SmallerEq
-            | GreaterEq -> [BInt; BFloat64; BString; BRune], true (* TODO: ordered? *)
+            | GreaterEq -> [BInt; BFloat64; BString; BRune], true, false (* TODO: ordered? *)
             | DGreater
             | DSmaller
             | AndHat
             | BAnd
             | BOr
             | Caret
-            | Mod -> [BInt], false in
-          check_ops_opt scope a.typ b.typ types comparable
+            | Mod -> [BInt], false, false in
+          check_ops_opt scope a.typ b.typ types comparable equality
           |> bind (fun x ->
             tnode_of_node e x |> some (* TODO: LHS and RHS are not typed *)
           )
