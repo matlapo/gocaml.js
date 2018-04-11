@@ -411,11 +411,11 @@ let rec typecheck_exp_opt scope e =
           typecheck_exp_list_opt scope exps
           |> bind (fun typed_exps ->
             let scoped_exps = List.map (fun { typ = x; _ } -> x) typed_exps in
-            let typed_exps_gen = List.map (fun e -> Typed e) typed_exps in
             if check_both_list_same_exps_types scoped_exps signature.arguments then
+              let inner_value = FuncCall (name, List.map (fun x -> Typed x) typed_exps) in
               match signature.returnt with
-              | Void -> tnode_of_node_and_value e { gotype = Null; scopeid = scope.scopeid } (FuncCall(name, typed_exps_gen)) |> some
-              | NonVoid t -> tnode_of_node_and_value e t (FuncCall(name, typed_exps_gen)) |> some
+              | Void -> tnode_of_node_and_value e { gotype = Null; scopeid = scope.scopeid } inner_value |> some
+              | NonVoid t -> tnode_of_node_and_value e t inner_value |> some
             else
               None
           )
@@ -475,7 +475,7 @@ and check_if_type_cast (e: exp node) (scope: scope) (name: string) (exps: exp ge
             | (Basetype a, Basetype b) ->
               (* if both types are the same basetype OR both are numeric OR type(expr) where type resolves to string and expr to int or rune *)
               if a = b || (is_numeric a && is_numeric b) || (a = BString && (b = BInt || b = BRune)) then
-                tnode_of_node_and_value e scoped_type tnode.value |> some
+                tnode_of_node_and_value e scoped_type (FuncCall (name ,[Typed tnode])) |> some
               else None
             | _ -> None
           )
