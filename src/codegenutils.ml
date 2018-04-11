@@ -35,7 +35,6 @@ let scope_of_snode (node: 'a gen_node): scope = match node with
   | _ -> raise (Failure "Can't extract the scope of a simple statement. It is not an snode.")
 
 let scope_of_simple_stmt: simpleStm gen_node -> scope = scope_of_snode
-let scope_of_decl: decl gen_node -> scope = scope_of_snode
 
 let type_of_expr (scope: scope) (node: exp gen_node): gotype = match node with
   | Typed { typ=t } -> (match t.gotype with
@@ -80,7 +79,7 @@ let zero_value_of_basetype (t: basetype): string = match t with
   | BFloat64 -> "0.0"
   | BString -> "\"\""
   | BRune -> "0"
-  | BBool -> "0.0"
+  | BBool -> "_0_false"
 
 let rec zero_value_of_type (s: scope) (t: gotype): string =
   match t with

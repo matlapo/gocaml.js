@@ -9,7 +9,7 @@ func main() {
   case 1, 0:
     println(i)
     var i bool
-    print(i)
+    println(i)
     break
   case 2:
     break

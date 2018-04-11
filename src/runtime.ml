@@ -31,6 +31,11 @@ const at = (array, index) => {
 
 const append = (slice, element) => [...slice, element];
 
+let inits = [];
+const callInits = () => {
+  inits.forEach(init => init())
+}
+
 const _0_true = true;
 const _0_false = false;
 
