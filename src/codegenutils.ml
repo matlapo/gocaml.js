@@ -16,16 +16,39 @@ let concat_comma =
       | _ -> acc ^ "," ^ elt
     )
     ""
-
 let concat_map (f: 'a -> string) (l: 'a list) :string = l |> List.map f |> List.fold_left (^) ""
+let paren (code: string) :string = "(" ^ code ^ ")"
 
 let unwrap_gen_node (node:'a gen_node) :'a = match node with
   | Position { value=v } -> v
   | Typed { value=v } -> v
   | Scoped { value=v } -> v
 
-let paren (code: string) :string = "(" ^ code ^ ")"
-let mangle (name: string) :string = "_" ^ name
+let scope_of_simple_stmt (node: simpleStm gen_node): scope = match node with
+  | Scoped { scope=scope } -> scope
+  | _ -> raise (Failure "Can't extract the scope of a simple statement. It is not an snode.")
+
+let type_of_expr (scope: scope) (node: exp gen_node): gotype = match node with
+  | Typed { typ=t } -> (match t.gotype with
+    | Defined typename -> (
+        let scopedType = Option.get (Typecheck.scopedtype_of_typename_opt scope typename) in
+        let reducedScopedType = Option.get (Typecheck.resolve_to_reducedtype_opt scope scopedType) in
+        let reducedType = reducedScopedType.gotype in
+        match reducedType with
+          | Defined _ -> raise (Failure "unreachable")
+          | t -> t
+      )
+    | resolved_type -> resolved_type)
+  | _ -> raise (Failure "unreachable")
+
+let mangle (scope: scope) (name: string) :string =
+  if name = "_" then "_"
+  else
+    let scope_id = name
+      |> Typecheck.find_scope_of_varname_opt scope
+      |> Option.map (fun var_scope -> var_scope.scopeid)
+      |> Option.default scope.scopeid in
+    "_" ^ (string_of_int scope_id) ^ "_" ^ name
 
 let zero_value_of_basetype (t: basetype): string = match t with
   | BInt -> "0"

@@ -83,6 +83,13 @@ let rec find_scope_with_scopeid_opt (s: scope) (id: scopeid): scope option =
     s.parent
     |> bind (fun p -> find_scope_with_scopeid_opt p id)
 
+(* Finds the most recent parent scope (including current scope) where a certain variable is defined. *)
+let rec find_scope_of_varname_opt (s: scope) (varname: string): scope option =
+  if List.exists (fun (name, _) -> name = varname) s.bindings then Some s
+  else
+    s.parent
+    |> bind (fun p -> find_scope_of_varname_opt p varname)
+
 (** Finds the type associated with a string *)
 let rec scopedtype_of_typename_opt (s: scope) (typename: string): scopedtype option =
   (* Look for a type in the current scope *)
@@ -548,55 +555,61 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
         | PlusEqual
         | MinusEqual
         | DivEqual
-        | TimesEqual -> Some [Int; Float]
+        | TimesEqual -> Some [Basetype BInt; Basetype BFloat64]
         | AndEqual
         | OrEqual
         | HatEqual
         | PercentEqual
-        | AndHatEqual -> Some [Int]
+        | AndHatEqual -> Some [Basetype BInt]
         | DoubleGreaterEqual
-        | DoubleSmallerEqual -> Some [Int] in
-      (match typ with
-      | None ->
-        let typecheck_rhs =
-          exps
-          |> List.map2 (fun id exp ->
-            (id, typecheck_exp_opt current exp)
-          ) kinds
-          |> List.filter (fun (_, exp) -> is_some exp) in
-        (* make sure that all the expressions on the RHS typecheck *)
-        if List.length typecheck_rhs <> List.length exps then None
+        | DoubleSmallerEqual -> Some [Basetype BInt] in
+      let typecheck_rhs =
+        exps
+        |> List.map2 (fun id exp ->
+          (id, typecheck_exp_opt current exp)
+        ) kinds
+        |> List.filter (fun (_, exp) -> is_some exp) in
+      (* make sure that all the expressions on the RHS typecheck *)
+      if List.length typecheck_rhs <> List.length exps then None
+      else
+        let typecheck_lhs =
+          typecheck_rhs
+          |> List.map (fun (id, oexp) ->
+            if is_underscore id then (tnode_of_node (extract_position id) null_scopeid |> some, Option.get oexp)
+            else (typecheck_exp_opt current id, Option.get oexp)
+          )
+          |> List.filter (fun (oid, _) -> is_some oid) in
+        if List.length typecheck_lhs <> List.length typecheck_rhs then None
         else
-          let typecheck_lhs =
-            typecheck_rhs
-            |> List.map (fun (id, oexp) ->
-              if is_underscore id then (tnode_of_node (extract_position id) null_scopeid |> some, Option.get oexp)
-              else (typecheck_exp_opt current id, Option.get oexp)
-            )
-            |> List.filter (fun (oid, _) -> is_some oid) in
-          if List.length typecheck_lhs <> List.length typecheck_rhs then None
+          let typed_assignments =
+            typecheck_lhs
+            |> List.map (fun (id, exp) -> (Option.get id, exp))
+            |> List.map (fun (id, exp) -> (id.typ, exp.typ)) in
+          let invalid_assignment =
+            typed_assignments
+            |> List.exists (fun (id, exp) ->
+              match id.gotype with
+              | Null -> false
+              | _ ->
+                are_types_equal id exp |> not
+                || (match typ with
+                  | None -> false
+                  | Some types ->
+                    (List.exists (fun x -> x = id.gotype) types
+                    && List.exists (fun x -> x = exp.gotype) types) |> not
+                )
+            ) in
+          if invalid_assignment then None
           else
-            let typed_assignments =
-              typecheck_lhs
-              |> List.map (fun (id, exp) -> (Option.get id, exp))
-              |> List.map (fun (id, exp) -> (id.typ, exp.typ)) in
-            let invalid_assignment =
-              typed_assignments
-              |> List.exists (fun (id, exp) ->
-                match id.gotype with | Null -> false | _ -> are_types_equal id exp |> not
-              ) in
-            if invalid_assignment then None
-            else
-              let kinds = List.map extract_position kinds in
-              let exps = List.map extract_position exps in
-              let gen_node_kinds =
-                List.map2 (fun (id, _) old -> tnode_of_node old id) typed_assignments kinds
-                |> List.map (fun x -> Typed x) in
-              let gen_node_exps =
-                List.map2 (fun (_, exp) old -> tnode_of_node old exp) typed_assignments exps
-                |> List.map (fun x -> Typed x) in
-              { position = e.position; scope = current; value = Assign (assign_type, (gen_node_kinds, gen_node_exps)) } |> some
-      | Some l -> None)
+            let kinds = List.map extract_position kinds in
+            let exps = List.map extract_position exps in
+            let gen_node_kinds =
+              List.map2 (fun (id, _) old -> tnode_of_node old id) typed_assignments kinds
+              |> List.map (fun x -> Typed x) in
+            let gen_node_exps =
+              List.map2 (fun (_, exp) old -> tnode_of_node old exp) typed_assignments exps
+              |> List.map (fun x -> Typed x) in
+            { position = e.position; scope = current; value = Assign (assign_type, (gen_node_kinds, gen_node_exps)) } |> some
     | Empty -> { position = e.position; scope = current; value = Empty } |> some
     | DoublePlus kind -> double_helper e current kind true
     | DoubleMinus kind -> double_helper e current kind false
@@ -662,7 +675,15 @@ let print_helper current (e: stmt node) l is_println =
     l
     |> List.map (fun x -> typecheck_exp_opt current x)
     |> List.filter is_some in
-  if List.length l <> List.length tnodes then None
+  let basetypes_only =
+    tnodes
+    |> List.map (fun x ->
+      let typ = Option.get x in
+      resolve_to_reducedtype_opt current typ.typ
+    )
+    |> List.filter is_some
+    |> List.filter (fun x -> match (Option.get x).gotype with | Basetype _ -> true | _ -> false) in
+  if List.length l <> List.length basetypes_only then None
   else
     let tnodes = List.map Option.get tnodes in
     let check_types =
@@ -899,7 +920,7 @@ and loop_helper e scope loop =
   | For (init, oexp, inc, stmts) ->
     typecheck_simple_opt scope init
     |> bind (fun init ->
-      let scope = { scope with bindings = List.append scope.bindings init.scope.bindings } in
+      let scope = init.scope in
       let otyped_exp =
         oexp
         |> bind (fun exp ->
@@ -976,8 +997,9 @@ and typecheck_var_decl_opt scope (vars, t, exps) =
     |> List.filter is_some in
   if List.length otyped_exps <> List.length exps then None
   else
-    if check_vars_declared scope vars then None
-    else if contains_duplicate vars then None
+    let vars_without_underscore = List.filter (fun x -> x <> "_") vars in
+    if check_vars_declared scope vars_without_underscore then None
+    else if contains_duplicate vars_without_underscore then None
     else
       let typed_exps =
         otyped_exps
@@ -989,8 +1011,12 @@ and typecheck_var_decl_opt scope (vars, t, exps) =
           |> List.map (fun x -> Typed x) in
         let new_bindings =
           typed_exps
-          |> List.map2 (fun name node -> (name, node.typ)) vars in
-        let new_scope = { empty_scope with bindings = new_bindings } in
+          |> List.map2 (fun name node -> if name <> "_" then (name, node.typ) |> some else None) vars in
+        let new_bindings_wihout_underscores =
+          new_bindings
+          |> List.filter is_some
+          |> List.map Option.get in
+        let new_scope = { empty_scope with bindings = new_bindings_wihout_underscores } in
         ((vars, t, exps), new_scope) |> some
       | Some t ->
         scopedtype_of_gotype scope t
@@ -1004,8 +1030,12 @@ and typecheck_var_decl_opt scope (vars, t, exps) =
             (* Get back the type that wasn't reduced (needed for the binding). *)
             let new_bindings =
               vars
-              |> List.map (fun name -> (name, scopedt)) in
-            let new_scope = { empty_scope with bindings = new_bindings } in
+              |> List.map (fun name -> if name <> "_" then (name, scopedt) |> some else None) in
+            let new_bindings_wihout_underscores =
+              new_bindings
+              |> List.filter is_some
+              |> List.map Option.get in
+            let new_scope = { empty_scope with bindings = new_bindings_wihout_underscores } in
             ((vars, Some t, exps), new_scope) |> some
         )
 
@@ -1058,27 +1088,27 @@ let typecheck_decl_opt scope decl =
           let arguments_scope =
             List.map2 (fun (name, _) typ -> (name, typ)) args typed_args
             |> List.filter (fun (name, _) -> name <> "_") in
-          let initial_function_scope = { empty_function_scope with bindings = arguments_scope } in
-          typecheck_stm_list_opt stmts initial_function_scope
-          |> bind (fun (typed_stmts, new_scope) ->
-            (* Add the scope to each statement *)
-            let scoped_typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
-            (* Typecheck the return type. *)
-            (match return_type with
-            | Void -> Some Void
-            | NonVoid t -> scopedtype_of_gotype scope t |> bind (fun t -> NonVoid t |> some))
-            |> bind (fun scoped_return_type ->
+          (match return_type with
+          | Void -> Some Void
+          | NonVoid t -> scopedtype_of_gotype scope t |> bind (fun t -> NonVoid t |> some))
+          |> bind (fun scoped_return_type ->
+            let signature = { arguments = typed_args; returnt = scoped_return_type } in
+            let function_binding = (name, signature) in
+            let initial_function_scope = { empty_function_scope with bindings = arguments_scope; functions = [function_binding] } in
+            typecheck_stm_list_opt stmts initial_function_scope
+            |> bind (fun (typed_stmts, new_scope) ->
+              (* Add the scope to each statement *)
+              let scoped_typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
+              (* Typecheck the return type. *)
               if verify_return_statements typed_stmts scoped_return_type = true then None
               else
-                let signature = { arguments = typed_args; returnt = scoped_return_type } in
-                let function_binding = (name, signature) in
                 let scope =
                   { scope with
                     children = List.append scope.children [new_scope];
                     functions = List.append scope.functions [function_binding]
                   } in
                 (scope, Fct (name, args, return_type, scoped_typed_stmts)) |> some
-            )
+              )
           )
         )
     )

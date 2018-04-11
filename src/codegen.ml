@@ -9,11 +9,20 @@ let codegen_decl (scope: scope) (decl:decl) :string = match decl with
   | Type _ -> ""
   | Fct (name, args, _, stmts) ->
     "function " ^
-    (mangle name) ^
+    (mangle scope name) ^
     "(" ^
-    (args |> List.map fst |> List.map mangle |> concat_comma) ^
+    (args |> List.map fst |> List.map (mangle scope) |> concat_comma) ^
     "){" ^
-    (stmts |> concat_map codegen_stmt) ^
+      (stmts |> concat_map codegen_stmt) ^
     "}"
 
-let codegen (scope: scope) ((_, decls):string * decl list) :string = Runtime.prelude ^ concat_map (codegen_decl scope) decls ^ Runtime.postlude
+let codegen (scope: scope) ((_, decls):string * decl list) :string =
+  let first_child_scope = List.at scope.children 0 in
+  let main = mangle first_child_scope "main" in
+  Runtime.prelude ^
+  (concat_map (codegen_decl first_child_scope) decls) ^
+  (match (List.exists (fun (name, _) -> name = "main") first_child_scope.functions) with
+    | true -> main ^ "();"
+    | false -> ""
+  ) ^
+  Runtime.postlude
