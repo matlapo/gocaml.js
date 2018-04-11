@@ -35,14 +35,17 @@ let codegen_assign_op (s: scope) (op: assign) (ref: exp gen_node) (exp: exp gen_
     | DoubleGreaterEqual -> r ^ ">>=" ^ e ^ ";"
     | DoubleSmallerEqual -> r ^ "<<=" ^ e ^ ";"
 
-let codegen_bare_simple_stmt (s: scope) (simple_stmt: simpleStm) =
+let codegen_simple_stmt (simple_stmt_node: simpleStm gen_node) =
+  let simple_stmt = unwrap_gen_node simple_stmt_node in
+  let prevscope = prevscope_of_simple_stmt simple_stmt_node in
+  let scope = scope_of_simple_stmt simple_stmt_node in
   match simple_stmt with
-    | Assign (Regular, (refs, exps)) -> codegen_assign s refs exps
-    | Assign (op, ([ref], [exp])) -> codegen_assign_op s op ref exp
+    | Assign (Regular, (refs, exps)) -> codegen_assign prevscope refs exps
+    | Assign (op, ([ref], [exp])) -> codegen_assign_op prevscope op ref exp
     | Assign _ -> raise (Failure "Invalid Assignment")
-    | ExpStatement exp -> (codegen_exp s true exp) ^ ";"
-    | DoublePlus ref -> (codegen_exp s false ref) ^ "++;"
-    | DoubleMinus ref -> (codegen_exp s false ref) ^ "--;"
+    | ExpStatement exp -> (codegen_exp prevscope true exp) ^ ";"
+    | DoublePlus ref -> (codegen_exp prevscope false ref) ^ "++;"
+    | DoubleMinus ref -> (codegen_exp prevscope false ref) ^ "--;"
     | ShortDeclaration (refs, exps) ->
       (refs
         |> List.map unwrap_gen_node
@@ -50,16 +53,12 @@ let codegen_bare_simple_stmt (s: scope) (simple_stmt: simpleStm) =
             | Id s -> Some s
             | _ -> None
           )
-        |> List.filter (fun name -> not (List.exists (fun (binding_name, _) -> binding_name = name) s.bindings))
-        |> List.map (fun name -> "let " ^ (mangle_decl s name) ^ ";")
+        |> List.filter (fun name -> not (List.exists (fun (binding_name, _) -> binding_name = name) prevscope.bindings))
+        |> List.map (fun name -> "let " ^ (mangle_decl prevscope name) ^ ";")
         |> concat
       ) ^
-      (codegen_assign s refs exps)
+      (codegen_assign scope refs exps)
     | Empty -> "/* Empty Simple Statement */;"
-
-let codegen_simple_stmt (simple_stmt: simpleStm gen_node) =
-  let scope = prevscope_of_simple_stmt simple_stmt in
-  codegen_bare_simple_stmt scope (unwrap_gen_node simple_stmt)
 
 let codegen_decl (s: scope) (decl: (string list * gotype option * (exp gen_node) list)): string =
   let (names, t, exps) = decl in
