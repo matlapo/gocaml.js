@@ -1,8 +1,11 @@
-package main;
+//~abc
+
+package main
 
 func main() {
-  var i = 0
-  for i:=0; i < 0; i++ {
+	var i = 3
+	for i := 0; i < 1; i++ {
     var i = "abc"
-  }
+    print("abc")
+	}
 }
