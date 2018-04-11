@@ -1,3 +1,7 @@
+//~1
+//~10
+//~0
+
 package main
 
 type point struct {
@@ -6,8 +10,15 @@ type point struct {
 
 func main() {
   var a []int
-  _ = append(a, 1)
+  a = append(a, 1)
   var b []point
-  var pt point
-  _ = append(b, pt)
+  var pt struct {
+    x, y int
+  }
+  pt.x = 10
+  b = append(b, pt)
+  println(a[0])
+  println(b[0].x)
+  print(b[0].y) // Test default value
 }
+
