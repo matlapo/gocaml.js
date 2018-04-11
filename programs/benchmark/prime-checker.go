@@ -4,7 +4,7 @@ package main
 
 func confirmPrime(prime int) bool {
 	for i:=prime - 1; i > 1; i-- {
-		if float64(prime) / float64(i) ==  float64(prime / i) {
+		if prime % i == 0 {
 			return false
 		}
 	}
@@ -19,5 +19,5 @@ func main() {
 			number_of_primes++
 		}
 	}
-	print("There are ", number_of_primes, " prime numbers between 2 and ", limit)
+	println("There are", number_of_primes, "prime numbers between 2 and", limit)
 }
