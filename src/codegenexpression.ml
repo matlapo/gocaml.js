@@ -34,7 +34,7 @@ and codegen_binary_op (s: scope) (op: binary) (left: exp gen_node) (right: exp g
     | Caret -> l ^ "^" ^ r
 and codegen_bare_exp (s: scope) (p: bool) (e: exp) :string =
   let code = match e with
-    | Id ref -> mangle s p ref
+    | Id ref -> mangle_expr s ref
     | Indexing (array, index) ->
       let array_code = codegen_exp s p array in
       let index_code = codegen_exp s p index in
