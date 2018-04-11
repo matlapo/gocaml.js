@@ -1,5 +1,9 @@
 package main
 
+// Brainfuck interepreter with a brainfuck program to print the squares from 1 to 1000
+// However, golitec does not support printing runes as characters to it prints the int value of the chars.
+// Does it a 100 times because the codegen is too fast
+
 func execute(program [1000]rune) string {
   var mem [1000]int
   var ptr = 0
@@ -11,11 +15,11 @@ func execute(program [1000]rune) string {
     switch inst {
       case '>':
         ptr++
-        if (ptr > 999) {ptr = 0}
+        if (ptr > 999) { ptr = 0; }
         break;
       case '<':
         ptr--
-        if (ptr < 0) {ptr = 999}
+        if (ptr < 0) { ptr = 999; }
         break;
       case '+':
         mem[ptr]++
@@ -27,15 +31,16 @@ func execute(program [1000]rune) string {
         // Ignore
         break;
       case '.':
-        output += string(mem[ptr])
+        println(mem[ptr])
+        //output += string(mem[ptr]) DOEST NOT WORK IN golitec
         break;
       case '[':
         if mem[ptr] == 0 {
           counter := 1;
           for counter != 0 {
             pc++
-            if program[pc] == '[' { counter++ }
-            if program[pc] == ']' { counter-- }
+            if program[pc] == '[' { counter++; }
+            if program[pc] == ']' { counter--; }
           }
           pc--
         }
@@ -45,8 +50,8 @@ func execute(program [1000]rune) string {
           counter := -1;
           for counter != 0 {
             pc--
-            if program[pc] == '[' { counter++ }
-            if program[pc] == ']' { counter-- }
+            if program[pc] == '[' { counter++; }
+            if program[pc] == ']' { counter--; }
           }
         }
         break;
@@ -255,7 +260,7 @@ func main() {
   prog[190] = '-'
   prog[191] = ']'
 
-  for i:=0; i < 1000; i++ {
+  for i:=0; i < 100; i++ {
     println(execute(prog))
   }
 }
