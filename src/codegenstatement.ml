@@ -118,9 +118,10 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
     | Declaration decls -> codegen_decls scope decls
     | TypeDeclaration _ -> ""
     | If (init, condition, stmts, _else) ->
+      let init_scope = scope_of_simple_stmt init in
       let generated_if =
         "if(" ^
-          codegen_exp scope true condition ^
+          codegen_exp init_scope true condition ^
         "){" ^
           codegen_stmts stmts ^
         "}" in
