@@ -83,6 +83,13 @@ let rec find_scope_with_scopeid_opt (s: scope) (id: scopeid): scope option =
     s.parent
     |> bind (fun p -> find_scope_with_scopeid_opt p id)
 
+(* Finds the most recent parent scope (including current scope) where a certain variable is defined. *)
+let rec find_scope_of_varname_opt (s: scope) (varname: string): scope option =
+  if List.exists (fun (name, _) -> name = varname) s.bindings then Some s
+  else
+    s.parent
+    |> bind (fun p -> find_scope_of_varname_opt p varname)
+
 (** Finds the type associated with a string *)
 let rec scopedtype_of_typename_opt (s: scope) (typename: string): scopedtype option =
   (* Look for a type in the current scope *)

@@ -30,8 +30,8 @@ let mangle (scope: scope) (name: string) :string =
   if name = "_" then "_"
   else
     let scope_id = name
-      |> Typecheck.scopedtype_of_varname_opt scope
-      |> Option.map (fun (scoped_type: scopedtype) -> scoped_type.scopeid)
+      |> Typecheck.find_scope_of_varname_opt scope
+      |> Option.map (fun var_scope -> var_scope.scopeid)
       |> Option.default scope.scopeid in
     "_" ^ (string_of_int scope_id) ^ "_" ^ name
 

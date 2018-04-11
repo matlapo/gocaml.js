@@ -17,11 +17,11 @@ let codegen_decl (scope: scope) (decl:decl) :string = match decl with
     "}"
 
 let codegen (scope: scope) ((_, decls):string * decl list) :string =
-  let main = mangle scope "main" in
-  let fcts_scope = List.at scope.children 0 in
+  let first_child_scope = List.at scope.children 0 in
+  let main = mangle first_child_scope "main" in
   Runtime.prelude ^
-  (concat_map (codegen_decl scope) decls) ^
-  (match (List.exists (fun (name, _) -> name = "main") fcts_scope.functions) with
+  (concat_map (codegen_decl first_child_scope) decls) ^
+  (match (List.exists (fun (name, _) -> name = "main") first_child_scope.functions) with
     | true -> main ^ "();"
     | false -> ""
   ) ^
