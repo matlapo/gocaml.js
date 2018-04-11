@@ -19,6 +19,7 @@ let codegen_assign (s: scope) (refs: exp gen_node list) (exps: exp gen_node list
   codegen_bare_assign s (List.map unwrap_gen_node refs) exps
 
 let codegen_assign_op (s: scope) (op: assign) (ref: exp gen_node) (exp: exp gen_node) =
+  let int = (type_of_expr s ref) = Basetype BInt in
   let r = codegen_exp s false ref in
   let e = codegen_exp s true exp in
   match op with
@@ -26,7 +27,11 @@ let codegen_assign_op (s: scope) (op: assign) (ref: exp gen_node) (exp: exp gen_
     | PlusEqual -> r ^ "+=" ^ e ^ ";"
     | MinusEqual -> r ^ "-=" ^ e ^ ";"
     | TimesEqual -> r ^ "*=" ^ e ^ ";"
-    | DivEqual -> r ^ "/=" ^ e ^ ";"
+    | DivEqual -> if int then
+        (* FIXME: this may trigger r's access side effects twice instead of once *)
+        r ^ "= Math.floor(" ^ r ^ "/" ^ e ^ ");"
+      else
+        r ^ "/=" ^ e ^ ";"
     | AndEqual -> r ^ "&=" ^ e ^ ";"
     | OrEqual -> r ^ "|=" ^ e ^ ";"
     | HatEqual -> r ^ "^=" ^ e ^ ";"

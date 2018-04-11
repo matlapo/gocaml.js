@@ -43,11 +43,12 @@ let type_of_expr (scope: scope) (node: exp gen_node): gotype = match node with
         let reducedScopedType = Option.get (Typecheck.resolve_to_reducedtype_opt scope scopedType) in
         let reducedType = reducedScopedType.gotype in
         match reducedType with
-          | Defined _ -> raise (Failure "unreachable")
+          | Defined _ -> raise (Failure "Error: tried to resolve a type and got another Defined type")
           | t -> t
       )
     | resolved_type -> resolved_type)
-  | _ -> raise (Failure "unreachable")
+  | Scoped _ -> raise (Failure "Error: expected tnode, got snode")
+  | Position _ -> raise (Failure "Error: expected tnode, got position node")
 
 let mangle_fct (name: string): string = "_" ^ name
 
