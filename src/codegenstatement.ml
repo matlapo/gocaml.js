@@ -57,10 +57,8 @@ let codegen_bare_simple_stmt (s: scope) (simple_stmt: simpleStm) =
       (codegen_assign s refs exps)
     | Empty -> "/* Empty Simple Statement */;"
 
-let codegen_simple_stmt (stmt_scope: scope) (simple_stmt: simpleStm gen_node) =
-  let scope = match simple_stmt with
-    | Scoped { scope=simple_stmt_scope; value=stmt } -> simple_stmt_scope
-    | _ -> stmt_scope in
+let codegen_simple_stmt (simple_stmt: simpleStm gen_node) =
+  let scope = scope_of_simple_stmt simple_stmt in
   codegen_bare_simple_stmt scope (unwrap_gen_node simple_stmt)
 
 let codegen_decl (s: scope) (decl: (string list * gotype option * (exp gen_node) list)): string =
@@ -84,7 +82,7 @@ let with_init (s: scope) (init: simpleStm gen_node) (innerCode: string): string 
   | Empty -> innerCode
   | _ ->
     "{" ^
-      codegen_simple_stmt s init ^
+      codegen_simple_stmt init ^
       innerCode ^
     "}"
 
@@ -140,12 +138,13 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
       codegen_stmts stmts ^
       "}"
     | Loop For (init, cond, increment, stmts) ->
+      let init_scope = scope_of_simple_stmt init in
       "for(" ^
-      (codegen_simple_stmt scope init) ^
-      (cond |> Option.map_default (codegen_exp scope true) "") ^ ";" ^
-      (String.slice ~last:(-1) (codegen_simple_stmt scope increment)) ^
+        (codegen_simple_stmt init) ^
+        (cond |> Option.map_default (codegen_exp init_scope true) "") ^ ";" ^
+        (String.slice ~last:(-1) (codegen_simple_stmt increment)) ^
       "){" ^
-      (codegen_stmts stmts) ^
+        (codegen_stmts stmts) ^
       "}"
     | Return Some expr -> "return" ^ (codegen_exp scope true expr) ^ ";"
     | Return None -> "return;"
@@ -174,7 +173,7 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
             ifs_code ^
           "} while (false);"
       )
-    | Simple simple_stmt -> codegen_simple_stmt scope simple_stmt
+    | Simple simple_stmt -> codegen_simple_stmt simple_stmt
     | Break -> "break;"
     | Continue -> "continue;"
 and codegen_stmts (stmts: stmt gen_node list) :string = stmts |> List.map codegen_stmt |> concat

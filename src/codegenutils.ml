@@ -24,6 +24,10 @@ let unwrap_gen_node (node:'a gen_node) :'a = match node with
   | Typed { value=v } -> v
   | Scoped { value=v } -> v
 
+let scope_of_simple_stmt (node: simpleStm gen_node): scope = match node with
+  | Scoped { scope=scope } -> scope
+  | _ -> raise (Failure "Can't extract the scope of a simple statement. It is not an snode.")
+
 let type_of_expr (scope: scope) (node: exp gen_node): gotype = match node with
   | Typed { typ=t } -> (match t.gotype with
     | Defined typename -> (
