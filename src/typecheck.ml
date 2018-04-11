@@ -4,10 +4,15 @@ open Utils
 open Scopeprinter
 module Option = BatOption
 
-let id_undeclared id = Printf.sprintf "Variable %s is used before being declared" id
-let binary_different_types t1 t2 = Printf.sprintf "Expecting both expressions to be of type %s but got type %s and %s" t1 t1 t2
+
+let wrong_type x expected received =
+  Printf.sprintf "Error: expected type %s but received type %s at line: %d" (Scopeprinter.string_of_gotype expected) (Scopeprinter.string_of_gotype received) x
+let not_a_base_type x received = Printf.sprintf "Error: %s is not a base type line: %d" (Scopeprinter.string_of_gotype received) x
+let unknown_binding x name = Printf.sprintf "Error: %s used before being declared line: %d" name x
+let variable_redeclared x name = Printf.sprintf "Error: the name %s is already declared in the current scope line: %d" name x
 
 let already_an_error_printed = ref false
+let error (x: string) = if not !already_an_error_printed then (already_an_error_printed := true; Printf.eprintf "%s\n" x) else ()
 
 type base_types =
   | Int
@@ -291,12 +296,13 @@ let check_op_opt (s:scope) (a:scopedtype) (l: basetype list) : scopedtype option
     | None -> print_string "Error: ..."; None
   )
 
+
 (* checks if any variable name in a list is already declared in the current scope *)
-let check_vars_declared scope names =
+let check_vars_declared line_no scope names =
     let onames =
       names
       |> List.map (fun name ->
-        if List.mem_assoc name scope.bindings = true then None else Some name
+        if List.mem_assoc name scope.bindings = true then (unknown_binding line_no name |> error; None) else Some name
       )
       |> List.filter is_some in
     if List.length onames <> List.length names then true else false
@@ -683,30 +689,23 @@ let print_helper current (e: stmt node) l is_println =
     l
     |> List.map (fun x -> typecheck_exp_opt current x)
     |> List.filter is_some in
-  let basetypes_only =
-    tnodes
-    |> List.map (fun x ->
-      let typ = Option.get x in
-      resolve_to_reducedtype_opt current typ.typ
-    )
-    |> List.filter is_some
-    |> List.filter (fun x -> match (Option.get x).gotype with | Basetype _ -> true | _ -> false) in
-  if List.length l <> List.length basetypes_only then None
+  if List.length tnodes <> List.length l then None
   else
-    let tnodes = List.map Option.get tnodes in
-    let check_types =
+    let basetypes_only =
       tnodes
-      |> List.map (fun x -> match x.typ with | { gotype = Basetype s; _} -> Some s | _ -> None)
-      |> List.exists is_none in
-    let lst = List.map (fun x -> Typed x) tnodes in
-    if check_types = true then None
+      |> List.map (fun x ->
+        let typ = Option.get x in
+        resolve_to_reducedtype_opt current typ.typ
+      )
+      |> List.filter is_some
+      |> List.filter (fun x -> match (Option.get x).gotype with | Basetype _ -> true | _ -> not_a_base_type e.position.pos_lnum (Option.get x).gotype |> error; false) in
+    let not_all_base_types = List.length l <> List.length basetypes_only in
+    if not_all_base_types = true then None
     else
+      let tnodes = List.map Option.get tnodes in
+      let lst = List.map (fun x -> Typed x) tnodes in
       Some { position = e.position; scope = current; prevscope = current; value = if is_println then Println lst else Print lst }
 
-let wrong_type x expected received =
-  Printf.sprintf "Error: expected type %s but received type %s at line: %d" (Scopeprinter.string_of_gotype expected) (Scopeprinter.string_of_gotype received) x
-
-let error (x: string) = if not !already_an_error_printed then (already_an_error_printed := true; Printf.eprintf "%s\n" x) else ()
 
 let verify_return_statements (l: (stmt snode) list) expected_type =
   l
@@ -780,8 +779,10 @@ and typecheck_stm_opt current s =
         typecheck_exp_opt simple_scope oexp
         |> bind (fun typed ->
           match typed.typ with
-          | { gotype = Basetype s; _} -> if s = BBool then Typed typed |> some else None
-          | _ -> None
+          | { gotype = Basetype s; _} ->
+            if s = BBool then Typed typed |> some
+            else (wrong_type typed.position.pos_lnum (Basetype BBool) typed.typ.gotype |> error; None)
+          | _ -> wrong_type typed.position.pos_lnum (Basetype BBool) typed.typ.gotype |> error; None
         ) in
         (* Add the created simplestm's scope to the current scope list of children *)
         let current = { current with children = simple_scope::current.children } in
@@ -808,7 +809,7 @@ and typecheck_stm_opt current s =
     | Print l -> print_helper current e l false
     | Println l -> print_helper current e l true
     | Declaration l ->
-      typecheck_decl_list_opt l typecheck_var_decl_opt current
+      typecheck_decl_list_opt l (typecheck_var_decl_opt e.position.pos_lnum) current
       |> bind (fun (scope, ol) ->
           Some { position = e.position; scope = scope; prevscope = current; value = Declaration ol }
       )
@@ -998,13 +999,14 @@ and typecheck_decl_list_opt l check_func init_scope =
     )
   ) (Some (init_scope, []))
 
+
 (*
 this function takes a single Var declaration and checks if it typechecks. If a type annotation is
 also given, it makes sure that it matches the type of each expression. This function returns the same
 Var declaration but with tnodes (nodes with an extra field representing the type). Note that it assumes
 that the number of variables matches the number of expression (this is handled by weeding).
 *)
-and typecheck_var_decl_opt scope (vars, t, exps) =
+and typecheck_var_decl_opt lineno scope (vars, t, exps) =
   let otyped_exps =
     exps
     |> List.map (fun exp -> typecheck_exp_opt scope exp)
@@ -1012,8 +1014,8 @@ and typecheck_var_decl_opt scope (vars, t, exps) =
   if List.length otyped_exps <> List.length exps then None
   else
     let vars_without_underscore = List.filter (fun x -> x <> "_") vars in
-    if check_vars_declared scope vars_without_underscore then None
-    else if contains_duplicate vars_without_underscore then None
+    if check_vars_declared lineno scope vars_without_underscore then None
+    else if contains_duplicate vars_without_underscore (fun name -> variable_redeclared lineno name |> error) then  None
     else
       let typed_exps =
         otyped_exps
@@ -1072,7 +1074,7 @@ let typecheck_decl_opt scope decl =
   | Position x ->
     (match x.value with
     | Var l ->
-      typecheck_decl_list_opt l typecheck_var_decl_opt scope
+      typecheck_decl_list_opt l (typecheck_var_decl_opt x.position.pos_lnum) scope
       |> bind (fun (scope, ol) ->
           (scope, Var ol) |> some
       )

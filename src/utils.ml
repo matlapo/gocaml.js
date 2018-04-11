@@ -90,11 +90,11 @@ let get_rest_of_list (start: int) l =
   |> List.filter is_some
   |> List.map Option.get
 
-let contains_duplicate l =
+let contains_duplicate l error =
   l
   |> List.map (fun x ->
     l
-    |> List.find_all (fun name -> x = name)
+    |> List.find_all (fun name -> if x = name then (error name; true) else false)
   )
   |> List.exists (fun x -> List.length x > 1)
 
