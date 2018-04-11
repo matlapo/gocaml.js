@@ -2,6 +2,7 @@
 package main
 
 func add(a int, b int) int {
+  var c int
   return a + b
 }
 
