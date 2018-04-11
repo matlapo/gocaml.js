@@ -87,7 +87,6 @@ let typecheck input =
           print_string "OK\n";
           exit 0;
         | None ->
-          print_error lexer_buffer "Error: Type check error";
           exit 1;)
       | w::_ ->
         print_error lexer_buffer w;

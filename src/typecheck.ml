@@ -7,6 +7,8 @@ module Option = BatOption
 let id_undeclared id = Printf.sprintf "Variable %s is used before being declared" id
 let binary_different_types t1 t2 = Printf.sprintf "Expecting both expressions to be of type %s but got type %s and %s" t1 t1 t2
 
+let already_an_error_printed = ref false
+
 type base_types =
   | Int
   | Float
@@ -701,6 +703,11 @@ let print_helper current (e: stmt node) l is_println =
     else
       Some { position = e.position; scope = current; prevscope = current; value = if is_println then Println lst else Print lst }
 
+let wrong_type x expected received =
+  Printf.sprintf "Error: expected type %s but received type %s at line: %d" (Scopeprinter.string_of_gotype expected) (Scopeprinter.string_of_gotype received) x
+
+let error (x: string) = if not !already_an_error_printed then (already_an_error_printed := true; Printf.eprintf "%s\n" x) else ()
+
 let verify_return_statements (l: (stmt snode) list) expected_type =
   l
   |> List.map (fun s ->
@@ -713,7 +720,7 @@ let verify_return_statements (l: (stmt snode) list) expected_type =
         | Void -> false
         | NonVoid t ->
           (match exp with
-          | Typed e -> e.typ = t
+          | Typed e -> if e.typ = t then true else (wrong_type s.position.pos_lnum t.gotype e.typ.gotype |> error; false)
           | _ -> false)))
     | _ -> true
   )
@@ -1110,7 +1117,8 @@ let typecheck_decl_opt scope decl =
               (* Add the scope to each statement *)
               let scoped_typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
               (* Typecheck the return type. *)
-              if verify_return_statements typed_stmts scoped_return_type = true then None
+              if verify_return_statements typed_stmts scoped_return_type = true
+              then None
               else
                 let scope =
                   { scope with
