@@ -921,15 +921,16 @@ and loop_helper e scope loop =
   | For (init, oexp, inc, stmts) ->
     typecheck_simple_opt scope init
     |> bind (fun init ->
-      let scope = init.scope in
+      let short_scope = init.scope in
       let otyped_exp =
         oexp
         |> bind (fun exp ->
-          typecheck_exp_opt scope exp
+          typecheck_exp_opt short_scope exp
         ) in
-      typecheck_simple_opt scope inc
+      typecheck_simple_opt short_scope inc
       |> bind (fun inc ->
-        typecheck_stm_list_opt stmts scope
+        let body_scope = new_scope short_scope in
+        typecheck_stm_list_opt stmts body_scope
         |> bind (fun (typed_stmt, new_scope) ->
           let stmt_gen_nodes = List.map (fun x -> Scoped x) typed_stmt in
           let init_gen = Scoped init in
