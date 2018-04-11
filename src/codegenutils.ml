@@ -24,9 +24,12 @@ let unwrap_gen_node (node:'a gen_node) :'a = match node with
   | Typed { value=v } -> v
   | Scoped { value=v } -> v
 
-let scope_of_simple_stmt (node: simpleStm gen_node): scope = match node with
+let scope_of_snode (node: 'a gen_node): scope = match node with
   | Scoped { scope=scope } -> scope
   | _ -> raise (Failure "Can't extract the scope of a simple statement. It is not an snode.")
+
+let scope_of_simple_stmt: simpleStm gen_node -> scope = scope_of_snode
+let scope_of_decl: decl gen_node -> scope = scope_of_snode
 
 let type_of_expr (scope: scope) (node: exp gen_node): gotype = match node with
   | Typed { typ=t } -> (match t.gotype with
@@ -41,14 +44,29 @@ let type_of_expr (scope: scope) (node: exp gen_node): gotype = match node with
     | resolved_type -> resolved_type)
   | _ -> raise (Failure "unreachable")
 
-let mangle (scope: scope) (name: string) :string =
-  if name = "_" then "_"
+let mangle_decl (scope: scope) (name: string) :string =
+  if name = "_" then
+    "_"
+  else
+    "_" ^ (string_of_int scope.scopeid) ^ "_" ^ name
+
+let mangle_expr (scope: scope) (name: string) :string =
+  if name = "_" then
+    "_"
   else
     let scope_id = name
       |> Typecheck.find_scope_of_varname_opt scope
       |> Option.map (fun var_scope -> var_scope.scopeid)
-      |> Option.default scope.scopeid in
+      |> Option.default scope.scopeid (* TODO: find out why this is necessary *)
+      (* |> (fun opt -> Option.get_exn opt (Failure "Error: Couldn't mangle identifier because it wasn't found in the symbol table.")) *)
+    in
     "_" ^ (string_of_int scope_id) ^ "_" ^ name
+
+let mangle (scope: scope) (use_in_expr: bool) (name: string) :string =
+  if use_in_expr then
+    mangle_expr scope name
+  else
+    mangle_decl scope name
 
 let zero_value_of_basetype (t: basetype): string = match t with
   | BInt -> "0"

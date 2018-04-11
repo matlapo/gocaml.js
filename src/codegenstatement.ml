@@ -51,7 +51,7 @@ let codegen_bare_simple_stmt (s: scope) (simple_stmt: simpleStm) =
             | _ -> None
           )
         |> List.filter (fun ref -> not (List.exists (fun (varname, _) -> ref = varname) s.bindings))
-        |> List.map (fun name -> "let " ^ (mangle s name) ^ ";")
+        |> List.map (fun name -> "let " ^ (mangle_decl s name) ^ ";")
         |> concat
       ) ^
       (codegen_assign s refs exps)
@@ -69,7 +69,7 @@ let codegen_decl (s: scope) (decl: (string list * gotype option * (exp gen_node)
       List.make length (zero_value_of_type s gotype)
     | (_, exps) -> List.map (codegen_exp s true) exps in
   "let [" ^
-  (names |> List.map (mangle s) |> concat_comma) ^
+  (names |> List.map (mangle_decl s) |> concat_comma) ^
   "]=[" ^
   (rhs |> concat_comma) ^
   "];"

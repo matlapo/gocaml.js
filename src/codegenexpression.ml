@@ -36,7 +36,7 @@ and codegen_binary_op (s: scope) (op: binary) (left: exp gen_node) (right: exp g
     | Caret -> l ^ "^" ^ r
 and codegen_bare_exp (s: scope) (p: bool) (e: exp) :string =
   let code = match e with
-    | Id ref -> mangle s ref
+    | Id ref -> mangle s p ref
     | Indexing (array, index) ->
       let array_code = codegen_exp s p array in
       let index_code = codegen_exp s p index in
@@ -59,12 +59,12 @@ and codegen_bare_exp (s: scope) (p: bool) (e: exp) :string =
     | Rune r -> r
     | BinaryOp (op, (left, right)) -> codegen_binary_op s op left right
     | Unaryexp (op, exp) -> codegen_unary_op s op exp
-    | FuncCall (name, params) -> (mangle s name) ^ "(" ^ (codegen_exps s p params) ^ ")"
+    | FuncCall (name, params) -> (mangle s p name) ^ "(" ^ (codegen_exps s p params) ^ ")"
     | Append (slice_expr, elt_expr) ->
       "append(" ^
-      (codegen_exp s p slice_expr) ^
-      "," ^
-      (codegen_exp s p elt_expr) ^
+        (codegen_exp s p slice_expr) ^
+        "," ^
+        (codegen_exp s p elt_expr) ^
       ")"
   in
   if p then (paren code) else code
