@@ -12,9 +12,7 @@ func main() {
   var a []int
   a = append(a, 1)
   var b []point
-  var pt struct {
-    x, y int
-  }
+  var pt point
   pt.x = 10
   b = append(b, pt)
   println(a[0])
