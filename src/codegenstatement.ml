@@ -50,7 +50,7 @@ let codegen_bare_simple_stmt (s: scope) (simple_stmt: simpleStm) =
             | Id s -> Some s
             | _ -> None
           )
-        |> List.filter (fun ref -> not (List.exists (fun (varname, _) -> ref = varname) s.bindings))
+        |> List.filter (fun name -> not (List.exists (fun (binding_name, _) -> binding_name = name) s.bindings))
         |> List.map (fun name -> "let " ^ (mangle_decl s name) ^ ";")
         |> concat
       ) ^
@@ -139,13 +139,15 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
       "}"
     | Loop For (init, cond, increment, stmts) ->
       let init_scope = scope_of_simple_stmt init in
-      "for(" ^
-        (codegen_simple_stmt init) ^
-        (cond |> Option.map_default (codegen_exp init_scope true) "") ^ ";" ^
-        (String.slice ~last:(-1) (codegen_simple_stmt increment)) ^
-      "){" ^
-        (codegen_stmts stmts) ^
-      "}"
+      let for_code = 
+        "for(" ^
+          ";" ^
+          (cond |> Option.map_default (codegen_exp init_scope true) "") ^ ";" ^
+          (String.slice ~last:(-1) (codegen_simple_stmt increment)) ^
+        "){" ^
+          (codegen_stmts stmts) ^
+        "}" in
+      with_init scope init for_code
     | Return Some expr -> "return" ^ (codegen_exp scope true expr) ^ ";"
     | Return None -> "return;"
     | Switch (init, target, cases) ->
