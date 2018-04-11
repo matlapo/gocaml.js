@@ -63,7 +63,18 @@ and codegen_bare_exp (s: scope) (p: bool) (e: exp) :string =
     | Rune r -> r
     | BinaryOp (op, (left, right)) -> codegen_binary_op s op left right
     | Unaryexp (op, exp) -> codegen_unary_op s op exp
-    | FuncCall (name, params) -> (mangle_fct name) ^ "(" ^ (codegen_exps s p params) ^ ")"
+    | FuncCall (name, params) ->
+      (mangle_fct name) ^
+      "(" ^ (
+        params
+          |> List.map (fun expr -> match type_of_expr s expr with
+              | Array _ -> "(" ^ codegen_exp s false expr ^ ").slice()" (* Copy arrays instead of passing them by reference *)
+              | _ -> codegen_exp s false expr
+            )
+          |> concat_comma
+        ) ^
+        (codegen_exps s p params) ^
+      ")"
     | Append (slice_expr, elt_expr) ->
       "append(" ^
         (codegen_exp s p slice_expr) ^

@@ -590,19 +590,19 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
           let typed_assignments =
             typecheck_lhs
             |> List.map (fun (id, exp) -> (Option.get id, exp))
-            |> List.map (fun (id, exp) -> (id.typ, exp.typ)) in
+            |> List.map (fun (id, exp) -> (id, exp)) in
           let invalid_assignment =
             typed_assignments
             |> List.exists (fun (id, exp) ->
-              match id.gotype with
+              match id.typ.gotype with
               | Null -> false
               | _ ->
-                are_types_equal id exp |> not
+                are_types_equal id.typ exp.typ |> not
                 || (match typ with
                   | None -> false
                   | Some types ->
-                    (List.exists (fun x -> x = id.gotype) types
-                    && List.exists (fun x -> x = exp.gotype) types) |> not
+                    (List.exists (fun x -> x = id.typ.gotype) types
+                    && List.exists (fun x -> x = exp.typ.gotype) types) |> not
                 )
             ) in
           if invalid_assignment then None
@@ -610,10 +610,10 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
             let kinds = List.map extract_position kinds in
             let exps = List.map extract_position exps in
             let gen_node_kinds =
-              List.map2 (fun (id, _) old -> tnode_of_node old id) typed_assignments kinds
+              List.map2 (fun (id, _) old -> tnode_of_node_and_value old id.typ id.value) typed_assignments kinds
               |> List.map (fun x -> Typed x) in
             let gen_node_exps =
-              List.map2 (fun (_, exp) old -> tnode_of_node old exp) typed_assignments exps
+              List.map2 (fun (_, exp) old -> tnode_of_node_and_value old exp.typ exp.value) typed_assignments exps
               |> List.map (fun x -> Typed x) in
             { position = e.position; scope = current; prevscope = current; value = Assign (assign_type, (gen_node_kinds, gen_node_exps)) } |> some
     | Empty -> { position = e.position; scope = current; prevscope = current; value = Empty } |> some

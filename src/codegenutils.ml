@@ -1,4 +1,5 @@
 open Batteries
+open Lexing
 open Ast
 
 let map_filter (f: 'a -> 'b option) (l: 'a list) :'b list =
@@ -48,7 +49,7 @@ let type_of_expr (scope: scope) (node: exp gen_node): gotype = match node with
       )
     | resolved_type -> resolved_type)
   | Scoped _ -> raise (Failure "Error: expected tnode, got snode")
-  | Position _ -> raise (Failure "Error: expected tnode, got position node")
+  | Position { position={ pos_lnum=l } } -> raise (Failure ("Error: expected tnode, got position node on line " ^ (string_of_int l)))
 
 let mangle_fct (name: string): string = "_" ^ name
 
