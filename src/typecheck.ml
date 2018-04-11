@@ -411,10 +411,11 @@ let rec typecheck_exp_opt scope e =
           typecheck_exp_list_opt scope exps
           |> bind (fun typed_exps ->
             let scoped_exps = List.map (fun { typ = x; _ } -> x) typed_exps in
+            let typed_exps_gen = List.map (fun e -> Typed e) typed_exps in
             if check_both_list_same_exps_types scoped_exps signature.arguments then
               match signature.returnt with
-              | Void -> tnode_of_node e { gotype = Null; scopeid = scope.scopeid } |> some
-              | NonVoid t -> tnode_of_node e t |> some
+              | Void -> tnode_of_node_and_value e { gotype = Null; scopeid = scope.scopeid } (FuncCall(name, typed_exps_gen)) |> some
+              | NonVoid t -> tnode_of_node_and_value e t (FuncCall(name, typed_exps_gen)) |> some
             else
               None
           )
@@ -474,7 +475,7 @@ and check_if_type_cast (e: exp node) (scope: scope) (name: string) (exps: exp ge
             | (Basetype a, Basetype b) ->
               (* if both types are the same basetype OR both are numeric OR type(expr) where type resolves to string and expr to int or rune *)
               if a = b || (is_numeric a && is_numeric b) || (a = BString && (b = BInt || b = BRune)) then
-                tnode_of_node e scoped_type |> some
+                tnode_of_node_and_value e scoped_type tnode.value |> some
               else None
             | _ -> None
           )
@@ -589,19 +590,19 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
           let typed_assignments =
             typecheck_lhs
             |> List.map (fun (id, exp) -> (Option.get id, exp))
-            |> List.map (fun (id, exp) -> (id.typ, exp.typ)) in
+            |> List.map (fun (id, exp) -> (id, exp)) in
           let invalid_assignment =
             typed_assignments
             |> List.exists (fun (id, exp) ->
-              match id.gotype with
+              match id.typ.gotype with
               | Null -> false
               | _ ->
-                are_types_equal id exp |> not
+                are_types_equal id.typ exp.typ |> not
                 || (match typ with
                   | None -> false
                   | Some types ->
-                    (List.exists (fun x -> x = id.gotype) types
-                    && List.exists (fun x -> x = exp.gotype) types) |> not
+                    (List.exists (fun x -> x = id.typ.gotype) types
+                    && List.exists (fun x -> x = exp.typ.gotype) types) |> not
                 )
             ) in
           if invalid_assignment then None
@@ -609,10 +610,10 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
             let kinds = List.map extract_position kinds in
             let exps = List.map extract_position exps in
             let gen_node_kinds =
-              List.map2 (fun (id, _) old -> tnode_of_node old id) typed_assignments kinds
+              List.map2 (fun (id, _) old -> tnode_of_node_and_value old id.typ id.value) typed_assignments kinds
               |> List.map (fun x -> Typed x) in
             let gen_node_exps =
-              List.map2 (fun (_, exp) old -> tnode_of_node old exp) typed_assignments exps
+              List.map2 (fun (_, exp) old -> tnode_of_node_and_value old exp.typ exp.value) typed_assignments exps
               |> List.map (fun x -> Typed x) in
             { position = e.position; scope = current; prevscope = current; value = Assign (assign_type, (gen_node_kinds, gen_node_exps)) } |> some
     | Empty -> { position = e.position; scope = current; prevscope = current; value = Empty } |> some
