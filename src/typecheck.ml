@@ -650,7 +650,7 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
                 (* If the kind is well typed, check the type equality *)
                 |> bind (fun k ->
                   if (are_types_equal k.typ typed_exp.typ) then
-                    Some (scope, (Typed typed_exp)::l)
+                    Some (scope, List.append l [(Typed typed_exp)])
                   else
                     None
                 )
