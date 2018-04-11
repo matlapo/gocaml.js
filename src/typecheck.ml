@@ -982,8 +982,9 @@ and typecheck_var_decl_opt scope (vars, t, exps) =
     |> List.filter is_some in
   if List.length otyped_exps <> List.length exps then None
   else
-    if check_vars_declared scope vars then None
-    else if contains_duplicate vars then None
+    let vars_without_underscore = List.filter (fun x -> x <> "_") vars in
+    if check_vars_declared scope vars_without_underscore then None
+    else if contains_duplicate vars_without_underscore then None
     else
       let typed_exps =
         otyped_exps
@@ -995,8 +996,12 @@ and typecheck_var_decl_opt scope (vars, t, exps) =
           |> List.map (fun x -> Typed x) in
         let new_bindings =
           typed_exps
-          |> List.map2 (fun name node -> (name, node.typ)) vars in
-        let new_scope = { empty_scope with bindings = new_bindings } in
+          |> List.map2 (fun name node -> if name <> "_" then (name, node.typ) |> some else None) vars in
+        let new_bindings_wihout_underscores =
+          new_bindings
+          |> List.filter is_some
+          |> List.map Option.get in
+        let new_scope = { empty_scope with bindings = new_bindings_wihout_underscores } in
         ((vars, t, exps), new_scope) |> some
       | Some t ->
         scopedtype_of_gotype scope t
@@ -1010,8 +1015,12 @@ and typecheck_var_decl_opt scope (vars, t, exps) =
             (* Get back the type that wasn't reduced (needed for the binding). *)
             let new_bindings =
               vars
-              |> List.map (fun name -> (name, scopedt)) in
-            let new_scope = { empty_scope with bindings = new_bindings } in
+              |> List.map (fun name -> if name <> "_" then (name, scopedt) |> some else None) in
+            let new_bindings_wihout_underscores =
+              new_bindings
+              |> List.filter is_some
+              |> List.map Option.get in
+            let new_scope = { empty_scope with bindings = new_bindings_wihout_underscores } in
             ((vars, Some t, exps), new_scope) |> some
         )
 
