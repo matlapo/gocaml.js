@@ -17,6 +17,5 @@ func main() {
   b = append(b, pt)
   println(a[0])
   println(b[0].x)
-  print(b[0].y) // Test default value
+  println(b[0].y) // Test default value
 }
-
