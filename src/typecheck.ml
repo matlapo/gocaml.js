@@ -622,7 +622,7 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
     | ExpStatement exp ->
       typecheck_exp_opt current exp
       |> bind (fun x ->
-        { position = e.position; scope = current; prevscope = current; value = ExpStatement exp } |> some
+        { position = e.position; scope = current; prevscope = current; value = ExpStatement (Typed x) } |> some
       )
     | ShortDeclaration (kinds, exps) ->
       (* Match the each kind with its associated exp *)
