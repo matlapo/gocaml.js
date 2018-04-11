@@ -1058,27 +1058,27 @@ let typecheck_decl_opt scope decl =
           let arguments_scope =
             List.map2 (fun (name, _) typ -> (name, typ)) args typed_args
             |> List.filter (fun (name, _) -> name <> "_") in
-          let initial_function_scope = { empty_function_scope with bindings = arguments_scope } in
-          typecheck_stm_list_opt stmts initial_function_scope
-          |> bind (fun (typed_stmts, new_scope) ->
-            (* Add the scope to each statement *)
-            let scoped_typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
-            (* Typecheck the return type. *)
-            (match return_type with
-            | Void -> Some Void
-            | NonVoid t -> scopedtype_of_gotype scope t |> bind (fun t -> NonVoid t |> some))
-            |> bind (fun scoped_return_type ->
+          (match return_type with
+          | Void -> Some Void
+          | NonVoid t -> scopedtype_of_gotype scope t |> bind (fun t -> NonVoid t |> some))
+          |> bind (fun scoped_return_type ->
+            let signature = { arguments = typed_args; returnt = scoped_return_type } in
+            let function_binding = (name, signature) in
+            let initial_function_scope = { empty_function_scope with bindings = arguments_scope; functions = [function_binding] } in
+            typecheck_stm_list_opt stmts initial_function_scope
+            |> bind (fun (typed_stmts, new_scope) ->
+              (* Add the scope to each statement *)
+              let scoped_typed_stmts = List.map (fun x -> Scoped x) typed_stmts in
+              (* Typecheck the return type. *)
               if verify_return_statements typed_stmts scoped_return_type = true then None
               else
-                let signature = { arguments = typed_args; returnt = scoped_return_type } in
-                let function_binding = (name, signature) in
                 let scope =
                   { scope with
                     children = List.append scope.children [new_scope];
                     functions = List.append scope.functions [function_binding]
                   } in
                 (scope, Fct (name, args, return_type, scoped_typed_stmts)) |> some
-            )
+              )
           )
         )
     )
