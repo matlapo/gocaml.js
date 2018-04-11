@@ -920,7 +920,7 @@ and loop_helper e scope loop =
   | For (init, oexp, inc, stmts) ->
     typecheck_simple_opt scope init
     |> bind (fun init ->
-      let scope = { scope with bindings = init.scope.bindings } in
+      let scope = init.scope in
       let otyped_exp =
         oexp
         |> bind (fun exp ->
