@@ -10,6 +10,7 @@ let wrong_type x expected received =
 let not_a_base_type x received = Printf.sprintf "Error: %s is not a base type line: %d" (Scopeprinter.string_of_gotype received) x
 let unknown_binding x name = Printf.sprintf "Error: %s used before being declared line: %d" name x
 let variable_redeclared x name = Printf.sprintf "Error: the name %s is already declared in the current scope line: %d" name x
+let variables_not_all_same_type x expected = Printf.sprintf "Error: not all variables are of type %s in this declaration at line: %d" (Scopeprinter.string_of_gotype expected) x
 
 let already_an_error_printed = ref false
 let error (x: string) = if not !already_an_error_printed then (already_an_error_printed := true; Printf.eprintf "%s\n" x) else ()
@@ -1015,7 +1016,7 @@ and typecheck_var_decl_opt lineno scope (vars, t, exps) =
   else
     let vars_without_underscore = List.filter (fun x -> x <> "_") vars in
     if check_vars_declared lineno scope vars_without_underscore then None
-    else if contains_duplicate vars_without_underscore (fun name -> variable_redeclared lineno name |> error) then  None
+    else if contains_duplicate vars_without_underscore (fun name -> variable_redeclared lineno name |> error) then None
     else
       let typed_exps =
         otyped_exps
@@ -1044,7 +1045,7 @@ and typecheck_var_decl_opt lineno scope (vars, t, exps) =
             typed_exps
             |> List.filter (fun x -> x.typ = scopedt)
             |> List.map (fun x -> Typed x) in
-          if List.length exps_with_annotation <> List.length typed_exps then None
+          if List.length exps_with_annotation <> List.length typed_exps then (variables_not_all_same_type lineno scopedt.gotype |> error; None)
           else
             (* Get back the type that wasn't reduced (needed for the binding). *)
             let new_bindings =
