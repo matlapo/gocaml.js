@@ -675,7 +675,15 @@ let print_helper current (e: stmt node) l is_println =
     l
     |> List.map (fun x -> typecheck_exp_opt current x)
     |> List.filter is_some in
-  if List.length l <> List.length tnodes then None
+  let basetypes_only =
+    tnodes
+    |> List.map (fun x ->
+      let typ = Option.get x in
+      resolve_to_reducedtype_opt current typ.typ
+    )
+    |> List.filter is_some
+    |> List.filter (fun x -> match (Option.get x).gotype with | Basetype _ -> true | _ -> false) in
+  if List.length l <> List.length basetypes_only then None
   else
     let tnodes = List.map Option.get tnodes in
     let check_types =
