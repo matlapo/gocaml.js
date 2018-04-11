@@ -24,6 +24,14 @@ let map_default f o =
   |> Option.map f
   |> Option.default []
 
+let contains_duplicate_struct l =
+  l
+  |> List.map (fun x ->
+    l
+    |> List.find_all (fun name -> if x <> "_" then x = name else false)
+  )
+  |> List.exists (fun x -> List.length x > 1)
+
 let contains_duplicate l =
   l
   |> List.map (fun x ->
@@ -89,7 +97,7 @@ let duplicate_member_struct line t =
     let all_strings =
       l
       |> List.map (fun (s, _) -> s) in
-    if contains_duplicate all_strings then [duplicate_member line] else []
+    if contains_duplicate_struct all_strings then [duplicate_member line] else []
   | _ -> []
 
 let type_redeclaration_check line t name =
