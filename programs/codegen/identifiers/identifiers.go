@@ -3,7 +3,7 @@
 package main
 
 func f(_ int, a string) {
-  print(a)
+  println(a)
 }
 
 func main() {
