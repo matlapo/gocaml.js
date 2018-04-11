@@ -10,13 +10,19 @@ let rec codegen_unary_op (s: scope) (op: unary) (exp: exp gen_node) :string =
     | UPlus -> "+" ^ e
     | UCaret -> "-1" ^ "^" ^ e
 and codegen_binary_op (s: scope) (op: binary) (left: exp gen_node) (right: exp gen_node) :string =
+  let l_type = type_of_expr s left in
+  let r_type = type_of_expr s right in
+  let int = l_type = Basetype BInt && r_type = Basetype BInt in
   let l = codegen_exp s true left in
   let r = codegen_exp s true right in
   match op with
     | Plus -> l ^ "+" ^ r
     | Minus -> l ^ "-" ^ r
     | Times -> l ^ "*" ^ r
-    | Div -> l ^ "/" ^ r
+    | Div -> if int then
+        "Math.floor(" ^ l ^ "/" ^ r ^ ")"
+      else
+        l ^ "/" ^ r
     | Mod -> l ^ "%" ^ r
     | Equals -> l ^ "==" ^ r
     | NotEquals -> l ^ "!=" ^ r
