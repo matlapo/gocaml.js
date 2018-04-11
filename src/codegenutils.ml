@@ -79,7 +79,7 @@ let zero_value_of_basetype (t: basetype): string = match t with
   | BFloat64 -> "0.0"
   | BString -> "\"\""
   | BRune -> "0"
-  | BBool -> "0.0"
+  | BBool -> "_0_false"
 
 let rec zero_value_of_type (s: scope) (t: gotype): string =
   match t with
