@@ -166,10 +166,10 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
         )
         |> String.join "else " in
           with_init scope init (
-          "{" ^
+          "do {" ^
             "let target =" ^ target_code ^ ";" ^
             ifs_code ^
-          "}"
+          "} while (false);"
       )
     | Simple simple_stmt -> codegen_simple_stmt scope simple_stmt
     | Break -> "break;"
