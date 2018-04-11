@@ -24,12 +24,11 @@ func bubble(array [20000]int) [20000]int {
 }
 
 func main() {
-  var i = 0
-  for ; i < arrayCount; i++ {
+  for i := 0; i < arrayCount; i++ {
     array[arrayCount - 1 - i] = i
   }
 	var t = bubble(array)
-  for i = arrayCount-10; i < arrayCount; i++ {
+  for i := arrayCount-10; i < arrayCount; i++ {
     print(t[i], ",")
   }
 }

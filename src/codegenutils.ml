@@ -24,6 +24,12 @@ let unwrap_gen_node (node:'a gen_node) :'a = match node with
   | Typed { value=v } -> v
   | Scoped { value=v } -> v
 
+let prevscope_of_snode (node: 'a gen_node): scope = match node with
+  | Scoped { prevscope=scope } -> scope
+  | _ -> raise (Failure "Can't extract the prevscope of a simple statement. It is not an snode.")
+
+let prevscope_of_simple_stmt: simpleStm gen_node -> scope = prevscope_of_snode
+
 let scope_of_snode (node: 'a gen_node): scope = match node with
   | Scoped { scope=scope } -> scope
   | _ -> raise (Failure "Can't extract the scope of a simple statement. It is not an snode.")
@@ -58,11 +64,10 @@ let mangle_expr (scope: scope) (name: string) :string =
   else
     let scope_id = name
       |> Typecheck.find_scope_of_varname_opt scope
-      |> Option.map (fun var_scope -> var_scope.scopeid)
-      |> Option.default scope.scopeid (* TODO: find out why this is necessary *)
-      (* |> (fun opt -> Option.get_exn opt (Failure "Error: Couldn't mangle identifier because it wasn't found in the symbol table.")) *)
+      |> Option.map (fun var_scope -> string_of_int var_scope.scopeid)
+      |> Option.default "unknown"
     in
-    "_" ^ (string_of_int scope_id) ^ "_" ^ name
+    "_" ^ scope_id ^ "_" ^ name
 
 let mangle (scope: scope) (use_in_expr: bool) (name: string) :string =
   if use_in_expr then

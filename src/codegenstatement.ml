@@ -50,7 +50,7 @@ let codegen_bare_simple_stmt (s: scope) (simple_stmt: simpleStm) =
             | Id s -> Some s
             | _ -> None
           )
-        |> List.filter (fun ref -> not (List.exists (fun (varname, _) -> ref = varname) s.bindings))
+        |> List.filter (fun name -> not (List.exists (fun (binding_name, _) -> binding_name = name) s.bindings))
         |> List.map (fun name -> "let " ^ (mangle_decl s name) ^ ";")
         |> concat
       ) ^
@@ -58,7 +58,7 @@ let codegen_bare_simple_stmt (s: scope) (simple_stmt: simpleStm) =
     | Empty -> "/* Empty Simple Statement */;"
 
 let codegen_simple_stmt (simple_stmt: simpleStm gen_node) =
-  let scope = scope_of_simple_stmt simple_stmt in
+  let scope = prevscope_of_simple_stmt simple_stmt in
   codegen_bare_simple_stmt scope (unwrap_gen_node simple_stmt)
 
 let codegen_decl (s: scope) (decl: (string list * gotype option * (exp gen_node) list)): string =
@@ -106,7 +106,7 @@ let rec fold_cases (cases: case list) = match cases with
 
 let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
   let (scope, stmt) = match stmt_gen_node with
-    | Scoped { scope=scope; value=stmt } -> (scope, stmt)
+    | Scoped { prevscope=scope; value=stmt } -> (scope, stmt)
     | _ -> raise (Failure "unreachable") in
   match stmt with
     | Block stmts ->
@@ -118,9 +118,10 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
     | Declaration decls -> codegen_decls scope decls
     | TypeDeclaration _ -> ""
     | If (init, condition, stmts, _else) ->
+      let init_scope = scope_of_simple_stmt init in
       let generated_if =
         "if(" ^
-          codegen_exp scope true condition ^
+          codegen_exp init_scope true condition ^
         "){" ^
           codegen_stmts stmts ^
         "}" in
@@ -139,16 +140,19 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
       "}"
     | Loop For (init, cond, increment, stmts) ->
       let init_scope = scope_of_simple_stmt init in
-      "for(" ^
-        (codegen_simple_stmt init) ^
-        (cond |> Option.map_default (codegen_exp init_scope true) "") ^ ";" ^
-        (String.slice ~last:(-1) (codegen_simple_stmt increment)) ^
-      "){" ^
-        (codegen_stmts stmts) ^
-      "}"
+      let for_code = 
+        "for(" ^
+          ";" ^
+          (cond |> Option.map_default (codegen_exp init_scope true) "") ^ ";" ^
+          (String.slice ~last:(-1) (codegen_simple_stmt increment)) ^
+        "){" ^
+          (codegen_stmts stmts) ^
+        "}" in
+      with_init scope init for_code
     | Return Some expr -> "return" ^ (codegen_exp scope true expr) ^ ";"
     | Return None -> "return;"
     | Switch (init, target, cases) ->
+      let init_scope = scope_of_simple_stmt init in
       let target_code = Option.map_default (codegen_exp scope true) "true" target in
       let ifs_code = cases
         |> fold_cases
@@ -156,7 +160,7 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
           fun (exprs_opt, stmts) ->
             let condition_code = match exprs_opt with
               | Some exprs -> exprs
-                |> List.map (codegen_exp scope true)
+                |> List.map (codegen_exp init_scope true)
                 |> List.map (fun expr_code -> expr_code ^ "=== target")
                 |> String.join "||"
               | None -> "true" in
