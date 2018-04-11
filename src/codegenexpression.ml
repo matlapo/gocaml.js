@@ -4,13 +4,11 @@ open Codegenutils
 
 let rec codegen_unary_op (s: scope) (op: unary) (exp: exp gen_node) :string =
   let e = codegen_exp s true exp in
-  let code = match op with
+  match op with
     | Not -> "!" ^ e
     | UMinus -> "-" ^ e
     | UPlus -> "+" ^ e
     | UCaret -> "-1" ^ "^" ^ e
-  in
-  paren code
 and codegen_binary_op (s: scope) (op: binary) (left: exp gen_node) (right: exp gen_node) :string =
   let l = codegen_exp s true left in
   let r = codegen_exp s true right in
