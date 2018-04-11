@@ -45,7 +45,7 @@ let codegen_bare_simple_stmt (s: scope) (simple_stmt: simpleStm) =
             | Id s -> Some s
             | _ -> None
           )
-        (* TODO: Filter to exclude predeclared identifiers *)
+        |> List.filter (fun ref -> not (List.exists (fun (varname, _) -> ref = varname) s.bindings))
         |> List.map (fun name -> "let " ^ (mangle s name) ^ ";")
         |> concat
       ) ^
