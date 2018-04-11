@@ -4,11 +4,10 @@ package main
 // However, golitec does not support printing runes as characters to it prints the int value of the chars.
 // Does it a 100 times because the codegen is too fast
 
-func execute(program [1000]rune) string {
+func execute(program [1000]rune) {
   var mem [1000]int
   var ptr = 0
   var pc = 0
-  var output = ""
   stop := false
   for !stop {
     var inst = program[pc]
@@ -32,7 +31,6 @@ func execute(program [1000]rune) string {
         break;
       case '.':
         println(mem[ptr])
-        //output += string(mem[ptr]) DOEST NOT WORK IN golitec
         break;
       case '[':
         if mem[ptr] == 0 {
@@ -61,7 +59,6 @@ func execute(program [1000]rune) string {
     }
     pc++
   }
-  return output
 }
 
 func main() {
@@ -261,6 +258,6 @@ func main() {
   prog[191] = ']'
 
   for i:=0; i < 100; i++ {
-    println(execute(prog))
+    execute(prog)
   }
 }
