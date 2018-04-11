@@ -27,11 +27,13 @@ let unwrap_gen_node (node:'a gen_node) :'a = match node with
 let paren (code: string) :string = "(" ^ code ^ ")"
 
 let mangle (scope: scope) (name: string) :string =
-  let scope_id = name
-    |> Typecheck.scopedtype_of_varname_opt scope
-    |> Option.map (fun (scoped_type: scopedtype) -> scoped_type.scopeid)
-    |> Option.default scope.scopeid in
-  "_" ^ (string_of_int scope_id) ^ "_" ^ name
+  if name = "_" then "_"
+  else
+    let scope_id = name
+      |> Typecheck.scopedtype_of_varname_opt scope
+      |> Option.map (fun (scoped_type: scopedtype) -> scoped_type.scopeid)
+      |> Option.default scope.scopeid in
+    "_" ^ (string_of_int scope_id) ^ "_" ^ name
 
 let zero_value_of_basetype (t: basetype): string = match t with
   | BInt -> "0"
