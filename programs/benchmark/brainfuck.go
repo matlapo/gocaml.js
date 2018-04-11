@@ -1,13 +1,44 @@
 package main
 
 // Brainfuck interepreter with a brainfuck program to print the squares from 1 to 1000
-// However, golitec does not support printing runes as characters to it prints the int value of the chars.
 // Does it a 100 times because the codegen is too fast
 
-func execute(program [1000]rune) {
+func intToChar(char int) string {
+  var out string
+  switch char {
+  case 48:
+    out = "0"
+  case 49:
+    out = "1"
+  case 50:
+    out = "2"
+  case 51:
+    out = "3"
+  case 52:
+    out = "4"
+  case 53:
+    out = "5"
+  case 54:
+    out = "6"
+  case 55:
+    out = "7"
+  case 56:
+    out = "8"
+  case 57:
+    out = "9"
+  case 10:
+    out = "\n"
+  default:
+    out = " "
+  }
+  return out
+}
+
+func execute(program [1000]rune) string {
   var mem [1000]int
   var ptr = 0
   var pc = 0
+  var out = ""
   stop := false
   for !stop {
     var inst = program[pc]
@@ -15,23 +46,17 @@ func execute(program [1000]rune) {
       case '>':
         ptr++
         if (ptr > 999) { ptr = 0; }
-        break;
       case '<':
         ptr--
         if (ptr < 0) { ptr = 999; }
-        break;
       case '+':
         mem[ptr]++
-        break;
       case '-':
         mem[ptr]--
-        break;
       case ',':
         // Ignore
-        break;
       case '.':
-        println(mem[ptr])
-        break;
+        out += intToChar(mem[ptr])
       case '[':
         if mem[ptr] == 0 {
           counter := 1;
@@ -42,7 +67,6 @@ func execute(program [1000]rune) {
           }
           pc--
         }
-        break;
       case ']':
         if mem[ptr] != 0 {
           counter := -1;
@@ -52,13 +76,12 @@ func execute(program [1000]rune) {
             if program[pc] == ']' { counter--; }
           }
         }
-        break;
       default:
         stop = true
-        break;
     }
     pc++
   }
+  return out
 }
 
 func main() {
@@ -257,7 +280,8 @@ func main() {
   prog[190] = '-'
   prog[191] = ']'
 
-  for i:=0; i < 100; i++ {
-    execute(prog)
+  for i:=0; i < 300; i++ {
+    _ = execute(prog)
   }
+  print(execute(prog))
 }
