@@ -1026,6 +1026,9 @@ and typecheck_var_decl_opt scope (vars, t, exps) =
         let new_scope = { empty_scope with bindings = new_bindings_wihout_underscores } in
         ((vars, t, exps), new_scope) |> some
       | Some t ->
+        let exps =
+          typed_exps
+          |> List.map (fun x -> Typed x) in
         scopedtype_of_gotype scope t
         |> bind (fun scopedt ->
           let exps_with_annotation =
