@@ -64,11 +64,10 @@ let mangle_expr (scope: scope) (name: string) :string =
   else
     let scope_id = name
       |> Typecheck.find_scope_of_varname_opt scope
-      |> Option.map (fun var_scope -> var_scope.scopeid)
-      |> Option.default scope.scopeid (* TODO: find out why this is necessary *)
-      (* |> (fun opt -> Option.get_exn opt (Failure "Error: Couldn't mangle identifier because it wasn't found in the symbol table.")) *)
+      |> Option.map (fun var_scope -> string_of_int var_scope.scopeid)
+      |> Option.default "unknown"
     in
-    "_" ^ (string_of_int scope_id) ^ "_" ^ name
+    "_" ^ scope_id ^ "_" ^ name
 
 let mangle (scope: scope) (use_in_expr: bool) (name: string) :string =
   if use_in_expr then
