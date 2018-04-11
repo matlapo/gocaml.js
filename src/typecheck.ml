@@ -552,7 +552,7 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
       let typ =
         match assign_type with
         | Regular -> None
-        | PlusEqual
+        | PlusEqual -> Some [Basetype BInt; Basetype BFloat64; Basetype BString]
         | MinusEqual
         | DivEqual
         | TimesEqual -> Some [Basetype BInt; Basetype BFloat64]
