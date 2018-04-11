@@ -470,7 +470,7 @@ and check_if_type_cast (e: exp node) (scope: scope) (name: string) (exps: exp ge
             | (Basetype a, Basetype b) ->
               (* if both types are the same basetype OR both are numeric OR type(expr) where type resolves to string and expr to int or rune *)
               if a = b || (is_numeric a && is_numeric b) || (a = BString && (b = BInt || b = BRune)) then
-                tnode_of_node e type_reduced |> some
+                tnode_of_node e scoped_type |> some
               else None
             | _ -> None
           )
