@@ -1,10 +1,15 @@
+//~1
+//~false
+
 package main
 
 func main() {
   var i int
-  switch i := 0; i {
-  case 1:
-    var i int
+  switch i := 1; i {
+  case 1, 0:
+    println(i)
+    var i bool
+    print(i)
     break
   case 2:
     break
