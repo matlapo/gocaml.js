@@ -11,6 +11,9 @@ let not_a_base_type x received = Printf.sprintf "Error: %s is not a base type li
 let unknown_binding x name = Printf.sprintf "Error: %s used before being declared line: %d" name x
 let variable_redeclared x name = Printf.sprintf "Error: the name %s is already declared in the current scope line: %d" name x
 let variables_not_all_same_type x expected = Printf.sprintf "Error: not all variables are of type %s in this declaration at line: %d" (Scopeprinter.string_of_gotype expected) x
+let cannot_find_gotype x typ = Printf.sprintf "Error: cannot find type definition for the type %s at line: %d" (Scopeprinter.string_of_gotype typ) x
+let type_not_indexable x typ = Printf.sprintf "Error: type %s is not indexable at line %d" (Scopeprinter.string_of_gotype typ) x
+let not_a_struct x typ = Printf.sprintf "Error: type %s is not a struct at line %d" (Scopeprinter.string_of_gotype typ) x
 
 let already_an_error_printed = ref false
 let error (x: string) = if not !already_an_error_printed then (already_an_error_printed := true; Printf.eprintf "%s\n" x) else ()
@@ -136,7 +139,6 @@ let basetype_of_string_opt s = match s with
   | "bool" -> Some (Basetype BBool)
   | _ -> None
 
-let cannot_find_gotype x typ = Printf.sprintf "Error: cannot find type definition for the type %s at line: %d" (Scopeprinter.string_of_gotype typ) x
 
 let rec scopedtype_of_gotype lineno (s: scope) (t: gotype) : scopedtype option =
   match t with
@@ -154,6 +156,7 @@ let rec scopedtype_of_gotype lineno (s: scope) (t: gotype) : scopedtype option =
       | None -> cannot_find_gotype lineno t |> error; None))
   | _ -> Some { gotype = t; scopeid = s.scopeid }
 
+
 (* Find the base type inside of an array. (needs to resolve gotype inside arrays scope) *)
 let resolve_inside_type_of_indexable lineno (s: scope) (t: scopedtype) : scopedtype option =
   (* Get the gotype of type inside the array *)
@@ -168,7 +171,8 @@ let resolve_inside_type_of_indexable lineno (s: scope) (t: scopedtype) : scopedt
     )
   )
   (* If the type is not indexable, error *)
-  | _ -> None
+  | _ -> type_not_indexable lineno t.gotype |> error; None
+
 
 (* Returns the type of a selection *)
 let selection_type_opt lineno (s: scope) (t: scopedtype) (a: string) : scopedtype option =
@@ -187,7 +191,7 @@ let selection_type_opt lineno (s: scope) (t: scopedtype) (a: string) : scopedtyp
           (* Find the scopedtype of the member by doing a type search from the scope where the struct as defined *)
           scopedtype_of_gotype lineno selectionscope member_type
         )
-      | _ -> None
+      | _ -> not_a_struct lineno t.gotype |> error; None
     )
   )
 
