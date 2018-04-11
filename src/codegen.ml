@@ -8,7 +8,7 @@ let codegen_decl (scope: scope) (decl:decl) :string = match decl with
   | Type _ -> ""
   | Fct (name, args, _, stmts) ->
     let inner_scope = List.at scope.children 0 in
-    "function " ^ (mangle_decl scope name) ^
+    "function " ^ (mangle_fct name) ^
     "(" ^
     (args |> List.map fst |> List.map (mangle_decl inner_scope) |> concat_comma) ^
     "){" ^
@@ -20,7 +20,7 @@ let codegen (scope: scope) ((_, decls):string * decl list) :string =
   Runtime.prelude ^
   (concat_map (codegen_decl first_child_scope) decls) ^
   (match (List.exists (fun (name, _) -> name = "main") first_child_scope.functions) with
-    | true -> (mangle_expr first_child_scope "main") ^ "();"
+    | true -> (mangle_fct "main") ^ "();"
     | false -> ""
   ) ^
   Runtime.postlude

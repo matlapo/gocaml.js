@@ -44,6 +44,8 @@ let type_of_expr (scope: scope) (node: exp gen_node): gotype = match node with
     | resolved_type -> resolved_type)
   | _ -> raise (Failure "unreachable")
 
+let mangle_fct (name: string): string = "_" ^ name
+
 let mangle_decl (scope: scope) (name: string) :string =
   if name = "_" then
     "_"

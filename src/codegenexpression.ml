@@ -59,7 +59,7 @@ and codegen_bare_exp (s: scope) (p: bool) (e: exp) :string =
     | Rune r -> r
     | BinaryOp (op, (left, right)) -> codegen_binary_op s op left right
     | Unaryexp (op, exp) -> codegen_unary_op s op exp
-    | FuncCall (name, params) -> (mangle s p name) ^ "(" ^ (codegen_exps s p params) ^ ")"
+    | FuncCall (name, params) -> (mangle_fct name) ^ "(" ^ (codegen_exps s p params) ^ ")"
     | Append (slice_expr, elt_expr) ->
       "append(" ^
         (codegen_exp s p slice_expr) ^
