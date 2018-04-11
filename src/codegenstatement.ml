@@ -138,9 +138,10 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
       codegen_stmts stmts ^
       "}"
     | Loop For (init, cond, increment, stmts) ->
+      let init_scope = scope_of_simple_stmt init in
       "for(" ^
         (codegen_simple_stmt init) ^
-        (cond |> Option.map_default (codegen_exp scope true) "") ^ ";" ^
+        (cond |> Option.map_default (codegen_exp init_scope true) "") ^ ";" ^
         (String.slice ~last:(-1) (codegen_simple_stmt increment)) ^
       "){" ^
         (codegen_stmts stmts) ^
