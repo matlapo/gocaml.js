@@ -378,7 +378,7 @@ let rec typecheck_exp_opt scope e =
             | Mod -> [BInt], false in
           check_ops_opt scope a.typ b.typ types comparable
           |> bind (fun x ->
-            tnode_of_node e x |> some (* TODO: LHS and RHS are not typed *)
+            tnode_of_node_and_value e x (BinaryOp (bin, (Typed a, Typed b))) |> some
           )
         )
       )
