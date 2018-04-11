@@ -397,7 +397,7 @@ let rec typecheck_exp_opt scope e =
           | Not -> [BBool] in
         check_op_opt scope a.typ types
         |> bind (fun x ->
-          tnode_of_node e x |> some
+          tnode_of_node_and_value e x (Unaryexp (un, Typed a)) |> some
         )
       )
     | FuncCall (name, exps) ->
