@@ -40,7 +40,7 @@ let scope_of_simple_stmt: simpleStm gen_node -> scope = scope_of_snode
 let type_of_expr (scope: scope) (node: exp gen_node): gotype = match node with
   | Typed { typ=t } -> (match t.gotype with
     | Defined typename -> (
-        let scopedType = Option.get (Typecheck.scopedtype_of_typename_opt scope typename) in
+        let scopedType = Option.get (Typecheck.scopedtype_of_typename_opt 0 scope typename) in
         let reducedScopedType = Option.get (Typecheck.resolve_to_reducedtype_opt scope scopedType) in
         let reducedType = reducedScopedType.gotype in
         match reducedType with
@@ -87,7 +87,7 @@ let rec zero_value_of_type (s: scope) (t: gotype): string =
   match t with
     | Basetype bt -> zero_value_of_basetype bt
     | Defined typename -> (
-      let scopedType = Option.get (Typecheck.scopedtype_of_typename_opt s typename) in
+      let scopedType = Option.get (Typecheck.scopedtype_of_typename_opt 0 s typename) in
       let reducedScopedType = Option.get (Typecheck.resolve_to_reducedtype_opt s scopedType) in
       let reducedType = reducedScopedType.gotype in
       match reducedType with

@@ -4,12 +4,16 @@ open Utils
 open Scopeprinter
 module Option = BatOption
 
+(* function to display an error, ensures that at most 1 error can be printed *)
+let error =
+  let already_an_error_printed = ref false in
+  (fun x -> if not !already_an_error_printed then (already_an_error_printed := true; Printf.eprintf "%s\n" x) else ())
 
 let wrong_type x expected received =
   Printf.sprintf "Error: expected type %s but received type %s at line: %d" (Scopeprinter.string_of_gotype expected) (Scopeprinter.string_of_gotype received) x
-let not_a_base_type x received = Printf.sprintf "Error: %s is not a base type line: %d" (Scopeprinter.string_of_gotype received) x
-let unknown_binding x name = Printf.sprintf "Error: %s used before being declared line: %d" name x
-let variable_redeclared x name = Printf.sprintf "Error: the name %s is already declared in the current scope line: %d" name x
+let not_a_base_type x received = Printf.sprintf "Error: %s is not a base type at line: %d" (Scopeprinter.string_of_gotype received) x
+let unknown_binding x name = Printf.sprintf "Error: '%s' used before declared at line: %d" name x
+let name_redeclared x name = Printf.sprintf "Error: the name '%s' is already declared in the current scope at line: %d" name x
 let variables_not_all_same_type x expected = Printf.sprintf "Error: not all variables are of type %s in this declaration at line: %d" (Scopeprinter.string_of_gotype expected) x
 let cannot_find_gotype x typ = Printf.sprintf "Error: cannot find type definition for the type %s at line: %d" (Scopeprinter.string_of_gotype typ) x
 let cannot_find_gotype_string x typ = Printf.sprintf "Error: cannot find type definition for the type %s at line: %d" typ x
@@ -17,9 +21,9 @@ let type_not_indexable x typ = Printf.sprintf "Error: type %s is not indexable a
 let not_a_struct x typ = Printf.sprintf "Error: type %s is not a struct at line %d" (Scopeprinter.string_of_gotype typ) x
 let invalid_type_cast x = Printf.sprintf "Error: invalid type cast operation at line %d" x
 let types_not_comparable x left right = Printf.sprintf "Error: %s and %s are not comparable at line %d" (Scopeprinter.string_of_gotype left) (Scopeprinter.string_of_gotype right) x
-
-let already_an_error_printed = ref false
-let error (x: string) = if not !already_an_error_printed then (already_an_error_printed := true; Printf.eprintf "%s\n" x) else ()
+let invalid_function_call x name = Printf.sprintf "Error: invalid parameters for function '%s' at line %d" name x
+let too_many_exps_type_cast x = Printf.sprintf "Error: too many arguments for type cast at line %d" x
+let invalid_type_for_op x typ = Printf.sprintf "Error: type %s is not a valid type for this operation at line %d" (Scopeprinter.string_of_gotype typ) x
 
 type base_types =
   | Int
@@ -238,7 +242,7 @@ let are_types_equal (t1: scopedtype) (t2: scopedtype): bool =
     @return the new scope or None if the variable is already declared
   *)
 let add_variable_to_scope_opt lineno (s: scope) ((varname: string), (t: scopedtype)): scope option =
-  if List.exists (fun (id, _) -> id = varname) s.bindings then (variable_redeclared lineno varname |> error; None)
+  if List.exists (fun (id, _) -> id = varname) s.bindings then (name_redeclared lineno varname |> error; None)
   else
     Some {s with bindings = (varname, t)::s.bindings}
 
@@ -284,20 +288,20 @@ let check_ops_opt lineno (s: scope) (left: scopedtype) (right: scopedtype) (l: b
   )
 
 (* given type of an argument (for a unary operation) and a list of accepted types for the operation, return the resulting type *)
-let check_op_opt (s:scope) (a:scopedtype) (l: basetype list) : scopedtype option =
+let check_op_opt lineno (s:scope) (a:scopedtype) (l: basetype list) : scopedtype option =
   l
   |> List.map (fun t ->
     resolve_to_reducedtype_opt s a
     |> bind (fun a -> match a with
-      | { gotype = Basetype x; _} -> if x = t then Some t else None
-      | _ -> None
+      | { gotype = Basetype x; _} -> if x = t then Some t else (invalid_type_for_op lineno a.gotype |> error; None)
+      | _ -> not_a_base_type lineno a.gotype |> error; None
     )
   )
   |> List.find_opt is_some
   |> (fun x ->
     match x with
     | Some x -> Some a
-    | None -> print_string "Error: ..."; None
+    | None -> None
   )
 
 
@@ -314,12 +318,14 @@ let check_vars_declared line_no scope names =
 let position_to_tnode (e: 'a node) (value: 'a) (typ: scopedtype) =
   { position = e.position; value = value; typ = typ }
 
-let rec find_function_signature_opt (scope: scope) (name: string) =
+let unknown_function x name = Printf.sprintf "Error: unknown function name %s at line %d" name x
+
+let rec find_function_signature_opt lineno (scope: scope) (name: string) =
   match List.find_opt (fun (id, sign) -> id = name) scope.functions with
   | Some (_, t) -> Some t
   | None -> match scope.parent with
-    | Some p -> find_function_signature_opt p name
-    | None -> None
+    | Some p -> find_function_signature_opt lineno p name
+    | None -> unknown_function lineno name |> error; None
 
 let check_both_list_same_exps_types (a: scopedtype list) (b: scopedtype list) =
   if List.length a <> List.length b then false
@@ -328,6 +334,7 @@ let check_both_list_same_exps_types (a: scopedtype list) (b: scopedtype list) =
     |> List.map2 (fun x y -> are_types_equal x y) b
     |> List.exists (fun x -> x = false)
     |> (fun x -> not x)
+
 
 (* given an expression node, typecheck_opt the expression and return an expression tnode (a node record with a field for its type) *)
 let rec typecheck_exp_opt scope e =
@@ -350,7 +357,7 @@ let rec typecheck_exp_opt scope e =
               position_to_tnode e (Indexing (Typed target, Typed index)) t |> some
             )
           else
-            None
+            None (*TODO: error message*)
         )
       )
     | Selection (target, selection) ->
@@ -407,7 +414,7 @@ let rec typecheck_exp_opt scope e =
           | UMinus
           | UPlus -> [BInt; BFloat64; BRune]
           | Not -> [BBool] in
-        check_op_opt scope a.typ types
+        check_op_opt e.position.pos_lnum scope a.typ types
         |> bind (fun x ->
           tnode_of_node_and_value e x (Unaryexp (un, Typed a)) |> some
         )
@@ -418,7 +425,7 @@ let rec typecheck_exp_opt scope e =
       | Some t -> Some t
       | None ->
         (* if not, then it must a function call, make sure it type check and return the resulting type for this node *)
-        find_function_signature_opt scope name
+        find_function_signature_opt e.position.pos_lnum scope name
         |> bind (fun signature ->
           typecheck_exp_list_opt scope exps
           |> bind (fun typed_exps ->
@@ -429,7 +436,7 @@ let rec typecheck_exp_opt scope e =
               | Void -> tnode_of_node_and_value e { gotype = Null; scopeid = scope.scopeid } inner_value |> some
               | NonVoid t -> tnode_of_node_and_value e t inner_value |> some
             else
-              None
+              (invalid_function_call e.position.pos_lnum name |> error; None)
           )
         ))
     | Append (array, element) ->
@@ -442,7 +449,7 @@ let rec typecheck_exp_opt scope e =
           if are_types_equal type_inside_array typed_element.typ then
             Some (tnode_of_node_and_value e typed_array.typ (Append (Typed typed_array, Typed typed_element)))
           else
-            None
+            (invalid_function_call e.position.pos_lnum "append" |> error; None)
           )
         )
       )
@@ -469,10 +476,11 @@ function that checks if a function call is a typecast of the form type(expr). We
 5. reduce the type of expr to a base type, if possible
 6. Apply the type rule associated with type casting in G
 
+
 note: all these operations can fail, hence the serie of binds
 *)
 and check_if_type_cast (e: exp node) (scope: scope) (name: string) (exps: exp gen_node list) =
-  if List.length exps <> 1 then None
+  if List.length exps <> 1 then (too_many_exps_type_cast e.position.pos_lnum |> error; None)
   else
     let exp = List.hd exps in
     scopedtype_of_typename_opt e.position.pos_lnum scope name
@@ -495,14 +503,13 @@ and check_if_type_cast (e: exp node) (scope: scope) (name: string) (exps: exp ge
       )
     )
 
-
 (* given two scopes, merge them together so that all their bindings are all at the same level. If the resulting bindings contain duplicates, it returns None *)
 let merge_scope_opt old_scope new_scope =
   let rec helper old_scope new_bindings =
     match new_bindings with
     | [] -> Some old_scope
     | (name, typ)::xs ->
-      if List.mem_assoc name old_scope = true then None
+      if List.mem_assoc name old_scope = true then (name_redeclared 0 name |> error; None)
       else helper (List.append old_scope [(name, typ)]) xs in
   helper old_scope.bindings new_scope.bindings
   |> bind (fun bindings ->
@@ -534,7 +541,8 @@ let double_helper (e: simpleStm node) current target isplus =
     |> bind(fun resolved_type ->
       if not (resolved_type = basetype BInt
         || resolved_type = basetype BFloat64
-        || resolved_type = basetype BRune) then None
+        || resolved_type = basetype BRune) then
+        (invalid_type_for_op e.position.pos_lnum resolved_type.gotype |> error; None)
       else
         { position = e.position;
           scope = current;
@@ -1020,7 +1028,7 @@ and typecheck_var_decl_opt lineno scope (vars, t, exps) =
   else
     let vars_without_underscore = List.filter (fun x -> x <> "_") vars in
     if check_vars_declared lineno scope vars_without_underscore then None
-    else if contains_duplicate vars_without_underscore (fun name -> variable_redeclared lineno name |> error) then None
+    else if contains_duplicate vars_without_underscore (fun name -> name_redeclared lineno name |> error) then None
     else
       let typed_exps =
         otyped_exps

@@ -94,8 +94,8 @@ let contains_duplicate l error =
   l
   |> List.map (fun x ->
     l
-    |> List.find_all (fun name -> if x = name then (error name; true) else false)
+    |> List.find_all (fun name -> if x = name then  true else false)
   )
-  |> List.exists (fun x -> List.length x > 1)
+  |> List.exists (fun x -> if List.length x > 1 then (error (List.hd x); true) else false)
 
 let some x = Some x
