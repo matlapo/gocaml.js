@@ -32,26 +32,31 @@ let codegen_assign_op (s: scope) (op: assign) (ref: exp gen_node) (exp: exp gen_
 
 let codegen_bare_simple_stmt (s: scope) (simple_stmt: simpleStm) =
   match simple_stmt with
-  | Assign (Regular, (refs, exps)) -> codegen_assign s refs exps
-  | Assign (op, ([ref], [exp])) -> codegen_assign_op s op ref exp
-  | Assign _ -> raise (Failure "Invalid Assignment")
-  | ExpStatement exp -> (codegen_exp s true exp) ^ ";"
-  | DoublePlus ref -> (codegen_exp s false ref) ^ "++;"
-  | DoubleMinus ref -> (codegen_exp s false ref) ^ "--;"
-  | ShortDeclaration (refs, exps) ->
-    (refs
-      |> List.map unwrap_gen_node
-      |> List.filter_map (fun ref -> match ref with
-          | Id s -> Some s
-          | _ -> None
-        )
-      (* TODO: Filter to exclude predeclared identifiers *)
-      |> List.map (fun name -> "let " ^ (mangle s name) ^ ";")
-      |> concat
-    ) ^
-    (codegen_assign s refs exps)
-  | Empty -> "/* Empty Simple Statement */"
-let codegen_simple_stmt (s: scope) (simple_stmt: simpleStm gen_node) = codegen_bare_simple_stmt s (unwrap_gen_node simple_stmt)
+    | Assign (Regular, (refs, exps)) -> codegen_assign s refs exps
+    | Assign (op, ([ref], [exp])) -> codegen_assign_op s op ref exp
+    | Assign _ -> raise (Failure "Invalid Assignment")
+    | ExpStatement exp -> (codegen_exp s true exp) ^ ";"
+    | DoublePlus ref -> (codegen_exp s false ref) ^ "++;"
+    | DoubleMinus ref -> (codegen_exp s false ref) ^ "--;"
+    | ShortDeclaration (refs, exps) ->
+      (refs
+        |> List.map unwrap_gen_node
+        |> List.filter_map (fun ref -> match ref with
+            | Id s -> Some s
+            | _ -> None
+          )
+        (* TODO: Filter to exclude predeclared identifiers *)
+        |> List.map (fun name -> "let " ^ (mangle s name) ^ ";")
+        |> concat
+      ) ^
+      (codegen_assign s refs exps)
+    | Empty -> "/* Empty Simple Statement */"
+
+let codegen_simple_stmt (stmt_scope: scope) (simple_stmt: simpleStm gen_node) =
+  let scope = match simple_stmt with
+    | Scoped { scope=simple_stmt_scope; value=stmt } -> simple_stmt_scope
+    | _ -> stmt_scope in
+  codegen_bare_simple_stmt scope (unwrap_gen_node simple_stmt)
 
 let codegen_decl (s: scope) (decl: (string list * gotype option * (exp gen_node) list)): string =
   let (names, t, exps) = decl in
