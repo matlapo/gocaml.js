@@ -12,6 +12,7 @@ let unknown_binding x name = Printf.sprintf "Error: %s used before being declare
 let variable_redeclared x name = Printf.sprintf "Error: the name %s is already declared in the current scope line: %d" name x
 let variables_not_all_same_type x expected = Printf.sprintf "Error: not all variables are of type %s in this declaration at line: %d" (Scopeprinter.string_of_gotype expected) x
 let cannot_find_gotype x typ = Printf.sprintf "Error: cannot find type definition for the type %s at line: %d" (Scopeprinter.string_of_gotype typ) x
+let cannot_find_gotype_string x typ = Printf.sprintf "Error: cannot find type definition for the type %s at line: %d" typ x
 let type_not_indexable x typ = Printf.sprintf "Error: type %s is not indexable at line %d" (Scopeprinter.string_of_gotype typ) x
 let not_a_struct x typ = Printf.sprintf "Error: type %s is not a struct at line %d" (Scopeprinter.string_of_gotype typ) x
 
@@ -102,15 +103,15 @@ let rec find_scope_of_varname_opt (s: scope) (varname: string): scope option =
     |> bind (fun p -> find_scope_of_varname_opt p varname)
 
 (** Finds the type associated with a string *)
-let rec scopedtype_of_typename_opt (s: scope) (typename: string): scopedtype option =
+let rec scopedtype_of_typename_opt lineno (s: scope) (typename: string): scopedtype option =
   (* Look for a type in the current scope *)
   match List.find_opt (fun (id, _) -> id = typename) s.types with
   (* If found, create a scopedtype with the current scope id *)
   | Some (id, t) -> Some { gotype = Defined id; scopeid = s.scopeid }
   | None -> match s.parent with
     (* Look in parent scope *)
-    | Some p -> scopedtype_of_typename_opt p typename
-    | None -> None
+    | Some p -> scopedtype_of_typename_opt lineno p typename
+    | None -> cannot_find_gotype_string lineno typename |> error;  None
 
 (** Finds the type associated with a variable name *)
 let rec scopedtype_of_varname_opt (s: scope) (varname: string): scopedtype option =
@@ -197,7 +198,7 @@ let selection_type_opt lineno (s: scope) (t: scopedtype) (a: string) : scopedtyp
 
 (* ### TYPE VERIFICATION ### *)
 
-let is_indexable (s: scope)(t: scopedtype) : bool option =
+let is_indexable (s: scope) (t: scopedtype) : bool option =
   resolve_to_reducedtype_opt s t
   |> bind (fun scoped ->
     match scoped.gotype with
@@ -229,23 +230,13 @@ let are_types_equal (t1: scopedtype) (t2: scopedtype): bool =
 
 (* ### SCOPE MANIPULATION ### *)
 
-(** Add a type declaration to the current scope
-    @param typename : the identifier of the type
-    @param t : the type associated with the identifier
-    @return the new scope or None if the type is already declared
-*)
-let add_type_declaration_to_scope_opt (s: scope) ((typename: string), (t: scopedtype)): scope option =
-  if List.exists (fun (id, _) -> id = typename) s.types then None
-  else
-    Some {s with types = (typename, t)::s.types}
-
 (** Add a variable binding to the current scope
     @param varname : the identifier of the variable
     @param t : the type associated with the variable
     @return the new scope or None if the variable is already declared
   *)
-let add_variable_to_scope_opt (s: scope) ((varname: string), (t: scopedtype)): scope option =
-  if List.exists (fun (id, _) -> id = varname) s.bindings then None
+let add_variable_to_scope_opt lineno (s: scope) ((varname: string), (t: scopedtype)): scope option =
+  if List.exists (fun (id, _) -> id = varname) s.bindings then (variable_redeclared lineno varname |> error; None)
   else
     Some {s with bindings = (varname, t)::s.bindings}
 
@@ -481,7 +472,7 @@ and check_if_type_cast (e: exp node) (scope: scope) (name: string) (exps: exp ge
   if List.length exps <> 1 then None
   else
     let exp = List.hd exps in
-    scopedtype_of_typename_opt scope name
+    scopedtype_of_typename_opt e.position.pos_lnum scope name
     |> bind (fun scoped_type ->
       resolve_to_reducedtype_opt scope scoped_type
       |> bind (fun type_reduced ->
@@ -644,13 +635,13 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
       )
     | ShortDeclaration (kinds, exps) ->
       (* Match the each kind with its associated exp *)
-      List.map2 (fun k e -> (k, e)) kinds exps
+      List.map2 (fun k n -> (k, n)) kinds exps
       (* Accumulate the new scope (for new declaration) and the typed exps *)
-      |> List.fold_left (fun scope_and_exps (k, e) ->
+      |> List.fold_left (fun scope_and_exps (k, n) ->
         scope_and_exps
         |> bind (fun (scope, l) ->
           (* Make sure the expression typechecks *)
-          (typecheck_exp_opt scope e)
+          (typecheck_exp_opt scope n)
           |> bind (fun typed_exp ->
             (* This block of code checks if a new variable needs to be added to the current scope. *)
             match k with
@@ -662,7 +653,7 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
                   Some (k, scope)
                 else
                   (* Add the variable to the scope if it's not defined *)
-                  add_variable_to_scope_opt scope (s, typed_exp.typ)
+                  add_variable_to_scope_opt e.position.pos_lnum scope (s, typed_exp.typ)
                   (* Return the new scope with the added binding *)
                   |> bind (fun scope -> Some (k, scope))
               (* If the expression is not a simple identifier, nothing to add to the scope *)
