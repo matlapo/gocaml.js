@@ -39,7 +39,7 @@ type scope =
 
 type 'a node = { position: Lexing.position; value: 'a }
 type 'a tnode = { position: Lexing.position; typ: scopedtype; value: 'a }
-type 'a snode = { position: Lexing.position; scope: scope; value: 'a }
+type 'a snode = { position: Lexing.position; scope: scope; prevscope: scope; value: 'a }
 
 type 'a gen_node =
   | Position of 'a node
