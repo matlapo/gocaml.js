@@ -58,7 +58,7 @@ let codegen_bare_simple_stmt (s: scope) (simple_stmt: simpleStm) =
     | Empty -> "/* Empty Simple Statement */;"
 
 let codegen_simple_stmt (simple_stmt: simpleStm gen_node) =
-  let scope = scope_of_simple_stmt simple_stmt in
+  let scope = prevscope_of_simple_stmt simple_stmt in
   codegen_bare_simple_stmt scope (unwrap_gen_node simple_stmt)
 
 let codegen_decl (s: scope) (decl: (string list * gotype option * (exp gen_node) list)): string =
@@ -106,7 +106,7 @@ let rec fold_cases (cases: case list) = match cases with
 
 let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
   let (scope, stmt) = match stmt_gen_node with
-    | Scoped { scope=scope; value=stmt } -> (scope, stmt)
+    | Scoped { prevscope=scope; value=stmt } -> (scope, stmt)
     | _ -> raise (Failure "unreachable") in
   match stmt with
     | Block stmts ->
