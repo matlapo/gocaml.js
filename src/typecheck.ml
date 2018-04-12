@@ -21,9 +21,12 @@ let type_not_indexable x typ = Printf.sprintf "Error: type %s is not indexable a
 let not_a_struct x typ = Printf.sprintf "Error: type %s is not a struct at line %d" (Scopeprinter.string_of_gotype typ) x
 let invalid_type_cast x = Printf.sprintf "Error: invalid type cast operation at line %d" x
 let types_not_comparable x left right = Printf.sprintf "Error: %s and %s are not comparable at line %d" (Scopeprinter.string_of_gotype left) (Scopeprinter.string_of_gotype right) x
-let invalid_function_call x name = Printf.sprintf "Error: invalid parameters for function '%s' at line %d" name x
+let invalid_function_call x name = Printf.sprintf "Error: arguments types do not match the signature of function '%s' at line %d" name x
 let too_many_exps_type_cast x = Printf.sprintf "Error: too many arguments for type cast at line %d" x
 let invalid_type_for_op x typ = Printf.sprintf "Error: type %s is not a valid type for this operation at line %d" (Scopeprinter.string_of_gotype typ) x
+let invalid_assignment_error x = Printf.sprintf "Error: invalid assignment at line %d" x
+let invalid_short_declaration x = Printf.sprintf "Error: invalid short declaration, must declare at least one new variable at line %d" x
+let invalid_main x = Printf.sprintf "Error: main function must have no argument and void return type at line %d" x
 
 type base_types =
   | Int
@@ -117,7 +120,7 @@ let rec scopedtype_of_typename_opt lineno (s: scope) (typename: string): scopedt
   | None -> match s.parent with
     (* Look in parent scope *)
     | Some p -> scopedtype_of_typename_opt lineno p typename
-    | None -> cannot_find_gotype_string lineno typename |> error; None
+    | None -> None
 
 (** Finds the type associated with a variable name *)
 let rec scopedtype_of_varname_opt lineno (s: scope) (varname: string): scopedtype option =
@@ -263,7 +266,6 @@ let snode_of_node (s: stmt node) scope prev = { position = s.position; scope = s
 
 let snode_of_node_and_value (s: stmt node) scope prev v = { position = s.position; scope = scope; prevscope = prev; value = v }
 
-
 (* given the types of 2 arguments (for a binary operation) and a list of accepted types for the binary operation, return the resulting type *)
 let check_ops_opt lineno (s: scope) (left: scopedtype) (right: scopedtype) (l: basetype list) comparable equality : scopedtype option =
   l
@@ -273,18 +275,18 @@ let check_ops_opt lineno (s: scope) (left: scopedtype) (right: scopedtype) (l: b
       match a, b with
       | { gotype = Basetype x; _}, { gotype = Basetype y; _} ->
         if x = t && y = t then Some t
-        else (wrong_type lineno b.gotype a.gotype |> error; None)
+        else None
       | _ ->
         if equality then
-          if are_types_equal left right then Some t else (types_not_comparable lineno a.gotype b.gotype |> error; None)
-        else (wrong_type lineno b.gotype a.gotype |> error; None)
+          if are_types_equal left right then Some t else None
+        else None
     )
   )
   |> List.find_opt is_some
   |> (fun x ->
     match x with
     | Some x -> if comparable then Some (basetype BBool) else Some left
-    | None -> None
+    | None -> wrong_type lineno left.gotype right.gotype |> error; None
   )
 
 (* given type of an argument (for a unary operation) and a list of accepted types for the operation, return the resulting type *)
@@ -292,16 +294,17 @@ let check_op_opt lineno (s:scope) (a:scopedtype) (l: basetype list) : scopedtype
   l
   |> List.map (fun t ->
     resolve_to_reducedtype_opt s a
-    |> bind (fun a -> match a with
-      | { gotype = Basetype x; _} -> if x = t then Some t else (invalid_type_for_op lineno a.gotype |> error; None)
-      | _ -> not_a_base_type lineno a.gotype |> error; None
+    |> bind (fun a ->
+      match a with
+      | { gotype = Basetype x; _} -> if x = t then Some t else None
+      | _ -> None
     )
   )
   |> List.find_opt is_some
   |> (fun x ->
     match x with
     | Some x -> Some a
-    | None -> None
+    | None -> invalid_type_for_op lineno a.gotype |> error; None
   )
 
 
@@ -480,7 +483,7 @@ function that checks if a function call is a typecast of the form type(expr). We
 note: all these operations can fail, hence the serie of binds
 *)
 and check_if_type_cast (e: exp node) (scope: scope) (name: string) (exps: exp gen_node list) =
-  if List.length exps <> 1 then (too_many_exps_type_cast e.position.pos_lnum |> error; None)
+  if List.length exps <> 1 then None
   else
     let exp = List.hd exps in
     scopedtype_of_typename_opt e.position.pos_lnum scope name
@@ -570,6 +573,7 @@ let is_underscore node =
 
 let null_scopeid = { gotype = Null; scopeid = 0 }
 
+
 (* given a simple statement node, typecheck it *)
 let rec typecheck_simple_opt current s: simpleStm snode option =
   match s with
@@ -626,7 +630,7 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
                     && List.exists (fun x -> x = exp.typ.gotype) types) |> not
                 )
             ) in
-          if invalid_assignment then None
+          if invalid_assignment then (invalid_assignment_error e.position.pos_lnum |> error; None)
           else
             let kinds = List.map extract_position kinds in
             let exps = List.map extract_position exps in
@@ -678,7 +682,7 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
                   if (are_types_equal k.typ typed_exp.typ) then
                     Some (scope, List.append l [(Typed typed_exp)])
                   else
-                    None
+                    (wrong_type e.position.pos_lnum k.typ.gotype typed_exp.typ.gotype |> error; None)
                 )
               )
             | _ -> failwith "IMPOSSIBLE"
@@ -689,7 +693,8 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
       |> bind (fun (new_scope, l) ->
         (* If no new bindings were created, it means that no new variable were
           introduced in the short declaration. This is not allowed. *)
-        if List.length new_scope.bindings = List.length current.bindings then None
+        if List.length new_scope.bindings = List.length current.bindings then
+          (invalid_short_declaration e.position.pos_lnum |> error; None)
         else
           { position = e.position; scope = new_scope; prevscope = current; value = ShortDeclaration (kinds, l) } |> some
       )
@@ -738,7 +743,7 @@ let verify_return_statements (l: (stmt snode) list) expected_type =
   )
   |> List.exists (fun x -> x = false)
 
-let rec typecheck_case_list_opt (scope: scope) (cases: case list) (match_type: scopedtype): (case list) option =
+let rec typecheck_case_list_opt lineno (scope: scope) (cases: case list) (match_type: scopedtype): (case list) option =
   (* Verify each case individualy *)
   cases
   |> List.map (fun (exps, stmts) ->
@@ -758,7 +763,7 @@ let rec typecheck_case_list_opt (scope: scope) (cases: case list) (match_type: s
         |> bind (fun typed_exps ->
           let typed_exps_gen = List.map (fun e -> Typed e) typed_exps in
           (* Check if all expressions have the same type as the switch matching type. *)
-          if not (List.for_all (fun e -> are_types_equal e.typ match_type) typed_exps) then None
+          if not (List.for_all (fun e -> if are_types_equal e.typ match_type then true else (wrong_type lineno match_type.gotype e.typ.gotype |> error; false)) typed_exps) then None
           else Some (Some typed_exps_gen, typed_stmts_gen)
         )
     )
@@ -874,9 +879,9 @@ and typecheck_stm_opt current s =
         (match exp with
         (* If there is an exp, cases expression must match the switch expression. *)
         | Some exp -> typecheck_exp_opt simple_scope exp
-          |> bind (fun typed_exp -> typecheck_case_list_opt simple_scope cases typed_exp.typ)
+          |> bind (fun typed_exp -> typecheck_case_list_opt e.position.pos_lnum simple_scope cases typed_exp.typ)
         (* If there is no exp, cases expression must be of type bool. *)
-        | None -> typecheck_case_list_opt simple_scope cases (basetype BBool))
+        | None -> typecheck_case_list_opt e.position.pos_lnum simple_scope cases (basetype BBool))
         |> bind (fun typed_cases ->
           (* Add the scope of the switch to the current scope *)
           let current = { current with children = simple_scope::current.children } in
@@ -937,7 +942,8 @@ and loop_helper e scope loop =
       | _ ->
         otyped_exp
         |> bind (fun typed_exp ->
-          if not (match typed_exp.typ with | { gotype = Basetype x } -> x = BBool | _ -> false) then None
+          if not (match typed_exp.typ with | { gotype = Basetype x } -> x = BBool | _ -> false) then
+            (wrong_type e.position.pos_lnum (Basetype BBool) typed_exp.typ.gotype |> error; None)
           else
             let exp_gen = Typed typed_exp in
             Some { position = e.position; scope = new_scope; prevscope = scope; value = Loop (While (Some exp_gen, gen_nodes)) }
@@ -967,7 +973,8 @@ and loop_helper e scope loop =
           | Some _ ->
             otyped_exp
             |> bind (fun typed_exp ->
-              if not (match typed_exp.typ with | { gotype = Basetype x } -> x = BBool | _ -> false) then None
+              if not (match typed_exp.typ with | { gotype = Basetype x } -> x = BBool | _ -> false) then
+                (wrong_type e.position.pos_lnum (Basetype BBool) typed_exp.typ.gotype |> error; None)
               else
                 let exp_gen = Typed typed_exp in
                 Some { position = e.position; scope = new_scope; prevscope = scope; value = Loop (For (init_gen, Some exp_gen, inc_gen, stmt_gen_nodes)) }
@@ -1077,6 +1084,7 @@ let check_invalid_main (name, args, otyp) =
   else
     false
 
+
 (*
  Depending on the type of declaration (i.e Var, Type or Fct) this function will
  add the new bindings to the given scope and return the updated scope along with
@@ -1111,7 +1119,7 @@ let typecheck_decl_opt scope decl =
         )
     | Fct (name, args, return_type, stmts) ->
       let empty_function_scope = new_scope scope in
-      if check_invalid_main (name, args, return_type) then None
+      if check_invalid_main (name, args, return_type) then (invalid_main n.position.pos_lnum |> error; None)
       else
         args
         |> typecheck_args_opt n.position.pos_lnum scope
