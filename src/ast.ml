@@ -14,8 +14,8 @@ type gotype =
   | Struct of (string * gotype) list
   | Null
 
-type scopeid = int
-type scopedtype = { gotype: gotype; scopeid: scopeid }
+type scopeid = int (* the id of a scope is a simple int *)
+type scopedtype = { gotype: gotype; scopeid: scopeid } (* the type with the id of the scope where it was defined *)
 
 type 'a fct_return =
   | NonVoid of 'a
@@ -29,12 +29,12 @@ type signature =
 
 type scope =
   {
-    scopeid: scopeid;
-    bindings: (string * scopedtype) list;
-    types: (string * scopedtype) list; (* b : previous type *)
-    functions: (string * signature) list; (* function name - argument types - return type *)
+    scopeid: scopeid; (* unique id of this scope *)
+    bindings: (string * scopedtype) list; (* variable name : type of the variable *)
+    types: (string * scopedtype) list; (* type definition name : type is is pointing to *)
+    functions: (string * signature) list; (* function name - signature *)
     parent: scope option; (* top level scope doesn't have a parent *)
-    children: scope list
+    children: scope list (* children scope of this scope (ex: an if scope inside a function scope) *)
   }
 
 type 'a node = { position: Lexing.position; value: 'a }
