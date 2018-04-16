@@ -31,7 +31,7 @@ type scope =
   {
     scopeid: scopeid; (* unique id of this scope *)
     bindings: (string * scopedtype) list; (* variable name : type of the variable *)
-    types: (string * scopedtype) list; (* type definition name : type is is pointing to *)
+    types: (string * scopedtype) list; (* defined type name : type it is pointing to *)
     functions: (string * signature) list; (* function name - signature *)
     parent: scope option; (* top level scope doesn't have a parent *)
     children: scope list (* children scope of this scope (ex: an if scope inside a function scope) *)
