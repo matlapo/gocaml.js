@@ -137,7 +137,7 @@ let blank_simple (simp: simpleStm gen_node) =
     | ExpStatement e -> blank_exp e
     | ShortDeclaration (l, e) ->
       map_flat blank_exp e
-      |> List.append (List.map blank_exp l |> List.flatten)
+      (* |> List.append (List.map blank_exp l |> List.flatten) *)
     | DoubleMinus s -> blank_exp s
     | DoublePlus s -> blank_exp s
     | Empty -> [])

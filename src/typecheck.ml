@@ -657,7 +657,7 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
             (* Extract the kind expression *)
             | Position { value = kind } -> (match kind with
               (* If it's just an identifier, check if it's defined in the current scope only *)
-              | Id s -> if (List.exists (fun (name, _) -> name = s) scope.bindings) then
+              | Id s -> if (List.exists (fun (name, _) -> name = s) scope.bindings) || s = "_" then
                   (* If the identifier is defined, nothing to add to the scope *)
                   Some (k, scope)
                 else
@@ -669,7 +669,10 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
               | _ -> Some (k, scope)
               )
               (* Typecheck the expression with the potentially altered scope *)
-              |> bind (fun (k, scope) -> typecheck_exp_opt scope k
+              |> bind (fun (k, scope) ->
+                match (extract_position k) with
+                | {value = Id "_"} -> Some (scope, List.append l [(Typed typed_exp)])
+                | _ -> typecheck_exp_opt scope k
                 (* If the kind is well typed, check the type equality *)
                 |> bind (fun k ->
                   if (are_types_equal k.typ typed_exp.typ) then
