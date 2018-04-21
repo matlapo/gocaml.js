@@ -538,6 +538,29 @@ let typecheck_args_opt lineno scope args =
     |> List.map Option.get
     |> some
 
+let double_helper (e: simpleStm node) current target isplus =
+  typecheck_exp_opt current target
+  |> bind (fun typed_exp ->
+    resolve_to_reducedtype_opt current typed_exp.typ
+    |> bind(fun resolved_type ->
+      if not (resolved_type = basetype BInt
+        || resolved_type = basetype BFloat64
+        || resolved_type = basetype BRune) then
+        (invalid_type_for_op e.position.pos_lnum resolved_type.gotype |> error; None)
+      else
+        { position = e.position;
+          scope = current;
+          prevscope = current;
+          value =
+            if isplus then
+              DoublePlus (Typed typed_exp)
+            else
+              DoubleMinus (Typed typed_exp)
+        }
+        |> some
+    )
+  )
+
 let extract_position (node: 'a gen_node) =
   match node with
   | Position t -> t
@@ -613,6 +636,8 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
               |> List.map (fun x -> Typed x) in
             { position = e.position; scope = current; prevscope = current; value = Assign (gen_node_kinds, gen_node_exps) } |> some
     | Empty -> { position = e.position; scope = current; prevscope = current; value = Empty } |> some
+    | DoublePlus kind -> double_helper e current kind true
+    | DoubleMinus kind -> double_helper e current kind false
     | ExpStatement exp ->
       typecheck_exp_opt current exp
       |> bind (fun x ->

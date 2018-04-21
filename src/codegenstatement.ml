@@ -49,6 +49,8 @@ let codegen_simple_stmt (simple_stmt_node: simpleStm gen_node) =
     | Assign (op, ([ref], [exp])) -> codegen_assign_op prevscope op ref exp *)
     | Assign _ -> raise (Failure "Invalid Assignment")
     | ExpStatement exp -> (codegen_exp prevscope true exp) ^ ";"
+    | DoublePlus ref -> (codegen_exp prevscope false ref) ^ "++;"
+    | DoubleMinus ref -> (codegen_exp prevscope false ref) ^ "--;"
     | ShortDeclaration (refs, exps) ->
       (refs
         |> List.map unwrap_gen_node

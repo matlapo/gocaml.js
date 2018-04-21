@@ -137,6 +137,8 @@ and string_of_simple_stmt gn =
   let s = extract_gen_node_value gn in
   match s with
   | ExpStatement exp -> string_of_exp exp
+  | DoublePlus e -> string_of_exp e ^ "++"
+  | DoubleMinus e -> string_of_exp e ^ "--"
   | ShortDeclaration (el, exps) -> string_of_list string_of_exp "," el ^ " := " ^ string_of_exps exps
   | Empty -> ""
   | Assign (el, exps) -> string_of_list string_of_exp "," el ^ " = " ^ string_of_exps exps

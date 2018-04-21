@@ -105,6 +105,8 @@ type assign =
 type simpleStm =
   | Assign of exp gen_node list * exp gen_node list
   | ExpStatement of exp gen_node
+  | DoublePlus of exp gen_node
+  | DoubleMinus of exp gen_node
   | ShortDeclaration of (exp gen_node list * (exp gen_node) list)
   | Empty
 
