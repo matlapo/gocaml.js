@@ -267,18 +267,18 @@ let check_ops_opt lineno (s: scope) (left: scopedtype) (right: scopedtype) (l: b
     |> bind2 (fun a b ->
       match a, b with
       | { gotype = Basetype x; _}, { gotype = Basetype y; _} ->
-        if x = t && y = t then Some t
+        if x = t && y = t then Some left
         else None
       | _ ->
         if equality then
-          if are_types_equal left right then Some t else None
+          if are_types_equal left right then Some left else None
         else None
     )
   )
   |> List.find_opt is_some
   |> (fun x ->
     match x with
-    | Some x -> if comparable then Some (basetype BBool) else Some left
+    | Some x -> if comparable then Some (basetype BBool) else  Some left
     | None -> wrong_type lineno left.gotype right.gotype |> error; None
   )
 
@@ -383,18 +383,18 @@ let rec typecheck_exp_opt scope e =
             | Equals
             | NotEquals -> [BInt; BFloat64; BString; BBool; BRune], true, true
             | And
-            | Or -> [BBool], true, false
+            | Or -> [BBool], false, false
             | Smaller
             | Greater
             | SmallerEq
-            | GreaterEq -> [BInt; BFloat64; BString; BRune], true, false (* TODO: ordered? *)
+            | GreaterEq -> [BInt; BFloat64; BString; BRune], true, false
             | DGreater
             | DSmaller
             | AndHat
             | BAnd
             | BOr
             | Caret
-            | Mod -> [BInt], false, false in
+            | Mod -> [BInt; BRune], false, false in
           check_ops_opt e.position.pos_lnum scope a.typ b.typ types comparable equality
           |> bind (fun x ->
             tnode_of_node_and_value e x (BinaryOp (bin, (Typed a, Typed b))) |> some
