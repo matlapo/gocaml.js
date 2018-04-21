@@ -27,6 +27,7 @@ let invalid_type_for_op x typ = Printf.sprintf "Error: type %s is not a valid ty
 let invalid_assignment_error x = Printf.sprintf "Error: invalid assignment at line %d" x
 let invalid_short_declaration x = Printf.sprintf "Error: invalid short declaration, must declare at least one new variable at line %d" x
 let invalid_main x = Printf.sprintf "Error: main function must have no argument and void return type at line %d" x
+let invalid_init x = Printf.sprintf "Error: init function must have no argument and void return type at line %d" x
 let redeclared_error x name = Printf.sprintf "Error: %s redeclared in this block at line: %d" name x
 
 let base_int = "int"
@@ -1059,8 +1060,8 @@ and typecheck_var_decl_opt lineno scope (vars, t, exps) =
             ((vars, Some t, exps), new_scope) |> some
         )
 
-let check_invalid_main (name, args, otyp) =
-  if name = "main" then
+let check_invalid_special func_name (name, args, otyp) =
+  if name = func_name then
     List.length args > 0 || otyp <> Void
   else
     false
@@ -1114,7 +1115,8 @@ let typecheck_decl_opt scope decl =
           )
     | Fct (name, args, return_type, stmts) ->
       let empty_function_scope = new_scope scope in
-      if check_invalid_main (name, args, return_type) then (invalid_main n.position.pos_lnum |> error; None)
+      if check_invalid_special "main" (name, args, return_type) then (invalid_main n.position.pos_lnum |> error; None)
+      else if check_invalid_special "init" (name, args, return_type) then (invalid_init n.position.pos_lnum |> error; None)
       else
         args
         |> typecheck_args_opt n.position.pos_lnum scope
