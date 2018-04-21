@@ -170,19 +170,24 @@ let rec scopedtype_of_gotype lineno (s: scope) (t: gotype) : scopedtype option =
 
 (* Find the base type inside of an array. (needs to resolve gotype inside arrays scope) *)
 let resolve_inside_type_of_indexable lineno (s: scope) (t: scopedtype) : scopedtype option =
-  (* Get the gotype of type inside the array *)
-  match t.gotype with
-  | Array (insidetype, _)
-  | Slice insidetype -> (
-    (* Find the scope where the array type was defined *)
-    find_scope_with_scopeid_opt s t.scopeid
-    |> bind (fun indexablescope ->
-      (* Find the scopedtype of the type inside the array *)
-      scopedtype_of_gotype lineno indexablescope insidetype
+  (* Find the original array type *)
+  resolve_to_reducedtype_opt s t
+  |> bind (fun reduced_type ->
+    (* Get the gotype of type inside the array *)
+    match reduced_type.gotype with
+    | Array (insidetype, _)
+    | Slice insidetype -> (
+      (* Find the scope where the array type was defined *)
+      find_scope_with_scopeid_opt s reduced_type.scopeid
+      |> bind (fun indexablescope ->
+        (* Find the scopedtype of the type inside the array *)
+        scopedtype_of_gotype lineno indexablescope insidetype
+      )
     )
+    (* If the type is not indexable, error *)
+    | _ -> type_not_indexable lineno t.gotype |> error; None
   )
-  (* If the type is not indexable, error *)
-  | _ -> type_not_indexable lineno t.gotype |> error; None
+
 
 
 (* Returns the type of a selection *)
