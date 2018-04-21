@@ -305,11 +305,31 @@ case:
 // Defines a golang simplestm (see https://golang.org/ref/spec#SimpleStmt)
 simpleStm:
   | e = exp { Position { position = $symbolstartpos; value = ExpStatement e } }
-  | e = exp TDPLUS { Position { position = $symbolstartpos; value = DoublePlus e } }
-  | e = exp TDMINUS { Position { position = $symbolstartpos; value = DoubleMinus e } }
+  | e = exp TDPLUS
+    { Position { position = $symbolstartpos; value =
+      Assign ([e],
+        [
+          Position { position = $symbolstartpos; value = BinaryOp (Plus, (e, (Position { position = $symbolstartpos; value = Int 1L })  )) }
+        ])
+      }
+    }
+  | e = exp TDMINUS
+    { Position { position = $symbolstartpos; value =
+      Assign ([e],
+        [
+          Position { position = $symbolstartpos; value = BinaryOp (Minus, (e, (Position { position = $symbolstartpos; value = Int 1L })  )) }
+        ])
+      }
+    }
   | var = exp_list TASSIGN e = exp_list { Position { position = $symbolstartpos; value = Assign (var, e) } }
   | var = exp a = assign_type e = exp
-    { Position { position = $symbolstartpos; value = Assign ([var], [Position { position = $symbolstartpos; value = BinaryOp (Plus, (var, e)) }]) } }
+    { Position { position = $symbolstartpos; value =
+        Assign ([var],
+          [
+            Position { position = $symbolstartpos; value = BinaryOp (Plus, (var, e)) }
+          ])
+        }
+    }
   | v = exp_list TCOLEQUAL e = exp_list { Position { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
   | { Position { position = $symbolstartpos; value = Empty } }
   ;
