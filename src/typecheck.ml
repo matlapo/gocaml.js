@@ -1091,10 +1091,10 @@ let check_invalid_special func_name (name, args, otyp) =
   else
     false
 
-let check_if_already_declared scope name =
+let check_if_already_declared scope name is_init =
   let f (x, _) = x = name in
   let bindings = List.exists f scope.bindings in
-  let functions = List.exists f scope.functions in
+  let functions = if is_init then false else List.exists f scope.functions in
   let types = List.exists f scope.types in
   (bindings || functions || types)
 
@@ -1126,7 +1126,7 @@ let typecheck_decl_opt scope decl =
         let redeclared =
           decls
           |> List.map (fun (x, _) -> x)
-          |> List.find_opt (fun name -> check_if_already_declared scope name) in
+          |> List.find_opt (fun name -> check_if_already_declared scope name false) in
         if is_some redeclared then (redeclared_error n.position.pos_lnum (Option.get redeclared) |> error; None)
         else
           let new_types =
@@ -1165,7 +1165,7 @@ let typecheck_decl_opt scope decl =
               if verify_return_statements typed_stmts scoped_return_type = true
               then None
               else
-                if check_if_already_declared scope name then (redeclared_error n.position.pos_lnum name |> error; None)
+                if check_if_already_declared scope name true then (redeclared_error n.position.pos_lnum name |> error; None)
                 else
                   let scope =
                     { scope with

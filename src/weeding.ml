@@ -207,6 +207,14 @@ let rec blank_stm (stm: stmt gen_node) =
     | _ -> [])
   | _ -> []
 
+let is_empty n =
+  match n with
+  | Position n ->
+    (match n.value with
+    | Empty -> true
+    | _ -> false)
+  | _ -> false
+
 let rec check_return_inside_function (l: stmt gen_node list) seen_return =
   match l with
   | [] -> seen_return
@@ -232,12 +240,19 @@ let rec check_return_inside_function (l: stmt gen_node list) seen_return =
             true (* if there are return statements after the if-block, then this block doesn't matter for us *)
         | None -> if not rest then if_body else true)
       | Loop loop ->
-        let body =
+        let special_case =
           match loop with
-          | While (_, x) -> x
-          | For (_, _, _, x) -> x in
-        check_return_inside_function body seen_return
-        || check_return_inside_function ss seen_return
+          | While (e, _) -> Option.is_none e
+          | For (a, b, c, _) ->
+            is_empty a && Option.is_none b && is_empty c in
+        if special_case then true
+        else
+          let body =
+            match loop with
+            | While (e, x) -> x
+            | For (_, _, _, x) -> x in
+          check_return_inside_function body seen_return
+          || check_return_inside_function ss seen_return
       | Switch (_, _, cases) ->
         (* exactly the same logic as the if-blocks *)
         let rest = check_return_inside_function ss seen_return in
