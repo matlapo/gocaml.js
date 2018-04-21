@@ -309,7 +309,7 @@ simpleStm:
   | e = exp TDMINUS { Position { position = $symbolstartpos; value = DoubleMinus e } }
   | var = exp_list TASSIGN e = exp_list { Position { position = $symbolstartpos; value = Assign (var, e) } }
   | var = exp a = assign_type e = exp
-    { Position { position = $symbolstartpos; value = Assign ([var], [ var ]) } }
+    { Position { position = $symbolstartpos; value = Assign ([var], [Position { position = $symbolstartpos; value = BinaryOp (Plus, (var, e)) }]) } }
   | v = exp_list TCOLEQUAL e = exp_list { Position { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
   | { Position { position = $symbolstartpos; value = Empty } }
   ;
