@@ -27,6 +27,7 @@ let invalid_type_for_op x typ = Printf.sprintf "Error: type %s is not a valid ty
 let invalid_assignment_error x = Printf.sprintf "Error: invalid assignment at line %d" x
 let invalid_short_declaration x = Printf.sprintf "Error: invalid short declaration, must declare at least one new variable at line %d" x
 let invalid_main x = Printf.sprintf "Error: main function must have no argument and void return type at line %d" x
+let redeclared_error x name = Printf.sprintf "Error: %s redeclared in this block at line: %d" name x
 
 let base_int = "int"
 let base_float = "float64"
@@ -613,8 +614,14 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
               match id.typ.gotype with
               | Null -> false
               | _ ->
-                (* otherwise check that either the types are equal OR both types are valid types based on the operation used *)
-                are_types_equal id.typ exp.typ |> not
+                (* only those cases are assignable *)
+                match id.value with
+                | Id _
+                | Indexing _
+                | Selection _ ->
+                  (* otherwise check that either the types are equal OR both types are valid types based on the operation used *)
+                  are_types_equal id.typ exp.typ |> not
+                | _ -> true
             ) in
           if invalid_assignment then (invalid_assignment_error e.position.pos_lnum |> error; None)
           else
@@ -1080,6 +1087,13 @@ let check_invalid_main (name, args, otyp) =
   else
     false
 
+let check_if_already_declared scope name =
+  let f (x, _) = x = name in
+  let bindings = List.exists f scope.bindings in
+  let functions = List.exists f scope.functions in
+  let types = List.exists f scope.types in
+  (bindings || functions || types)
+
 
 (*
  Depending on the type of declaration (i.e Var, Type or Fct) this function will
@@ -1105,15 +1119,21 @@ let typecheck_decl_opt scope decl =
         |> List.filter is_some in
       if List.length typed_decls <> List.length decls then None
       else
-        let new_types =
-          typed_decls
-          |> List.map Option.get
-          |> List.filter (fun (name, _) -> name <> "_") in
-        { empty_scope with types = new_types }
-        |> merge_scope_opt scope
-        |> bind (fun new_scope ->
-          (new_scope, Type decls) |> some
-        )
+        let redeclared =
+          decls
+          |> List.map (fun (x, _) -> x)
+          |> List.find_opt (fun name -> check_if_already_declared scope name) in
+        if is_some redeclared then (redeclared_error n.position.pos_lnum (Option.get redeclared) |> error; None)
+        else
+          let new_types =
+            typed_decls
+            |> List.map Option.get
+            |> List.filter (fun (name, _) -> name <> "_") in
+          { empty_scope with types = new_types }
+          |> merge_scope_opt scope
+          |> bind (fun new_scope ->
+            (new_scope, Type decls) |> some
+          )
     | Fct (name, args, return_type, stmts) ->
       let empty_function_scope = new_scope scope in
       if check_invalid_main (name, args, return_type) then (invalid_main n.position.pos_lnum |> error; None)
@@ -1140,12 +1160,14 @@ let typecheck_decl_opt scope decl =
               if verify_return_statements typed_stmts scoped_return_type = true
               then None
               else
-                let scope =
-                  { scope with
-                    children = List.append scope.children [new_scope];
-                    functions = List.append scope.functions (if name <> "_" then [function_binding] else [])
-                  } in
-                (scope, Fct (name, args, return_type, scoped_typed_stmts)) |> some
+                if check_if_already_declared scope name then (redeclared_error n.position.pos_lnum name |> error; None)
+                else
+                  let scope =
+                    { scope with
+                      children = List.append scope.children [new_scope];
+                      functions = List.append scope.functions (if name <> "_" then [function_binding] else [])
+                    } in
+                  (scope, Fct (name, args, return_type, scoped_typed_stmts)) |> some
               )
           )
         )
