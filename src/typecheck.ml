@@ -735,7 +735,7 @@ let verify_return_statements (l: (stmt snode) list) expected_type =
         | Void -> false
         | NonVoid t ->
           (match exp with
-          | Typed e -> if e.typ = t then true else (wrong_type s.position.pos_lnum t.gotype e.typ.gotype |> error; false)
+          | Typed e -> if are_types_equal e.typ t then true else (wrong_type s.position.pos_lnum t.gotype e.typ.gotype |> error; false)
           | _ -> false)))
     | _ -> true
   )
