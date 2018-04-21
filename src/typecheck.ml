@@ -28,33 +28,18 @@ let invalid_assignment_error x = Printf.sprintf "Error: invalid assignment at li
 let invalid_short_declaration x = Printf.sprintf "Error: invalid short declaration, must declare at least one new variable at line %d" x
 let invalid_main x = Printf.sprintf "Error: main function must have no argument and void return type at line %d" x
 
-type base_types =
-  | Int
-  | Float
-  | String
-  | Bool
-  | Rune
-
 let base_int = "int"
 let base_float = "float64"
 let base_string = "string"
 let base_bool = "bool"
 let base_rune = "rune"
 
-let to_string (b: base_types) =
-  match b with
-  | Int -> base_int
-  | Float -> base_float
-  | String -> base_string
-  | Bool -> base_bool
-  | Rune -> base_rune
-
 let try_base_type (s: string) =
-  if s = base_int then s |> some
-  else if s = base_float then s |> some
-  else if s = base_string then s |> some
-  else if s = base_bool then s |> some
-  else if s = base_rune then s |> some
+  if s = base_int then BInt |> some
+  else if s = base_float then BFloat64 |> some
+  else if s = base_string then BString |> some
+  else if s = base_bool then BBool |> some
+  else if s = base_rune then BRune |> some
   else None
 
 let is_numeric (t: basetype) =
@@ -110,17 +95,6 @@ let rec find_scope_of_varname_opt (s: scope) (varname: string): scope option =
   else
     s.parent
     |> bind (fun p -> find_scope_of_varname_opt p varname)
-
-(** Finds the type associated with a string *)
-let rec scopedtype_of_typename_opt lineno (s: scope) (typename: string): scopedtype option =
-  (* Look for a type in the current scope *)
-  match List.find_opt (fun (id, _) -> id = typename) s.types with
-  (* If found, create a scopedtype with the current scope id *)
-  | Some (id, t) -> Some { gotype = Defined id; scopeid = s.scopeid }
-  | None -> match s.parent with
-    (* Look in parent scope *)
-    | Some p -> scopedtype_of_typename_opt lineno p typename
-    | None -> None
 
 (** Finds the type associated with a variable name *)
 let rec scopedtype_of_varname_opt lineno (s: scope) (varname: string): scopedtype option =
@@ -189,6 +163,21 @@ let resolve_inside_type_of_indexable lineno (s: scope) (t: scopedtype) : scopedt
   )
 
 
+(** Finds the type associated with a string *)
+let rec scopedtype_of_typename_opt lineno (s: scope) (typename: string): scopedtype option =
+  (* Look for a type in the current scope *)
+  match List.find_opt (fun (id, _) -> id = typename) s.types with
+  (* If found, create a scopedtype with the current scope id *)
+  | Some (id, t) ->
+    if t.scopeid = 0 && is_some (try_base_type id) then
+      Some { gotype = Basetype (Option.get (try_base_type id)); scopeid = 0 }
+    else Some { gotype = Defined id; scopeid = s.scopeid }
+  | None -> match s.parent with
+    (* Look in parent scope *)
+    | Some p -> scopedtype_of_typename_opt lineno p typename
+    | None -> None
+
+
 
 (* Returns the type of a selection *)
 let selection_type_opt lineno (s: scope) (t: scopedtype) (a: string) : scopedtype option =
@@ -238,7 +227,8 @@ let are_types_equal (t1: scopedtype) (t2: scopedtype): bool =
   | Null -> false
   (* Do not check scopeid otherwise. This is because, for example, two [3]int array
     are considered the same type even if they were not defined in the same scope. *)
-  | _ -> t1.gotype = t2.gotype
+  | _ ->
+    t1.gotype = t2.gotype
 
 (* ### SCOPE MANIPULATION ### *)
 
@@ -277,18 +267,18 @@ let check_ops_opt lineno (s: scope) (left: scopedtype) (right: scopedtype) (l: b
     |> bind2 (fun a b ->
       match a, b with
       | { gotype = Basetype x; _}, { gotype = Basetype y; _} ->
-        if x = t && y = t then Some t
+        if x = t && y = t then Some left
         else None
       | _ ->
         if equality then
-          if are_types_equal left right then Some t else None
+          if are_types_equal left right then Some left else None
         else None
     )
   )
   |> List.find_opt is_some
   |> (fun x ->
     match x with
-    | Some x -> if comparable then Some (basetype BBool) else Some left
+    | Some x -> if comparable then Some (basetype BBool) else  Some left
     | None -> wrong_type lineno left.gotype right.gotype |> error; None
   )
 
@@ -393,18 +383,18 @@ let rec typecheck_exp_opt scope e =
             | Equals
             | NotEquals -> [BInt; BFloat64; BString; BBool; BRune], true, true
             | And
-            | Or -> [BBool], true, false
+            | Or -> [BBool], false, false
             | Smaller
             | Greater
             | SmallerEq
-            | GreaterEq -> [BInt; BFloat64; BString; BRune], true, false (* TODO: ordered? *)
+            | GreaterEq -> [BInt; BFloat64; BString; BRune], true, false
             | DGreater
             | DSmaller
             | AndHat
             | BAnd
             | BOr
             | Caret
-            | Mod -> [BInt], false, false in
+            | Mod -> [BInt; BRune], false, false in
           check_ops_opt e.position.pos_lnum scope a.typ b.typ types comparable equality
           |> bind (fun x ->
             tnode_of_node_and_value e x (BinaryOp (bin, (Typed a, Typed b))) |> some
@@ -488,15 +478,21 @@ note: all these operations can fail, hence the serie of binds
 and check_if_type_cast (e: exp node) (scope: scope) (name: string) (exps: exp gen_node list) =
   if List.length exps <> 1 then None
   else
+    (* we only allow for one expression in the type cast *)
     let exp = List.hd exps in
+    (* find the type associated with the name of the function *)
     scopedtype_of_typename_opt e.position.pos_lnum scope name
     |> bind (fun scoped_type ->
+      (* resolve it *)
       resolve_to_reducedtype_opt scope scoped_type
       |> bind (fun type_reduced ->
+        (* typecheck the expression that is being type casted *)
         typecheck_exp_opt scope exp
         |> bind (fun tnode ->
+          (* resolve the type of the expression that typechecked *)
           resolve_to_reducedtype_opt scope tnode.typ
           |> bind (fun exp_reduced ->
+            (* only types that resolves to basetypes are allowed *)
             match (type_reduced.gotype, exp_reduced.gotype) with
             | (Basetype a, Basetype b) ->
               (* if both types are the same basetype OR both are numeric OR type(expr) where type resolves to string and expr to int or rune *)
