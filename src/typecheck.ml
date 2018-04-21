@@ -794,11 +794,14 @@ and typecheck_stm_opt current s =
         let typed_exp =
         typecheck_exp_opt simple_scope oexp
         |> bind (fun typed ->
-          match typed.typ with
-          | { gotype = Basetype s; _} ->
-            if s = BBool then Typed typed |> some
-            else (wrong_type typed.position.pos_lnum (Basetype BBool) typed.typ.gotype |> error; None)
-          | _ -> wrong_type typed.position.pos_lnum (Basetype BBool) typed.typ.gotype |> error; None
+          resolve_to_reducedtype_opt simple_scope typed.typ
+          |> bind (fun reduced_type ->
+            match reduced_type with
+            | { gotype = Basetype s; _} ->
+              if s = BBool then Typed typed |> some
+              else (wrong_type typed.position.pos_lnum (Basetype BBool) typed.typ.gotype |> error; None)
+            | _ -> wrong_type typed.position.pos_lnum (Basetype BBool) typed.typ.gotype |> error; None
+          )
         ) in
         (* Add the created simplestm's scope to the current scope list of children *)
         let current = { current with children = simple_scope::current.children } in
