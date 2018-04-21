@@ -150,6 +150,7 @@ let basetype_of_string_opt s = match s with
   | _ -> None
 
 
+(* Find the first scope where the given gotype is defined *)
 let rec scopedtype_of_gotype lineno (s: scope) (t: gotype) : scopedtype option =
   match t with
   | Defined typename ->
@@ -225,9 +226,6 @@ let is_selectable (s: scope) (t: scopedtype) : bool option =
   )
 
 let are_types_equal (t1: scopedtype) (t2: scopedtype): bool =
-  (* print_string (string_of_gotype t1.gotype ^ "\n");
-  print_string (string_of_gotype t2.gotype ^ "\n");
-  print_string (if t1.gotype = t2.gotype then "YES\n" else "NO\n"); *)
   match t1.gotype with
   (* Compare scope ids only when it's a defined type. *)
   | Defined _ -> t1.gotype = t2.gotype && t1.scopeid = t2.scopeid
