@@ -949,11 +949,14 @@ and loop_helper e scope loop =
       | _ ->
         otyped_exp
         |> bind (fun typed_exp ->
-          if not (match typed_exp.typ with | { gotype = Basetype x } -> x = BBool | _ -> false) then
-            (wrong_type e.position.pos_lnum (Basetype BBool) typed_exp.typ.gotype |> error; None)
-          else
-            let exp_gen = Typed typed_exp in
-            Some { position = e.position; scope = new_scope; prevscope = scope; value = Loop (While (Some exp_gen, gen_nodes)) }
+          resolve_to_reducedtype_opt scope typed_exp.typ
+          |> bind (fun reduced_type ->
+            if not (match reduced_type with | { gotype = Basetype x } -> x = BBool | _ -> false) then
+              (wrong_type e.position.pos_lnum (Basetype BBool) reduced_type.gotype |> error; None)
+            else
+              let exp_gen = Typed typed_exp in
+              Some { position = e.position; scope = new_scope; prevscope = scope; value = Loop (While (Some exp_gen, gen_nodes)) }
+          )
         )
       )
     )
@@ -980,11 +983,14 @@ and loop_helper e scope loop =
           | Some _ ->
             otyped_exp
             |> bind (fun typed_exp ->
-              if not (match typed_exp.typ with | { gotype = Basetype x } -> x = BBool | _ -> false) then
-                (wrong_type e.position.pos_lnum (Basetype BBool) typed_exp.typ.gotype |> error; None)
-              else
-                let exp_gen = Typed typed_exp in
-                Some { position = e.position; scope = new_scope; prevscope = scope; value = Loop (For (init_gen, Some exp_gen, inc_gen, stmt_gen_nodes)) }
+              resolve_to_reducedtype_opt scope typed_exp.typ
+              |> bind (fun reduced_type ->
+                if not (match reduced_type with | { gotype = Basetype x } -> x = BBool | _ -> false) then
+                  (wrong_type e.position.pos_lnum (Basetype BBool) reduced_type.gotype |> error; None)
+                else
+                  let exp_gen = Typed typed_exp in
+                  Some { position = e.position; scope = new_scope; prevscope = scope; value = Loop (For (init_gen, Some exp_gen, inc_gen, stmt_gen_nodes)) }
+              )
             )
           )
         )
