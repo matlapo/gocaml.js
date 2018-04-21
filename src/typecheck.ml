@@ -663,10 +663,9 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
               )
               (* Typecheck the expression with the potentially altered scope *)
               |> bind (fun (k, scope) ->
-                let k = typecheck_exp_opt scope k in
-                match k with
-                | Some {value = Id "_"} -> Some (scope, List.append l [(Typed typed_exp)])
-                | _ -> k
+                match (extract_position k) with
+                | {value = Id "_"} -> Some (scope, List.append l [(Typed typed_exp)])
+                | _ -> typecheck_exp_opt scope k
                 (* If the kind is well typed, check the type equality *)
                 |> bind (fun k ->
                   if (are_types_equal k.typ typed_exp.typ) then
