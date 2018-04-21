@@ -1146,7 +1146,7 @@ let typecheck_decl_opt scope decl =
                 let scope =
                   { scope with
                     children = List.append scope.children [new_scope];
-                    functions = List.append scope.functions [function_binding]
+                    functions = List.append scope.functions (if name <> "_" then [function_binding] else [])
                   } in
                 (scope, Fct (name, args, return_type, scoped_typed_stmts)) |> some
               )

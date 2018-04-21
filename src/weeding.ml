@@ -440,7 +440,6 @@ let weed (p, d) =
         let assign = map_flat assign_check stmts in
         let fct = map_flat check_fcn_call stmts in
         let post = map_flat check_post_loop stmts in
-        let name = helper x.position.pos_lnum name in
         let args =
           args
           |> map_flat (fun (_, r) ->
@@ -452,8 +451,7 @@ let weed (p, d) =
           | Void -> []
           | NonVoid _ ->
             if check_return_inside_function stmts false then [] else [ missing_return_statement x.position.pos_lnum ] in
-        name
-        |> List.append duplicate_args
+        duplicate_args
         |> List.append s
         |> List.append args
         |> List.append continue
