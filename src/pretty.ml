@@ -141,21 +141,7 @@ and string_of_simple_stmt gn =
   | DoubleMinus e -> string_of_exp e ^ "--"
   | ShortDeclaration (el, exps) -> string_of_list string_of_exp "," el ^ " := " ^ string_of_exps exps
   | Empty -> ""
-  | Assign (a, (el, exps)) -> string_of_list string_of_exp "," el ^ " "
-    ^ string_of_assign a ^ " " ^ string_of_exps exps
-and string_of_assign a = match a with
-  | Regular -> "="
-  | PlusEqual -> "+="
-  | MinusEqual -> "-="
-  | DivEqual -> "/="
-  | TimesEqual -> "*="
-  | AndEqual -> "&="
-  | OrEqual -> "|="
-  | HatEqual -> "^="
-  | PercentEqual -> "%="
-  | AndHatEqual -> "&^="
-  | DoubleGreaterEqual -> ">>="
-  | DoubleSmallerEqual -> "<<="
+  | Assign (el, exps) -> string_of_list string_of_exp "," el ^ " = " ^ string_of_exps exps
 
 and string_of_case lvl (exps, stmts) = indent lvl ^ "case "
     ^ none_or_print (string_of_list string_of_exp ",") exps ^ ":\n"

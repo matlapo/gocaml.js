@@ -103,7 +103,7 @@ type assign =
 
 (* Exactly like GoLang simpleStm *)
 type simpleStm =
-  | Assign of assign * (exp gen_node list * exp gen_node list)
+  | Assign of exp gen_node list * exp gen_node list
   | ExpStatement of exp gen_node
   | DoublePlus of exp gen_node
   | DoubleMinus of exp gen_node

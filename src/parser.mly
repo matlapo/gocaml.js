@@ -307,8 +307,9 @@ simpleStm:
   | e = exp { Position { position = $symbolstartpos; value = ExpStatement e } }
   | e = exp TDPLUS { Position { position = $symbolstartpos; value = DoublePlus e } }
   | e = exp TDMINUS { Position { position = $symbolstartpos; value = DoubleMinus e } }
-  | var = exp_list TASSIGN e = exp_list { Position { position = $symbolstartpos; value = Assign (Regular, (var, e)) } }
-  | var = exp a = assign_type e = exp { Position { position = $symbolstartpos; value = Assign (a, ([var], [e])) } }
+  | var = exp_list TASSIGN e = exp_list { Position { position = $symbolstartpos; value = Assign (var, e) } }
+  | var = exp a = assign_type e = exp
+    { Position { position = $symbolstartpos; value = Assign ([var], [ var ]) } }
   | v = exp_list TCOLEQUAL e = exp_list { Position { position = $symbolstartpos; value = ShortDeclaration (v, e) } }
   | { Position { position = $symbolstartpos; value = Empty } }
   ;
@@ -324,17 +325,17 @@ else_ifs:
   ;
 
 assign_type:
-  | TPLUSEQUAL { PlusEqual }
-  | TMINUSEQUAL { MinusEqual }
-  | TMULTEQUAL { TimesEqual }
-  | TDIVEQUAL { DivEqual }
-  | TANDEQUAL { AndEqual }
-  | TOREQUAL { OrEqual }
-  | THATEQUAL { HatEqual }
-  | TPERCENTEQUAL { PercentEqual }
-  | TWTF { AndHatEqual }
-  | TDGEQUAL { DoubleGreaterEqual }
-  | TDSEQUAL { DoubleSmallerEqual }
+  | TPLUSEQUAL { Plus }
+  | TMINUSEQUAL { Minus }
+  | TMULTEQUAL { Times }
+  | TDIVEQUAL { Div }
+  | TANDEQUAL { BAnd }
+  | TOREQUAL { BOr }
+  | THATEQUAL { Caret }
+  | TPERCENTEQUAL { Mod }
+  | TWTF { AndHat }
+  | TDGEQUAL { DGreater }
+  | TDSEQUAL { DSmaller }
   ;
 
 // #############################

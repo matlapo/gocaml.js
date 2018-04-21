@@ -132,13 +132,8 @@ let blank_simple (simp: simpleStm gen_node) =
   match simp with
   | Position simp ->
     (match simp.value with
-    | Assign (a, (l, e)) ->
-      let e = map_flat blank_exp e in
-      let l =
-        match a with
-        | Regular -> []
-        | _ -> map_flat blank_exp l in
-      List.append e l
+    | Assign (l, e) ->
+      map_flat blank_exp e
     | ExpStatement e -> blank_exp e
     | ShortDeclaration (l, e) ->
       map_flat blank_exp e
@@ -320,7 +315,7 @@ let rec assign_check (s: stmt gen_node) =
       (match simp with
       | Position simp ->
         (match simp.value with
-        | Assign (_, (a, b)) ->
+        | Assign (a, b) ->
           if List.length a = List.length b then [] else [variable_decl_error s.position.pos_lnum]
         | ShortDeclaration (a, b) ->
           if List.length a = List.length b then [] else [variable_decl_error s.position.pos_lnum]
