@@ -843,7 +843,8 @@ and typecheck_stm_opt current s =
       else
         let new_types =
           typed_decls
-          |> List.map Option.get in
+          |> List.map Option.get
+          |> List.filter (fun (name, _) -> name <> "_") in
         { empty_scope with types = new_types }
         |> merge_scope_opt current
         |> bind (fun new_scope ->
@@ -1111,7 +1112,8 @@ let typecheck_decl_opt scope decl =
       else
         let new_types =
           typed_decls
-          |> List.map Option.get in
+          |> List.map Option.get
+          |> List.filter (fun (name, _) -> name <> "_") in
         { empty_scope with types = new_types }
         |> merge_scope_opt scope
         |> bind (fun new_scope ->
