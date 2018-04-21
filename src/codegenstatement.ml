@@ -45,8 +45,8 @@ let codegen_simple_stmt (simple_stmt_node: simpleStm gen_node) =
   let prevscope = prevscope_of_simple_stmt simple_stmt_node in
   let scope = scope_of_simple_stmt simple_stmt_node in
   match simple_stmt with
-    | Assign (Regular, (refs, exps)) -> codegen_assign prevscope refs exps
-    | Assign (op, ([ref], [exp])) -> codegen_assign_op prevscope op ref exp
+    (* | Assign (Regular, (refs, exps)) -> codegen_assign prevscope refs exps
+    | Assign (op, ([ref], [exp])) -> codegen_assign_op prevscope op ref exp *)
     | Assign _ -> raise (Failure "Invalid Assignment")
     | ExpStatement exp -> (codegen_exp prevscope true exp) ^ ";"
     | DoublePlus ref -> (codegen_exp prevscope false ref) ^ "++;"
@@ -144,7 +144,7 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
       "}"
     | Loop For (init, cond, increment, stmts) ->
       let init_scope = scope_of_simple_stmt init in
-      let for_code = 
+      let for_code =
         "for(" ^
           ";" ^
           (cond |> Option.map_default (codegen_exp init_scope true) "") ^ ";" ^

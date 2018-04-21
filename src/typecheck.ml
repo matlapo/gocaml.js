@@ -578,21 +578,8 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
   match s with
   | Position e ->
     (match e.value with
-    | Assign (assign_type, (kinds, exps)) ->
-      let typ =
-        match assign_type with
-        | Regular -> None
-        | PlusEqual -> Some [Basetype BInt; Basetype BFloat64; Basetype BString]
-        | MinusEqual
-        | DivEqual
-        | TimesEqual -> Some [Basetype BInt; Basetype BFloat64]
-        | AndEqual
-        | OrEqual
-        | HatEqual
-        | PercentEqual
-        | AndHatEqual -> Some [Basetype BInt]
-        | DoubleGreaterEqual
-        | DoubleSmallerEqual -> Some [Basetype BInt] in
+    | Assign (kinds, exps) ->
+      (* match each id with its expression and typecheck the expression *)
       let typecheck_rhs =
         exps
         |> List.map2 (fun id exp ->
@@ -602,32 +589,32 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
       (* make sure that all the expressions on the RHS typecheck *)
       if List.length typecheck_rhs <> List.length exps then None
       else
+        (* ids are also expressions, so typecheck them too and unwrap the expressions *)
         let typecheck_lhs =
           typecheck_rhs
           |> List.map (fun (id, oexp) ->
+            (* if the id is an underscore, then use the special type Null for its type *)
             if is_underscore id then (tnode_of_node (extract_position id) null_scopeid |> some, Option.get oexp)
             else (typecheck_exp_opt current id, Option.get oexp)
           )
           |> List.filter (fun (oid, _) -> is_some oid) in
+        (* make sure each id typchecked *)
         if List.length typecheck_lhs <> List.length typecheck_rhs then None
         else
+          (* unwrap the ids *)
           let typed_assignments =
             typecheck_lhs
-            |> List.map (fun (id, exp) -> (Option.get id, exp))
-            |> List.map (fun (id, exp) -> (id, exp)) in
+            |> List.map (fun (id, exp) -> (Option.get id, exp)) in
+          (* now the real logic, check if all id * expressions pairs match *)
           let invalid_assignment =
             typed_assignments
             |> List.exists (fun (id, exp) ->
+              (* if id's type is Null, it means that it is an underscore, so need for comparaison *)
               match id.typ.gotype with
               | Null -> false
               | _ ->
+                (* otherwise check that either the types are equal OR both types are valid types based on the operation used *)
                 are_types_equal id.typ exp.typ |> not
-                || (match typ with
-                  | None -> false
-                  | Some types ->
-                    (List.exists (fun x -> x = id.typ.gotype) types
-                    && List.exists (fun x -> x = exp.typ.gotype) types) |> not
-                )
             ) in
           if invalid_assignment then (invalid_assignment_error e.position.pos_lnum |> error; None)
           else
@@ -639,7 +626,7 @@ let rec typecheck_simple_opt current s: simpleStm snode option =
             let gen_node_exps =
               List.map2 (fun (_, exp) old -> tnode_of_node_and_value old exp.typ exp.value) typed_assignments exps
               |> List.map (fun x -> Typed x) in
-            { position = e.position; scope = current; prevscope = current; value = Assign (assign_type, (gen_node_kinds, gen_node_exps)) } |> some
+            { position = e.position; scope = current; prevscope = current; value = Assign (gen_node_kinds, gen_node_exps) } |> some
     | Empty -> { position = e.position; scope = current; prevscope = current; value = Empty } |> some
     | DoublePlus kind -> double_helper e current kind true
     | DoubleMinus kind -> double_helper e current kind false
