@@ -23,10 +23,18 @@ const println = (...args) => {
 
 const at = (array, index) => {
   if (index >= array.length) {
-    throw new Error('Error: Array or Slice accessed out of bounds');
+    throw new Error('Error: out-of-bounds');
   }
 
   return array[index];
+}
+
+const checkArrayBound = (array, index) => {
+  if (index >= array.length) {
+    throw new Error('Error: out-of-bounds');
+  }
+
+  return index;
 }
 
 const copy = (value) => {

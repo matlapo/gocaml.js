@@ -55,7 +55,7 @@ and codegen_bare_exp (s: scope) (p: bool) (e: exp) :string =
       if p then
         "at(" ^ array_code ^ "," ^ index_code ^ ")"
       else
-        array_code ^ "[" ^ index_code ^ "]"
+        array_code ^ "[checkArrayBound(" ^ array_code ^ "," ^ index_code ^ ")]"
     | Selection (struct_expr, member) ->
       (codegen_exp s p struct_expr) ^
       "." ^
