@@ -97,7 +97,7 @@ and codegen_exp (s: scope) (parenthesize: bool) (exp: exp gen_node) :string = co
 and codegen_copy (s: scope) (parenthesize: bool) (expr: exp gen_node) :string =
   match type_of_expr s expr with
     | Array _ -> "[...(" ^ codegen_exp s parenthesize expr ^ ")]"
-    | Struct _ -> "{...(" ^ codegen_exp s parenthesize expr ^ ")}"
+    | Struct _ -> "Object.assign({}," ^ codegen_exp s parenthesize expr ^ ")"
     | _ -> codegen_exp s false expr
 and codegen_bare_exps (s: scope) (parenthesize: bool) (exps: exp list): string =
   exps
