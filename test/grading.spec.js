@@ -9,6 +9,7 @@ testDirectory('grading/3-semantics+codegen/valid', 'codegen', {
         '8-9-return-slice.go', // Typechecker
         '9-6-callexpr-blank.go', // Weeder/Typechecker
         '9-6-callexpr.go', // Float printing
+        '9-8-typecastexpr.go', // Float printing
     ]
 });
 //testDirectory('grading/3-extra+codegen/valid', 'codegen');
