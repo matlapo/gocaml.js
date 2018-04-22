@@ -151,7 +151,7 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
           (codegen_stmts stmts) ^
         "}" in
       with_init scope init for_code
-    | Return Some expr -> "return" ^ (codegen_copy scope true expr) ^ ";"
+    | Return Some expr -> "return" ^ " " ^ (codegen_copy scope true expr) ^ ";"
     | Return None -> "return;"
     | Switch (init, target, cases) ->
       let init_scope = scope_of_simple_stmt init in
