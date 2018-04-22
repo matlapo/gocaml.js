@@ -46,7 +46,12 @@ const append = (slice, element) => [...slice, element];
 const _int = (v) => Math.floor(v);
 const _rune = (v) => Math.floor(v);
 const _float64 = (v) => v;
-const _string = (v) => v.toString();
+const _string = (v) => {
+  if (Number.isInteger(v)) {
+    return String.fromCharCode(v);
+  }
+  return v.toString();
+}
 const _bool = (v) => v
 
 let inits = [];
