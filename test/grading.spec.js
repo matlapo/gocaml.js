@@ -2,6 +2,7 @@ const { testDirectory, VALID, INVALID } = require('./util');
 
 testDirectory('grading/3-semantics+codegen/valid', 'codegen', {
     ignore: [
+        '4-vardecs-init.go', // Float printing
         '8-6-shortdecstmts.go', // Float printing
         '8-7-incdecstmts.go', // Float printing
         '8-8-printstmts.go', // Parser (hex and octal) and float printing
