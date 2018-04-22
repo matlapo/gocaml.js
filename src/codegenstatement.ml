@@ -9,10 +9,7 @@ let codegen_bare_assign (s: scope) (refs: exp list) (exps: exp gen_node list) :s
   (refs |> codegen_bare_exps s false) ^
   "]=\x5B" ^
   (exps
-    |> List.map (fun (expr: exp gen_node) -> match type_of_expr s expr with
-      | Array _ -> "(" ^ codegen_exp s false expr ^ ").slice()" (* Copy arrays instead of passing them by reference *)
-      | _ -> codegen_exp s false expr
-    )
+    |> List.map (codegen_copy s true)
     |> concat_comma) ^
   "];"
 let codegen_assign (s: scope) (refs: exp gen_node list) (exps: exp gen_node list) :string =
@@ -69,7 +66,7 @@ let codegen_decl (s: scope) (decl: (string list * gotype option * (exp gen_node)
     | (Some gotype, []) ->
       let length = List.length names in
       List.make length (zero_value_of_type s gotype)
-    | (_, exps) -> List.map (codegen_exp s true) exps in
+    | (_, exps) -> List.map (codegen_copy s true) exps in
   "let [" ^
   (names |> List.map (mangle_decl s) |> concat_comma) ^
   "]=[" ^

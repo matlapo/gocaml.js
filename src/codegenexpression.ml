@@ -24,8 +24,16 @@ and codegen_binary_op (s: scope) (op: binary) (left: exp gen_node) (right: exp g
       else
         l ^ "/" ^ r
     | Mod -> l ^ "%" ^ r
-    | Equals -> l ^ "==" ^ r
-    | NotEquals -> l ^ "!=" ^ r
+    | Equals ->
+      (match l_type with
+        | Struct _
+        | Array _  -> "deepEqual(" ^ l ^ "," ^ r ^ ")"
+        | _ -> l ^ "==" ^ r)
+    | NotEquals ->
+      (match l_type with
+        | Struct _
+        | Array _  -> "!deepEqual(" ^ l ^ "," ^ r ^ ")"
+        | _ -> l ^ "!=" ^ r)
     | And -> l ^ "&&" ^ r
     | Or -> l ^ "||" ^ r
     | Smaller -> l ^ "<" ^ r
