@@ -67,10 +67,7 @@ and codegen_bare_exp (s: scope) (p: bool) (e: exp) :string =
       (mangle_fct name) ^
       "(" ^ (
         params
-          |> List.map (fun expr -> match type_of_expr s expr with
-              | Array _ -> "(" ^ codegen_exp s false expr ^ ").slice()" (* Copy arrays instead of passing them by reference *)
-              | _ -> codegen_exp s false expr
-            )
+          |> List.map (codegen_copy s p)
           |> concat_comma
         ) ^
       ")"
@@ -83,6 +80,11 @@ and codegen_bare_exp (s: scope) (p: bool) (e: exp) :string =
   in
   if p then (paren code) else code
 and codegen_exp (s: scope) (parenthesize: bool) (exp: exp gen_node) :string = codegen_bare_exp s parenthesize (unwrap_gen_node exp)
+and codegen_copy (s: scope) (parenthesize: bool) (expr: exp gen_node) :string =
+  match type_of_expr s expr with
+    | Array _ -> "[...(" ^ codegen_exp s parenthesize expr ^ ")]"
+    | Struct _ -> "{...(" ^ codegen_exp s parenthesize expr ^ ")}"
+    | _ -> codegen_exp s false expr
 and codegen_bare_exps (s: scope) (parenthesize: bool) (exps: exp list): string =
   exps
     |> List.map (codegen_bare_exp s parenthesize)

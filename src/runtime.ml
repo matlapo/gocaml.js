@@ -29,6 +29,18 @@ const at = (array, index) => {
   return array[index];
 }
 
+const copy = (value) => {
+  if (Array.isArray(value)) {
+    return [...value];
+  }
+
+  if (typeof value == object) {
+    return {...value}
+  }
+
+  else return value;
+}
+
 const append = (slice, element) => [...slice, element];
 
 const _int = (v) => Math.floor(v);
