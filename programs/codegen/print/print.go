@@ -1,4 +1,4 @@
-//~13.2testoka1 3.2 test ok a
+//~13.2testok971 3.2 test ok 97
 package main;
 
 func main() {

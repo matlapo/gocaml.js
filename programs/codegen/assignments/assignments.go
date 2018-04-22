@@ -5,11 +5,11 @@ package main;
 
 type a struct {
   a int
-  x []int
-  y [][]int
+  x [4]int
+  y [4][4]int
   z struct {
-    x [6]int
-    y [][]int
+    x [4]int
+    y [4][4]int
   }
 }
 

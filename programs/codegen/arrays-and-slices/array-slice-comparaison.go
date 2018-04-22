@@ -21,7 +21,7 @@ func main() {
   b[0] = 0
   b[1] = 1
 
-  print(a == b)
+  println(a == b)
 
   var foo ot
   foo.x[0] = 0
@@ -30,14 +30,5 @@ func main() {
   var bar st
   bar.z[0] = foo
 
-  print(bar.z[0].x == a)
-
-  var er []string
-  er = append(er, "hello")
-  
-  foo.y = append(foo.y, "hello")
-  bar.z[0] = foo
-
-  print(bar.z[0].y == er)
+  println(bar.z[0].x == a)
 }
-

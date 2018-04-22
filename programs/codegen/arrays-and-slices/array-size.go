@@ -6,5 +6,5 @@ func main() {
   var b [32]int
   var c bool = b == a
 
-  print (c)
+  println(c)
 }
