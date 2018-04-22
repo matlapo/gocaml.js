@@ -111,7 +111,6 @@ let symbol input =
           print_string (Scopeprinter.string_of_symbol_table symbols);
           exit 0;
         | None ->
-          print_error lexer_buffer "Error: Type check error";
           exit 1;)
       | w::_ ->
         print_error lexer_buffer w;
@@ -137,7 +136,6 @@ let codegen input =
           print_string (Codegen.codegen scope ast);
           exit 0;
         | None ->
-          print_error lexer_buffer "Error: Type check error";
           exit 1;)
       | w::_ ->
         print_error lexer_buffer w;
