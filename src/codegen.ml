@@ -7,6 +7,7 @@ let codegen_decl (scope: scope) (n_fct: int) (decl:decl) :string = match decl wi
   | Var decls -> codegen_decls scope decls
   | Type _ -> ""
   | Fct ("init", _, _, stmts) -> "inits.push(()=>{" ^ codegen_stmts stmts ^ "});"
+  | Fct ("_", _, _, _) -> ""
   | Fct (name, args, _, stmts) ->
     let inner_scope = List.at scope.children n_fct in
     "function " ^ (mangle_fct name) ^

@@ -114,6 +114,7 @@ let rec codegen_stmt (stmt_gen_node:stmt gen_node) :string =
       "}"
     | Print exps -> "print(" ^ codegen_exps scope true exps ^ ");"
     | Println exps -> "println(" ^ codegen_exps scope true exps ^ ");"
+    | Declaration [(["_"], _, _)] -> "" (* Ignore declarations declaring a variable named blank *)
     | Declaration decls -> codegen_decls scope decls
     | TypeDeclaration _ -> ""
     | If (init, condition, stmts, _else) ->
