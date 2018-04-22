@@ -60,7 +60,13 @@ and codegen_bare_exp (s: scope) (p: bool) (e: exp) :string =
       s
         |> replace "\\" "\\\\"
         |> replace "\n" "\\n"
-    | Rune r -> r
+    | Rune r ->
+      let replace a b s = String.nreplace ~str:s ~sub:a ~by:b in
+      let unescaped = r
+        |> replace "\\n" "\n"
+        |> replace "\\\\" "\\"
+        in
+      string_of_int (BatChar.code (BatString.get unescaped 1))
     | BinaryOp (op, (left, right)) -> codegen_binary_op s op left right
     | Unaryexp (op, exp) -> codegen_unary_op s op exp
     | FuncCall (name, params) ->
