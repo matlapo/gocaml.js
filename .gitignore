@@ -2,6 +2,7 @@ programs/1-scan+parse
 programs/2-typecheck
 programs/3-semantics+codegen
 programs/**/*.js
+verify.sh
 
 # Created by https://www.gitignore.io/api/macos,ocaml,windows,visualstudiocode
 
