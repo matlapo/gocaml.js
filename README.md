@@ -1,20 +1,7 @@
 # GoLite OCaml
 A GoLite compiler written in OCaml (ewww C)
 
-The best compiler of the history of compilers, maybe ever.
-
-# Team Members
-* Maxence Frenette (260685124)
-* Maxime Plante (260685695)
-* Mathieu Lapointe (260685906)
-
-# Notes for the Grader
-For our own convienience, we use a different directory structure for our test programs than what is required. Please run `./submission.sh` to copy generate the correct test folder for grading. **Please do not commit these changes as it effectively deletes most of our tests.**
-
-Since the Trottier SOCS machine have a version of OCaml that dates from 2014, this project won't build on them. To build the project, you will need to
-* Install OPAM
-* `opam install menhir ocamlbuild batteries`
-* `./build.sh`
+The best compiler of the history of compilers, maybe ever. Started as an academic project in the compiler design course taught at McGill University.
 
 # Setup
 ## Tools
