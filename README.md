@@ -1,7 +1,7 @@
 # Gocaml.js
-A GoLite compiler written in OCaml (ewww C)
+A GoLite compiler written in OCaml
 
-The best compiler of the history of compilers, maybe ever. Started as an academic project in a compiler design course taught at McGill University.
+The best compiler of the history of compilers, maybe ever. Started as an academic project in a graduate compiler design course (COMP 520) taught at McGill University.
 
 # Setup
 ## Tools
